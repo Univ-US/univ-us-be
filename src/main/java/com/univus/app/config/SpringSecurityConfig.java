@@ -26,7 +26,7 @@ public class SpringSecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/api/auth/**", "/oauth2/**", "/ws-univus/**").permitAll()
+                .requestMatchers("/", "/api/test/**", "/api/auth/**", "/oauth2/**", "/ws-univus/**").permitAll()
                 .anyRequest().authenticated()
             );
             
