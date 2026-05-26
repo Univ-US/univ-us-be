@@ -1,0 +1,24 @@
+{
+  "properties": [
+    {
+      "name": "file.upload-root",
+      "type": "java.lang.String",
+      "description": "파일 업로드 디렉토리 경로"
+    },
+    {
+      "name": "portone.api.key",
+      "type": "java.lang.String",
+      "description": "포트원 REST API 키"
+    },
+    {
+      "name": "portone.api.secret",
+      "type": "java.lang.String",
+      "description": "포트원 REST API 시크릿"
+    },
+    {
+      "name": "portone.imp.code",
+      "type": "java.lang.String",
+      "description": "포트원 가맹점 식별코드"
+    }
+  ]
+}
