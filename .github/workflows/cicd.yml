@@ -18,6 +18,10 @@ on:
 permissions:
   contents: write             # 코드 병합(push) 권한
   pull-requests: write        # PR 조작(병합 등) 권한
+  
+concurrency:
+  group: merge-to-dev        # 모든 PR이 같은 그룹 → 동시에 안 돌고 줄 섬
+  cancel-in-progress: false  # 진행 중인 건 취소하지 말고 '대기'시킴
 
 jobs:
   # ========== JOB 1: 빌드 & 테스트 ==========
