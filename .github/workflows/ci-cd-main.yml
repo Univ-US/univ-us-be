@@ -8,8 +8,7 @@ name: CI-CD Main (Scheduled Dev to Main)
 
 on:
   schedule:
-    # KST 00/06/12/18시 = UTC 15/21/03/09시
-    - cron: '0 3,9,15,21 * * *'
+    - cron: '0 3,9,15,21 * * *'   # KST 00/06/12/18시
   workflow_dispatch:
 
 permissions:
@@ -19,7 +18,7 @@ jobs:
   test-and-merge:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (dev 기준, 전체 히스토리)
+      - name: Checkout (dev)
         uses: actions/checkout@v4
         with:
           ref: dev
@@ -33,15 +32,39 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Build & Test (dev 코드 검사)
+      - name: Build & Test (dev)
         run: |
           chmod +x gradlew
           ./gradlew build
 
       - name: Merge dev into main
+        id: merge
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout main
+          BEFORE=$(git rev-parse HEAD)
           git merge dev --no-ff -m "chore: 정기 병합 dev → main (CI 통과)"
           git push origin main
+          AFTER=$(git rev-parse HEAD)
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "merged=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # --- D: 실제 병합이 일어났을 때만 성공 알림 ---
+      - name: Notify success (Discord)
+        if: success() && steps.merge.outputs.merged == 'true'
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{"content":"✅ [main] 정기 병합 성공 — dev 변경이 main에 반영되었습니다.\n${{ github.server_url }}/${{ github.repository }}/commits/main"}' \
+            "${{ secrets.DISCORD_WEBHOOK }}"
+
+      # --- B: 검사 또는 병합 실패 시 알림 ---
+      - name: Notify failure (Discord)
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{"content":"❌ [main] 정기 dev→main 검사/병합 실패 — 확인 필요:\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
+            "${{ secrets.DISCORD_WEBHOOK }}"
