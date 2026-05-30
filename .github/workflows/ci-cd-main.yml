@@ -59,7 +59,7 @@ jobs:
         if: success() && steps.merge.outputs.merged == 'true'
         run: |
           curl -H "Content-Type: application/json" \
-            -d '{"content":"✅ [main] 정기 병합 성공 — dev 변경이 main에 반영되었습니다.\n${{ github.server_url }}/${{ github.repository }}/commits/main"}' \
+            -d '{"content":"✅ [main] 정기 병합 성공 — dev 변경이 main에 반영되었습니다."}' \
             "${{ secrets.DISCORD_WEBHOOK }}"
 
       # --- B: 검사 또는 병합 실패 시 알림 ---
