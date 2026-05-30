@@ -51,8 +51,6 @@ jobs:
       - name: Notify test failure (Discord)
         if: failure()               # 같은 job에서 앞 단계가 하나라도 실패했을 때만 실행
         run: |
-          # secrets.DISCORD_WEBHOOK = 미리 등록한 Discord 웹훅 URL
-          # ${{ }} 값들은 GitHub이 실행 시 자동으로 채움 (직접 입력 X)
           curl -H "Content-Type: application/json" \
             -d '{"content":"❌ [dev] PR #${{ github.event.pull_request.number }} 테스트 실패로 병합이 거부되었습니다.\n로그: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
             "${{ secrets.DISCORD_WEBHOOK }}"
