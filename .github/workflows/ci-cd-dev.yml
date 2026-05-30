@@ -70,6 +70,14 @@ jobs:
             --merge \
             --repo ${{ github.repository }}
 
+      # --- E: 자동 병합 성공 시 알림 ---
+      - name: Notify merge success (Discord)
+        if: success()               # 앞 단계(병합)가 성공했을 때만 실행
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{"content":"✅ [dev] PR #${{ github.event.pull_request.number }} (${{ github.head_ref }} → ${{ github.base_ref }}) 테스트 통과 후 dev에 자동 병합되었습니다."}' \
+            "${{ secrets.DISCORD_WEBHOOK }}"
+
       # --- C: 테스트는 통과했으나 병합 단계가 실패하면 알림 (조용한 실패 방지) ---
       - name: Notify merge failure (Discord)
         if: failure()               # 위 병합 단계가 실패(충돌/권한 등)했을 때만 실행
