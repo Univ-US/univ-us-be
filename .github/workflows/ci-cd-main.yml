@@ -1,70 +1,53 @@
 # ===================================================================
-# 정기적으로 dev를 검사한 뒤 통과하면 main에 자동 병합
-#  - 한국시간 00/06/12/18시에 실행 (cron은 UTC라 변환해서 기재)
-#  - 반드시 기본 브랜치(main)에 있어야 cron이 작동함
+# CI-CD Main: 정기적으로 dev를 검사한 뒤 통과하면 main에 자동 병합
+#  - 한국시간 00/06/12/18시에 실행 (+ Discord 성공/실패 알림)
+#  - ⚠️ 스케줄 워크플로우라 반드시 기본 브랜치(main)에 있어야 작동함
 # ===================================================================
 
-name: CI-CD Main (Scheduled Dev to Main)
+name: CI-CD Main (Scheduled Dev to Main)   # Actions 화면에 표시될 이름
 
+# --- 언제 실행할지(트리거) ---
 on:
   schedule:
-    - cron: '0 3,9,15,21 * * *'   # KST 00/06/12/18시
-  workflow_dispatch:
+    # cron은 UTC 기준 (KST = UTC+9). 아래는 한국시간 00/06/12/18시
+    #   UTC 15:00 = KST 00:00 / UTC 21:00 = KST 06:00
+    #   UTC 03:00 = KST 12:00 / UTC 09:00 = KST 18:00
+    - cron: '0 3,9,15,21 * * *'
+  workflow_dispatch:          # Actions 탭에서 수동 실행 버튼(테스트용)
 
+# --- 권한: main에 push(병합)하려면 write 필요 ---
 permissions:
   contents: write
 
 jobs:
   test-and-merge:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest    # GitHub 제공 우분투 가상머신
+
     steps:
-      - name: Checkout (dev)
+      - name: Checkout (dev)  # 1) dev 브랜치를 받아옴 (검사 대상이 dev라서)
         uses: actions/checkout@v4
         with:
-          ref: dev
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: dev            # main이 아니라 dev를 체크아웃
+          fetch-depth: 0      # 병합하려면 전체 히스토리 필요(얕은 복제 X)
+          token: ${{ secrets.GITHUB_TOKEN }}   # 이후 push 인증용 토큰
 
-      - name: Set up JDK 21
+      - name: Set up JDK 21   # 2) Java 21 설치
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: gradle
+          cache: gradle       # Gradle 캐싱(속도 ↑)
 
-      - name: Build & Test (dev)
+      - name: Build & Test (dev)   # 3) dev 코드 빌드+테스트 (실패 시 중단)
         run: |
-          chmod +x gradlew
+          chmod +x gradlew         # 리눅스 실행 권한 부여
           ./gradlew build
 
-      - name: Merge dev into main
-        id: merge
+      - name: Merge dev into main  # 4) 검사 통과 시 dev를 main에 병합
+        id: merge                  # 아래 알림에서 이 스텝 결과(merged)를 참조하려고 id 부여
         run: |
+          # 봇 계정으로 커밋자 설정
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
-          BEFORE=$(git rev-parse HEAD)
-          git merge dev --no-ff -m "chore: 정기 병합 dev → main (CI 통과)"
-          git push origin main
-          AFTER=$(git rev-parse HEAD)
-          if [ "$BEFORE" != "$AFTER" ]; then
-            echo "merged=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "merged=false" >> "$GITHUB_OUTPUT"
-          fi
 
-      # --- D: 실제 병합이 일어났을 때만 성공 알림 ---
-      - name: Notify success (Discord)
-        if: success() && steps.merge.outputs.merged == 'true'
-        run: |
-          curl -H "Content-Type: application/json" \
-            -d '{"content":"✅ [main] 정기 병합 성공 — dev 변경이 main에 반영되었습니다.\n${{ github.server_url }}/${{ github.repository }}/commits/main"}' \
-            "${{ secrets.DISCORD_WEBHOOK }}"
-
-      # --- B: 검사 또는 병합 실패 시 알림 ---
-      - name: Notify failure (Discord)
-        if: failure()
-        run: |
-          curl -H "Content-Type: application/json" \
-            -d '{"content":"❌ [main] 정기 dev→main 검사/병합 실패 — 확인 필요:\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
-            "${{ secrets.DISCORD_WEBHOOK }}"
+        
