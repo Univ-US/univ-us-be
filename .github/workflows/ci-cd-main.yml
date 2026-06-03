@@ -1,15 +1,17 @@
 # ===================================================================
 # CI-CD Main: 정기적으로 dev를 검사한 뒤 통과하면 main에 자동 병합
-#  - 한국시간 06시에 실행 (+ Discord 성공/실패 알림)
+#  - ⛔ [임시 정지] CD 안정화 전까지 스케줄(cron) 자동 병합 중단.
+#        → 현재는 수동(workflow_dispatch) 실행만 동작.
+#        → 복구: 아래 schedule 2줄 주석 해제 후 반드시 'dev'(기본 브랜치)에 반영.
 #  - ⚠️ 스케줄 워크플로우라 반드시 기본 브랜치(현재 dev)에 있어야 작동함
 # ===================================================================
 
 name: CI-CD Main (Scheduled Dev to Main)
 
 on:
-  schedule:
-    - cron: '0 21 * * *'   # KST 06시 (UTC 21:00 = KST 06:00)
-  workflow_dispatch:        # 수동 실행 버튼
+  # schedule:
+  #   - cron: '0 21 * * *'   # KST 06시 (UTC 21:00 = KST 06:00)  ← [임시 정지]
+  workflow_dispatch:        # 수동 실행 버튼 (정지 중에도 수동 병합은 가능)
 
 permissions:
   contents: write           # main에 push(병합) 권한
