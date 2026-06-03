@@ -82,6 +82,9 @@ GitHub Actions 워크플로우 2개로 구성됩니다.
 - Repo Secret: `DISCORD_WEBHOOK`
 
 ### 🔒 브랜치 보호 (dev Ruleset)
+
+> ✅ **적용 완료** — FE(`univ-us-fe`)와 **동일 ruleset**으로 `dev` 보호 **활성(Active)**. dev 직접 push·삭제·force-push 차단, `test` 통과 + PR 후에만 병합, **승인 0**으로 봇 자동병합 유지.
+
 - Settings → Rules → Rulesets, Target=**`dev`**, Enforcement=**Active**
 - **Require a pull request before merging** + **Required approvals = `0`**
   - ⚠️ 봇 자동병합 유지를 위해 **0 필수** (1 이상이면 `GITHUB_TOKEN` 자동병합이 차단됨)
