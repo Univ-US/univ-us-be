@@ -1,4 +1,4 @@
-# === 테스트(CI) 전용 최소 설정: 컨텍스트 로드 통과용 ===
+# === 테스트(CI) 전용 최소 설정: 컨텍스트 로드 통과용  ===
 
 file:
   upload-root: build/test-uploads
