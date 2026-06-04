@@ -8,7 +8,7 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(locations = "classpath:application-test.yml")
 class UnivusApplicationTests {
 
-    @Test
+	@Test
     void contextLoads() {
     }
 }
