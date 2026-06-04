@@ -1,34 +1,41 @@
 # =============================================================================
-# application-test.yml — 테스트(CI) 전용 최소 설정
+# application-test.yml — 테스트(CI) 전용 설정
 # =============================================================================
-# [목적]
-#   실제 DB·시크릿(application.yml) 없이도 CI에서 테스트가 통과하게 하는 파일.
-#   - 메인 설정 application.yml 은 .gitignore 처리되어 레포/CI에 올라가지 않음.
-#   - CI 환경에는 이 application-test.yml 만 존재 → 테스트는 이 파일로 동작한다.
-#   - 개발자가 매번 만드는 파일이 아니라, 레포에 커밋된 공용 파일(클론하면 받음).
-#
-# [로드 방식]
-#   profile-specific 파일이라 'test' 프로파일이 켜져야 로드됨.
-#   - CI: ci-cd-dev.yml 의 Build 스텝이 env로 SPRING_PROFILES_ACTIVE=test 를 줘서 활성화.
-#   - (참고) 테스트 클래스의 @TestPropertySource(...yml) 는 YAML 을 못 읽어 사실상 무효 —
-#           실제 로딩은 위의 프로파일 활성화가 담당한다.
-#   - ⚠️ ci-cd-main.yml 의 Build 스텝엔 이 env 가 빠져 있어 그대로 돌리면 테스트가 깨짐(개선 필요).
-#
-# [검증 범위]
-#   UnivusApplicationTests.contextLoads() = "스프링 컨텍스트가 정상 조립되는가" 만 확인.
-#   ※ 진짜 DB 연결·쿼리·비즈니스 로직은 검증하지 않음 (아래에서 DB 자동설정을 꺼버리므로).
-#   ※ 즉 "빌드 성공 ≠ 정상 동작".
-#
-# [향후 확장]
-#   실제 DB 통합 테스트가 필요하면 H2(인메모리) 또는 Testcontainers 로
-#   'DB를 끄는' 대신 '가짜/임시 DB를 켜는' 설정으로 바꾼다.
+# [전략] "부팅 시 깨질 만한 외부 의존성을 테스트에선 가짜/더미로 대체"
+#   - DB/MyBatis → 진짜 Oracle 대신 H2 인메모리 (Mapper 빈이 정상 생성됨)
+#   - JWT        → 더미 시크릿 (⚠️ 실제 코드가 읽는 키 이름과 일치시킬 것)
+#   - 파일 경로  → 더미 경로
+#   ※ 여기 값은 전부 가짜/공개값 → 시크릿 아님, 커밋 OK. 진짜 정보는 application.yml(gitignore).
+#   ※ 'test' 프로파일이 켜져야 로드됨 (CI: SPRING_PROFILES_ACTIVE=test).
+#     → 로컬·ci-cd-main에서도 통과하려면 테스트 클래스에 @ActiveProfiles("test") 권장.
 # =============================================================================
-
-file:
-  upload-root: build/test-uploads        # ${file.upload-root} 플레이스홀더 충족 (미설정 시 컨텍스트 로드 실패)
 
 spring:
-  autoconfigure:
-    exclude:                             # DB 계층 자동설정 비활성 → Oracle 접속 시도 안 함 (= DB 없이 부팅)
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration
+  # --- 가짜 인메모리 DB(H2): DataSource + MyBatis 가 정상 조립되게 함 ---
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=Oracle   # 메모리 DB, Oracle 호환 모드
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+# --- MyBatis 매퍼 XML 위치 (메인과 동일 경로) ---
+mybatis:
+  mapper-locations: classpath:mybatis/mapper/*.xml
+
+# --- 파일 업로드 더미 경로 (${file.upload-root} 플레이스홀더 충족) ---
+file:
+  upload-root: build/test-uploads
+
+# --- JWT 더미(도입 확정): ⚠️ 실제 SecurityConfig/JwtProvider가 읽는 키와 "정확히 일치"시킬 것 ---
+jwt:
+  secret: test-only-dummy-jwt-secret-change-me-0123456789abcdef0123456789abcdef   # HS256용 ≥256bit(32자+)
+  access-token-validity-ms: 3600000        # 1시간   (키 이름은 실제 구현에 맞춰 조정)
+  refresh-token-validity-ms: 1209600000    # 14일
+
+# =============================================================================
+# [앞으로 기능 붙을 때 여기에 더미 추가]
+#   - OAuth2 로그인: spring.security.oauth2.client.registration.* 더미 등록
+#                    또는 OAuth2ClientAutoConfiguration 제외
+#   - Redis/캐시/메일/외부 API: 더미 설정 or 해당 AutoConfig 제외
+#   - 새 @Value("${x}") 프로퍼티: 여기 더미값 추가 (또는 코드에서 ${x:기본값})
+# =============================================================================
