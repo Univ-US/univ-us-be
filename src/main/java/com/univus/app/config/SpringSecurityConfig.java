@@ -26,8 +26,28 @@ public class SpringSecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/api/test/**", "/api/auth/**", "/oauth2/**", "/ws-univus/**").permitAll()
-                .anyRequest().authenticated()
+            	    .requestMatchers(
+            	        "/",
+            	        "/api/test/**",
+            	        "/api/auth/**",
+            	        "/oauth2/**",
+            	        "/ws-univus/**",
+
+            	        // 커뮤니티 게시판
+            	        "/api/posts/**",
+
+            	        // 중고거래 상품
+            	        "/api/products/**",
+
+            	        // 거래 내역 + 채팅
+            	        "/api/trades/**",
+            	        "/api/chat/**",
+
+            	        // 결제
+            	        "/api/payments/**"
+
+            	    ).permitAll()
+            	    .anyRequest().authenticated()
             );
             
             // TODO:  oauth2Login 설정과 JWT 필터(addFilterBefore)가 추가예정
