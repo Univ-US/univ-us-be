@@ -73,7 +73,8 @@ GitHub Actions 워크플로우 2개로 구성됩니다.
 ### `ci-cd-main.yml` — `dev → main` (정기)
 - **트리거**: ⛔ **현재 스케줄(cron) 정지** — CD 안정화 전 임시 조치로 `schedule` 주석 처리. **수동(`workflow_dispatch`)만 동작**
   - 복구: `ci-cd-main.yml`의 `schedule` 2줄 주석 해제 후 **dev에 반영**(스케줄은 기본 브랜치 버전 기준으로 동작)
-- **동작**: dev 빌드·테스트 → 통과 시 **dev→main 병합** (실제 변경이 있을 때만)
+- **동작**: dev 빌드·테스트 → 통과 시 **dev→main 병합** (🔁 직접 push가 아니라 **PR 생성→머지** 방식 — main 보호와 호환)
+  - 봇 PR 생성을 위해 org+repo의 **"Allow GitHub Actions to create and approve pull requests"** 활성 필요
 - **Discord 알림** (`[main]` 태그):
   - ✅ 정기 병합 성공(실제 병합 시만) / ❌ 검사·병합 실패
 
@@ -90,8 +91,37 @@ GitHub Actions 워크플로우 2개로 구성됩니다.
   - ⚠️ 봇 자동병합 유지를 위해 **0 필수** (1 이상이면 `GITHUB_TOKEN` 자동병합이 차단됨)
 - **Require status checks to pass** → 검증 잡 **`test`** 지정
 - **Restrict deletions** / **Block force pushes**
-- ⚠️ **`main`은 지금 보호하지 않음** — CD 구축 시 "직접 push 금지 + PR/CI 필수"로 함께 설계
-  (지금 보호를 걸면 수동 `workflow_dispatch`의 main 직접 push와 충돌)
+
+### 🔒 브랜치 보호 (main Ruleset) — 배경·과정 기록
+
+> ✅ **적용 완료** — `main` 직접 push **차단**(PR 필수), 봇은 **PR 머지**로 통과. dev와 동일 정책(승인 0, force/삭제 차단), 대상만 `main`.
+
+**왜 했나 (배경)**
+- `main`은 향후 **CD의 배포 스위치**(`main` push/workflow_run → 실배포 예정). 그래서 **실수·통제 안 된 직접 push**를 반드시 막아야 함.
+- 그런데 단순히 "직접 push 금지"만 걸면, 기존 `ci-cd-main.yml`이 **직접 push(`git push origin main`)로 병합**하던 탓에 **봇 병합까지 같이 막히는** 문제 발생.
+- → 워크플로를 **PR 머지 방식으로 전환**한 뒤 main을 보호하는 **지속 가능형(방법 2)** 으로 진행.
+
+**어떻게 했나 (과정)**
+1. **org + repo Actions 설정**: *Settings → Actions → General →* **"Allow GitHub Actions to create and approve pull requests"** 활성화 → 봇(`GITHUB_TOKEN`)이 dev→main **PR 생성** 가능 (기본은 차단돼 있음)
+2. **`ci-cd-main.yml` 전환**: `git push origin main`(직접) → **`gh pr create` + `gh pr merge`**(PR 머지), `permissions`에 `pull-requests: write` 추가
+3. **main Ruleset 생성**(`gh api` 또는 UI): **Require PR**(승인 0) + **Block force pushes** + **Restrict deletions**, **bypass 없음**
+   - ※ repo 룰셋엔 **GitHub Actions 봇을 bypass에 추가 불가**(API `422`: *"Actor GitHub Actions integration must be part of the ruleset source or owner organization"*) → bypass 없이, 봇은 **"PR 머지"** 로 규칙을 통과
+   - ※ **status check(`test`)는 main에 미설정** — dev→main PR엔 `test`가 트리거되지 않아(`ci-cd-dev.yml`이 `branches: [dev]`만 감시) **deadlock 방지**
+4. **검증**: 사람 강제 push(`git push --force origin HEAD:main`) → **`GH013` 거부**(*Cannot force-push* / *Changes must be made through a pull request*) 확인. 봇 PR 머지 경로는 정상.
+
+**설정 요약**
+
+| 항목 | 값 |
+|------|-----|
+| Target / Enforcement | `main` / Active |
+| Require PR | ✅ (Required approvals **0**) |
+| Block force pushes / Restrict deletions | ✅ / ✅ |
+| Required status check | ❌ (의도적 미설정 — deadlock 방지) |
+| Bypass | 없음 |
+
+**효과**: 사람 직접·강제 push 차단(PR로만), 봇 dev→main은 PR 머지로 유지 → dev·main **동일 거버넌스**.
+
+> 🔭 **향후 CD 헤드업**: `GITHUB_TOKEN`이 머지한 `main` push는 **다른 워크플로를 트리거하지 않음**(재귀 방지). CD가 "main push 트리거"라면 **PAT 또는 `repository_dispatch`** 필요 — CD 단계에서 설계.
 
 ## ⚠️ 현재 CI/CD의 한계와 개선 과제
 
