@@ -1,9 +1,34 @@
-# === 테스트(CI) 전용 최소 설정: 컨텍스트 로드 통과용 ===
+# =============================================================================
+# application-test.yml — 테스트(CI) 전용 최소 설정
+# =============================================================================
+# [목적]
+#   실제 DB·시크릿(application.yml) 없이도 CI에서 테스트가 통과하게 하는 파일.
+#   - 메인 설정 application.yml 은 .gitignore 처리되어 레포/CI에 올라가지 않음.
+#   - CI 환경에는 이 application-test.yml 만 존재 → 테스트는 이 파일로 동작한다.
+#   - 개발자가 매번 만드는 파일이 아니라, 레포에 커밋된 공용 파일(클론하면 받음).
+#
+# [로드 방식]
+#   profile-specific 파일이라 'test' 프로파일이 켜져야 로드됨.
+#   - CI: ci-cd-dev.yml 의 Build 스텝이 env로 SPRING_PROFILES_ACTIVE=test 를 줘서 활성화.
+#   - (참고) 테스트 클래스의 @TestPropertySource(...yml) 는 YAML 을 못 읽어 사실상 무효 —
+#           실제 로딩은 위의 프로파일 활성화가 담당한다.
+#   - ⚠️ ci-cd-main.yml 의 Build 스텝엔 이 env 가 빠져 있어 그대로 돌리면 테스트가 깨짐(개선 필요).
+#
+# [검증 범위]
+#   UnivusApplicationTests.contextLoads() = "스프링 컨텍스트가 정상 조립되는가" 만 확인.
+#   ※ 진짜 DB 연결·쿼리·비즈니스 로직은 검증하지 않음 (아래에서 DB 자동설정을 꺼버리므로).
+#   ※ 즉 "빌드 성공 ≠ 정상 동작".
+#
+# [향후 확장]
+#   실제 DB 통합 테스트가 필요하면 H2(인메모리) 또는 Testcontainers 로
+#   'DB를 끄는' 대신 '가짜/임시 DB를 켜는' 설정으로 바꾼다.
+# =============================================================================
+
 file:
-  upload-root: build/test-uploads
+  upload-root: build/test-uploads        # ${file.upload-root} 플레이스홀더 충족 (미설정 시 컨텍스트 로드 실패)
 
 spring:
   autoconfigure:
-    exclude:
+    exclude:                             # DB 계층 자동설정 비활성 → Oracle 접속 시도 안 함 (= DB 없이 부팅)
       - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
       - org.mybatis.spring.boot.autoconfigure.MybatisAutoConfiguration
