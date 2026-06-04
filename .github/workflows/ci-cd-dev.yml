@@ -45,6 +45,8 @@ jobs:
 
       - name: Build & Test
         run: ./gradlew build        # 4) 빌드+테스트 (실패하면 여기서 중단)
+        env:
+          SPRING_PROFILES_ACTIVE: test   
 
       # --- A: 위 단계 중 실패가 있으면 Discord로 '테스트 실패' 알림 ---
       - name: Notify test failure (Discord)
