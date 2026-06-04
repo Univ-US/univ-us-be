@@ -1,9 +1,9 @@
 # ===================================================================
-# CI-CD Main: 정기적으로 dev를 검사한 뒤 통과하면 main에 자동 병합
-#  - ⛔ [임시 정지] CD 안정화 전까지 스케줄(cron) 자동 병합 중단.
-#        → 현재는 수동(workflow_dispatch) 실행만 동작.
-#        → 복구: 아래 schedule 2줄 주석 해제 후 반드시 'dev'(기본 브랜치)에 반영.
+# CI-CD Main: dev 검사 통과 시 main에 병합 (🔁 직접 push → PR 머지 방식)
+#  - ⛔ [임시 정지] CD 안정화 전까지 스케줄(cron) 자동 병합 중단. 현재 수동(workflow_dispatch)만.
+#  - 🔁 main 브랜치 보호와 호환되도록 'PR 생성 → 머지'로 병합 (직접 push 아님)
 #  - ⚠️ 스케줄 워크플로우라 반드시 기본 브랜치(현재 dev)에 있어야 작동함
+#  - ⚠️ 전제: Settings→Actions→General→"Allow GitHub Actions to create and approve pull requests" 활성화
 # ===================================================================
 
 name: CI-CD Main (Scheduled Dev to Main)
@@ -14,17 +14,18 @@ on:
   workflow_dispatch:        # 수동 실행 버튼 (정지 중에도 수동 병합은 가능)
 
 permissions:
-  contents: write           # main에 push(병합) 권한
+  contents: write           # 체크아웃/빌드용
+  pull-requests: write      # dev→main PR 생성·머지 권한
 
 jobs:
   test-and-merge:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout (dev)       # dev 브랜치를 받아옴 (검사 대상이 dev)
+      - name: Checkout (dev)
         uses: actions/checkout@v4
         with:
           ref: dev
-          fetch-depth: 0           # 병합하려면 전체 히스토리 필요
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up JDK 21
@@ -39,24 +40,28 @@ jobs:
           chmod +x gradlew
           ./gradlew build
 
-      - name: Merge dev into main  # 검사 통과 시 dev를 main에 병합
+      - name: Promote dev → main (PR 생성 후 머지)
         id: merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout main
-          BEFORE=$(git rev-parse HEAD)
-          git merge dev --no-ff -m "chore: 정기 병합 dev → main (CI 통과)"
-          git push origin main
-          AFTER=$(git rev-parse HEAD)
-          # 해시가 바뀌었으면 실제 병합됨 → merged=true
-          if [ "$BEFORE" != "$AFTER" ]; then
-            echo "merged=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "merged=false" >> "$GITHUB_OUTPUT"
+          set -e
+          # 이미 열린 dev→main PR이 있으면 재사용
+          PR_URL=$(gh pr list --base main --head dev --state open --json url --jq '.[0].url')
+          if [ -z "$PR_URL" ]; then
+            # 없으면 새로 생성 (dev==main이면 생성 실패 → 변경 없음으로 처리)
+            if ! PR_URL=$(gh pr create --base main --head dev \
+                  --title "chore: 정기 병합 dev → main (CI 통과)" \
+                  --body "dev 빌드/테스트 통과 후 자동 생성된 승급 PR"); then
+              echo "변경 없음(dev==main) 또는 생성 불가 — 머지 생략"
+              echo "merged=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
           fi
+          gh pr merge "$PR_URL" --merge
+          echo "merged=true" >> "$GITHUB_OUTPUT"
 
-      # --- D: 실제 병합이 일어났을 때만 성공 알림 ---
+      # --- 실제 병합이 일어났을 때만 성공 알림 ---
       - name: Notify success (Discord)
         if: success() && steps.merge.outputs.merged == 'true'
         run: |
@@ -64,7 +69,7 @@ jobs:
             -d '{"content":"✅ [main] 정기 병합 성공 — dev 변경이 main에 반영되었습니다."}' \
             "${{ secrets.DISCORD_WEBHOOK }}"
 
-      # --- B: 검사 또는 병합 실패 시 알림 ---
+      # --- 검사 또는 병합 실패 시 알림 ---
       - name: Notify failure (Discord)
         if: failure()
         run: |
