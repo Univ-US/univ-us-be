@@ -2,6 +2,7 @@ package com.univus.app.member.controller;
 
 import com.univus.app.member.dto.LoginRequestDto;
 import com.univus.app.member.dto.LoginResponseDto;
+import com.univus.app.member.dto.LogoutRequestDto;
 import com.univus.app.member.dto.SignupRequestDto;
 import com.univus.app.member.service.MemberService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,4 +28,11 @@ public class MemberController {
                                 HttpServletRequest httpServletRequest) {
     return memberService.login(request, httpServletRequest.getRemoteAddr());
   }
+
+  @PostMapping("/logout")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void logout(@RequestBody LogoutRequestDto request) {
+    memberService.logout(request);
+  }
+
 }

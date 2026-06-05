@@ -3,6 +3,7 @@ package com.univus.app.member.service;
 import com.univus.app.member.dto.*;
 import com.univus.app.member.exception.DuplicateMemberException;
 import com.univus.app.member.exception.InvalidLoginException;
+import com.univus.app.member.exception.InvalidLogoutException;
 import com.univus.app.member.mapper.MemberMapper;
 import com.univus.app.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -102,6 +103,28 @@ public class MemberService {
     response.setRole(member.getRole());
 
     return response;
+  }
+
+  @Transactional
+  public void logout(LogoutRequestDto request) {
+
+    LoginSessionDto loginSession =
+            memberMapper.findActiveLoginSessionByRefreshToken(request.getRefreshToken());
+
+    if (loginSession == null) {
+      throw new InvalidLogoutException("유효하지 않은 로그아웃 요청입니다.");
+    }
+
+    int revoked = memberMapper.revokeLoginSession(request.getRefreshToken());
+
+    if (revoked != 1) {
+      throw new InvalidLogoutException("유효하지 않은 로그아웃 요청입니다.");
+    }
+
+    LoginLogDto loginLog = new LoginLogDto();
+    loginLog.setMemberId(loginSession.getMemberId());
+    loginLog.setResult("LOGOUT");
+    memberMapper.insertLoginLog(loginLog);
   }
 
   private void insertLoginFailLog(Long memberId, String failReason) {

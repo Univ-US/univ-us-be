@@ -116,6 +116,19 @@
                  )
     </insert>
 
+    <select id="findActiveLoginSessionByRefreshToken"
+            resultType="com.univus.app.member.dto.LoginSessionDto">
+        SELECT
+            SESSION_ID,
+            MEMBER_ID,
+            REFRESH_TOKEN,
+            IP_ADDRESS
+        FROM LOGIN_SESSION
+        WHERE REFRESH_TOKEN = #{refreshToken}
+          AND REVOKED_AT IS NULL
+          AND EXPIRED_AT > SYSTIMESTAMP
+    </select>
+
     <update id="revokeLoginSession">
         UPDATE LOGIN_SESSION
         SET REVOKED_AT = SYSTIMESTAMP
