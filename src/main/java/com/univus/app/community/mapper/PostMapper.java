@@ -1,5 +1,6 @@
 package com.univus.app.community.mapper;
 
+import com.univus.app.community.dto.PostCommentDto;
 import com.univus.app.community.dto.PostDto;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -28,4 +29,18 @@ public interface PostMapper {
 
     // 조회수 증가
     int updateViewCount(Long postId);
+    
+	 // ── 댓글 ──────────────────────────────────────────────
+	
+	 // 댓글 목록 조회 (postId 기준)
+	 List<PostCommentDto> selectCommentList(Long postId);
+	
+	 // 댓글 등록
+	 int insertComment(PostCommentDto commentDto);
+	
+	 // 댓글 수정
+	 int updateComment(PostCommentDto commentDto);
+	
+	 // 댓글 삭제 (소프트 삭제)
+	 int deleteComment(Long commentId);
 }

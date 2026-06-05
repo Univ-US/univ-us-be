@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import com.univus.app.community.dto.PostCommentDto;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -71,4 +73,60 @@ public class PostController {
         return ResponseEntity.internalServerError()
                 .body(Map.of("message", "게시글 삭제에 실패했습니다."));
     }
+    
+	 // ── 댓글 ──────────────────────────────────────────────
+	
+	 // GET /api/posts/{postId}/comments
+	 @GetMapping("/{postId}/comments")
+	 public ResponseEntity<List<PostCommentDto>> getCommentList(@PathVariable("postId") Long postId) {
+	     List<PostCommentDto> commentList = postService.getCommentList(postId);
+	     return ResponseEntity.ok(commentList);
+	 }
+	
+	 // POST /api/posts/{postId}/comments
+	 @PostMapping("/{postId}/comments")
+	 public ResponseEntity<Map<String, Object>> writeComment(
+	         @PathVariable("postId") Long postId,
+	         @RequestBody PostCommentDto commentDto) {
+	     // 임시 멤버 ID (로그인 구현 전)
+	     commentDto.setMemberId(1L);
+	     commentDto.setPostId(postId);
+	
+	     int result = postService.writeComment(commentDto);
+	     if (result > 0) {
+	         return ResponseEntity.ok(Map.of("message", "댓글이 등록되었습니다."));
+	     }
+	     return ResponseEntity.internalServerError()
+	             .body(Map.of("message", "댓글 등록에 실패했습니다."));
+	 }
+	
+	 // PUT /api/posts/{postId}/comments/{commentId}
+	 @PutMapping("/{postId}/comments/{commentId}")
+	 public ResponseEntity<Map<String, Object>> modifyComment(
+	         @PathVariable("postId") Long postId,
+	         @PathVariable("commentId") Long commentId,
+	         @RequestBody PostCommentDto commentDto) {
+	     commentDto.setCommentId(commentId);
+	     commentDto.setPostId(postId);
+	
+	     int result = postService.modifyComment(commentDto);
+	     if (result > 0) {
+	         return ResponseEntity.ok(Map.of("message", "댓글이 수정되었습니다."));
+	     }
+	     return ResponseEntity.internalServerError()
+	             .body(Map.of("message", "댓글 수정에 실패했습니다."));
+	 }
+	
+	 // DELETE /api/posts/{postId}/comments/{commentId}
+	 @DeleteMapping("/{postId}/comments/{commentId}")
+	 public ResponseEntity<Map<String, Object>> removeComment(
+	         @PathVariable("postId") Long postId,
+	         @PathVariable("commentId") Long commentId) {
+	     int result = postService.removeComment(commentId);
+	     if (result > 0) {
+	         return ResponseEntity.ok(Map.of("message", "댓글이 삭제되었습니다."));
+	     }
+	     return ResponseEntity.internalServerError()
+	             .body(Map.of("message", "댓글 삭제에 실패했습니다."));
+	 }
 }
