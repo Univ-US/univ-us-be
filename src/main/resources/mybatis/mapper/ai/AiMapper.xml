@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.univus.app.ai.mapper.AiMapper">
+
+    <insert id="insertAiLog" parameterType="com.univus.app.ai.dto.AiDto">
+        INSERT INTO AI_LOG (CHAT_ID, MEMBER_ID, MESSAGE, RESPONSE, AI_CREATED_AT)
+        VALUES (SEQ_AI_LOG.NEXTVAL, #{memberId}, #{message}, #{response}, SYSDATE)
+    </insert>
+
+</mapper>
