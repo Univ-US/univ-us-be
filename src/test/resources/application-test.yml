@@ -20,7 +20,7 @@ spring:
 
 # --- MyBatis 매퍼 XML 위치 (메인과 동일 경로) ---
 mybatis:
-  mapper-locations: classpath:mybatis/mapper/*.xml
+  mapper-locations: classpath:mybatis/mapper/**/*.xml
 
 # --- 파일 업로드 더미 경로 (${file.upload-root} 플레이스홀더 충족) ---
 file:

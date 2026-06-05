@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.univus.app.community.dto.PostCommentDto;
 
 @Service
 @RequiredArgsConstructor
@@ -60,4 +61,26 @@ public class PostService {
     public int removePost(Long postId) {
         return postMapper.deletePost(postId);
     }
+    
+	 // ── 댓글 ──────────────────────────────────────────────
+	
+	 // 댓글 목록 조회
+	 public List<PostCommentDto> getCommentList(Long postId) {
+	     return postMapper.selectCommentList(postId);
+	 }
+	
+	 // 댓글 등록
+	 public int writeComment(PostCommentDto commentDto) {
+	     return postMapper.insertComment(commentDto);
+	 }
+	
+	 // 댓글 수정
+	 public int modifyComment(PostCommentDto commentDto) {
+	     return postMapper.updateComment(commentDto);
+	 }
+	
+	 // 댓글 삭제
+	 public int removeComment(Long commentId) {
+	     return postMapper.deleteComment(commentId);
+	 }
 }
