@@ -79,6 +79,26 @@ public class GlobalExceptionHandler {
         return new ModelAndView("error/uploadFailure");
     }
 
+    @ExceptionHandler(DuplicateMemberException.class)
+    public Object handleDuplicateMemberException(DuplicateMemberException ex,
+                                                 HttpServletRequest request) {
+        log.info("CONFLICT - ", ex);
+
+        if (isApiRequest(request)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                            "success", false,
+                            "message", ex.getMessage()
+                    ));
+        }
+
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "중복된 회원입니다.");
+        mav.addObject("message", ex.getMessage());
+        mav.setStatus(HttpStatus.CONFLICT);
+        return mav;
+    }
+
     @ExceptionHandler(Exception.class)
     public Object handleServerError(Exception ex, HttpServletRequest request) {
         log.info("INTERNAL_SERVER_ERROR 등 - ", ex);
