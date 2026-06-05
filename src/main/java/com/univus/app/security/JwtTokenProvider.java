@@ -1,5 +1,7 @@
 package com.univus.app.security;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +56,42 @@ public class JwtTokenProvider {
 
     public String getTokenType() {
         return TOKEN_TYPE;
+    }
+
+    // 토큰의 서명과 만료 시간을 검증한다.
+    public boolean validateToken(String token) {
+        try {
+            // secretKey로 서명을 검증하고 토큰 내용을 파싱한다.
+            Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    // 토큰의 subject에 저장된 회원 ID를 반환한다.
+    public Long getMemberId(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return Long.valueOf(claims.getSubject());
+    }
+
+    // 토큰의 role claim에 저장된 권한을 반환한다.
+    public String getRole(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.get("role", String.class);
     }
 
 }

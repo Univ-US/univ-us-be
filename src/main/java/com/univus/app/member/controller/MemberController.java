@@ -8,6 +8,7 @@ import com.univus.app.member.service.MemberService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,4 +36,9 @@ public class MemberController {
     memberService.logout(request);
   }
 
+  // 인증 확인용 API - 테스트용
+  @GetMapping("/me")
+  public Long me(Authentication authentication) {
+    return (Long) authentication.getPrincipal();
+  }
 }
