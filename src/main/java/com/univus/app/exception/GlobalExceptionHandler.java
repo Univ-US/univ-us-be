@@ -1,5 +1,6 @@
 package com.univus.app.exception;
 
+import com.univus.app.member.exception.DuplicateMemberException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

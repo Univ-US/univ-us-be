@@ -1,4 +1,4 @@
-package com.univus.app.exception;
+package com.univus.app.member.exception;
 
 public class DuplicateMemberException extends RuntimeException {
 
