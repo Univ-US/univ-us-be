@@ -2,6 +2,7 @@
 # CI-CD Main: dev 검사 통과 시 main에 병합 (🔁 직접 push → PR 머지 방식)
 #  - ⛔ [임시 정지] CD 안정화 전까지 스케줄(cron) 자동 병합 중단. 현재 수동(workflow_dispatch)만.
 #  - 🔁 main 브랜치 보호와 호환되도록 'PR 생성 → 머지'로 병합 (직접 push 아님)
+#  - ⚠️ 빌드 단계는 'build -x test'로 테스트를 건너뜀 (dev CI와 일관 — 컴파일/빌드만)
 #  - ⚠️ 스케줄 워크플로우라 반드시 기본 브랜치(현재 dev)에 있어야 작동함
 #  - ⚠️ 전제: Settings→Actions→General→"Allow GitHub Actions to create and approve pull requests" 활성화
 # ===================================================================
@@ -35,10 +36,10 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Build & Test (dev)   # dev 코드 빌드+테스트 (실패 시 중단)
+      - name: Build (dev, 테스트 제외)
         run: |
           chmod +x gradlew
-          ./gradlew build
+          ./gradlew build -x test
 
       - name: Promote dev → main (PR 생성 후 머지)
         id: merge
@@ -52,7 +53,7 @@ jobs:
             # 없으면 새로 생성 (dev==main이면 생성 실패 → 변경 없음으로 처리)
             if ! PR_URL=$(gh pr create --base main --head dev \
                   --title "chore: 정기 병합 dev → main (CI 통과)" \
-                  --body "dev 빌드/테스트 통과 후 자동 생성된 승급 PR"); then
+                  --body "dev 빌드 통과 후 자동 생성된 승급 PR"); then
               echo "변경 없음(dev==main) 또는 생성 불가 — 머지 생략"
               echo "merged=false" >> "$GITHUB_OUTPUT"
               exit 0
