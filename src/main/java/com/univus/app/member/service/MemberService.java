@@ -4,6 +4,7 @@ import com.univus.app.member.dto.*;
 import com.univus.app.member.exception.DuplicateMemberException;
 import com.univus.app.member.exception.InvalidLoginException;
 import com.univus.app.member.exception.InvalidLogoutException;
+import com.univus.app.member.exception.InvalidRefreshTokenException;
 import com.univus.app.member.mapper.MemberMapper;
 import com.univus.app.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -133,6 +134,41 @@ public class MemberService {
     loginLog.setResult("FAIL");
     loginLog.setFailReason(failReason);
     memberMapper.insertLoginLog(loginLog);
+  }
+
+  @Transactional(readOnly = true)
+  public RefreshTokenResponseDto refreshAccessToken(RefreshTokenRequestDto request) {
+
+    if (request.getRefreshToken() == null || request.getRefreshToken().isBlank()) {
+      throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
+    }
+
+    if (!jwtTokenProvider.validateToken(request.getRefreshToken())) {
+      throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
+    }
+
+    LoginSessionDto loginSession =
+            memberMapper.findActiveLoginSessionByRefreshToken(request.getRefreshToken());
+
+    if (loginSession == null) {
+      throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
+    }
+
+    MemberDto member = memberMapper.findByMemberId(loginSession.getMemberId());
+
+    if (member == null) {
+      throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
+    }
+
+    String accessToken = jwtTokenProvider.createAccessToken(member.getMemberId(), member.getRole());
+
+    RefreshTokenResponseDto response = new RefreshTokenResponseDto();
+    response.setAccessToken(accessToken);
+    response.setTokenType(jwtTokenProvider.getTokenType());
+    response.setMemberId(member.getMemberId());
+    response.setRole(member.getRole());
+
+    return response;
   }
 
 }

@@ -1,9 +1,6 @@
 package com.univus.app.member.controller;
 
-import com.univus.app.member.dto.LoginRequestDto;
-import com.univus.app.member.dto.LoginResponseDto;
-import com.univus.app.member.dto.LogoutRequestDto;
-import com.univus.app.member.dto.SignupRequestDto;
+import com.univus.app.member.dto.*;
 import com.univus.app.member.service.MemberService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +25,11 @@ public class MemberController {
   public LoginResponseDto login(@RequestBody LoginRequestDto request,
                                 HttpServletRequest httpServletRequest) {
     return memberService.login(request, httpServletRequest.getRemoteAddr());
+  }
+
+  @PostMapping("/refresh")
+  public RefreshTokenResponseDto refreshAccessToken(@RequestBody RefreshTokenRequestDto request) {
+    return memberService.refreshAccessToken(request);
   }
 
   @PostMapping("/logout")
