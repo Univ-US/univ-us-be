@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.community.mapper.MarketMapper">
+
+    <!-- ── ResultMap ─────────────────────────────────────── -->
+    <resultMap id="ProductResultMap" type="com.univus.app.community.dto.MarketDto$ProductDto">
+        <id     property="productId"     column="PRODUCT_ID"/>
+        <result property="memberId"      column="MEMBER_ID"/>
+        <result property="productName"   column="PRODUCT_NAME"/>
+        <result property="price"         column="PRICE"/>
+        <result property="description"   column="DESCRIPTION"/>
+        <result property="viewCount"     column="VIEW_COUNT"/>
+        <result property="isDeleted"     column="IS_DELETED"/>
+        <result property="createdAt"     column="CREATED_AT"/>
+        <result property="updatedAt"     column="UPDATED_AT"/>
+        <result property="productStatus" column="PRODUCT_STATUS"/>
+        <result property="place"         column="PLACE"/>
+        <result property="category"      column="CATEGORY"/>
+        <result property="sellerName"    column="SELLER_NAME"/>
+        <result property="sellerNickname" column="SELLER_NICKNAME"/>
+        <result property="likeCount"     column="LIKE_COUNT"/>
+        <result property="chatCount"     column="CHAT_COUNT"/>
+    </resultMap>
+
+    <resultMap id="ProductCommentResultMap" type="com.univus.app.community.dto.MarketDto$ProductCommentDto">
+        <id     property="commentId"      column="COMMENT_ID"/>
+        <result property="memberId"       column="MEMBER_ID"/>
+        <result property="productId"      column="PRODUCT_ID"/>
+        <result property="parentId"       column="PARENT_ID"/>
+        <result property="content"        column="CONTENT"/>
+        <result property="isAnonymous"    column="IS_ANONYMOUS"/>
+        <result property="isDeleted"      column="IS_DELETED"/>
+        <result property="createdAt"      column="CREATED_AT"/>
+        <result property="authorName"     column="AUTHOR_NAME"/>
+        <result property="authorNickname" column="AUTHOR_NICKNAME"/>
+        <result property="likeCount"      column="LIKE_COUNT"/>
+    </resultMap>
+
+    <!-- ── 상품 목록 조회 ─────────────────────────────────── -->
+    <select id="selectProductList" parameterType="com.univus.app.community.dto.MarketDto$ProductSearchDto"
+            resultMap="ProductResultMap">
+        SELECT
+            P.PRODUCT_ID,
+            P.MEMBER_ID,
+            P.PRODUCT_NAME,
+            P.PRICE,
+            P.VIEW_COUNT,
+            P.IS_DELETED,
+            P.CREATED_AT,
+            P.UPDATED_AT,
+            P.PRODUCT_STATUS,
+            P.PLACE,
+            P.CATEGORY,
+            M.MEMBER_NAME   AS SELLER_NAME,
+            M.COMMUNITY_NICKNAME AS SELLER_NICKNAME,
+            (SELECT COUNT(*) FROM PRODUCT_LIKE PL WHERE PL.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
+            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT
+        FROM PRODUCT P
+        JOIN MEMBER M ON P.MEMBER_ID = M.MEMBER_ID
+        WHERE P.IS_DELETED = 0
+        <if test="keyword != null and keyword != ''">
+            AND (P.PRODUCT_NAME LIKE '%' || #{keyword} || '%'
+              OR P.DESCRIPTION  LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="category != null and category != ''">
+            AND P.CATEGORY = #{category}
+        </if>
+        <if test="productStatus != null and productStatus != ''">
+            AND P.PRODUCT_STATUS = #{productStatus}
+        </if>
+        ORDER BY P.CREATED_AT DESC
+        OFFSET #{page} * #{size} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <!-- ── 상품 전체 개수 (페이징용) ─────────────────────── -->
+    <select id="selectProductCount" parameterType="com.univus.app.community.dto.MarketDto$ProductSearchDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM PRODUCT P
+        WHERE P.IS_DELETED = 0
+        <if test="keyword != null and keyword != ''">
+            AND (P.PRODUCT_NAME LIKE '%' || #{keyword} || '%'
+              OR P.DESCRIPTION  LIKE '%' || #{keyword} || '%')
+        </if>
+        <if test="category != null and category != ''">
+            AND P.CATEGORY = #{category}
+        </if>
+        <if test="productStatus != null and productStatus != ''">
+            AND P.PRODUCT_STATUS = #{productStatus}
+        </if>
+    </select>
+
+    <!-- ── 상품 상세 조회 ─────────────────────────────────── -->
+    <select id="selectProductDetail" parameterType="long" resultMap="ProductResultMap">
+        SELECT
+            P.PRODUCT_ID,
+            P.MEMBER_ID,
+            P.PRODUCT_NAME,
+            P.PRICE,
+            P.DESCRIPTION,
+            P.VIEW_COUNT,
+            P.IS_DELETED,
+            P.CREATED_AT,
+            P.UPDATED_AT,
+            P.PRODUCT_STATUS,
+            P.PLACE,
+            P.CATEGORY,
+            M.MEMBER_NAME        AS SELLER_NAME,
+            M.COMMUNITY_NICKNAME AS SELLER_NICKNAME,
+            (SELECT COUNT(*) FROM PRODUCT_LIKE PL WHERE PL.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
+            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT
+        FROM PRODUCT P
+        JOIN MEMBER M ON P.MEMBER_ID = M.MEMBER_ID
+        WHERE P.PRODUCT_ID = #{productId}
+          AND P.IS_DELETED = 0
+    </select>
+
+    <!-- ── 상품 등록 ──────────────────────────────────────── -->
+    <insert id="insertProduct" parameterType="com.univus.app.community.dto.MarketDto$ProductCreateDto">
+        INSERT INTO PRODUCT (
+            PRODUCT_ID,
+            MEMBER_ID,
+            PRODUCT_NAME,
+            PRICE,
+            DESCRIPTION,
+            PRODUCT_STATUS,
+            PLACE,
+            CATEGORY,
+            VIEW_COUNT,
+            IS_DELETED,
+            CREATED_AT
+        ) VALUES (
+            SEQ_PRODUCT.NEXTVAL,
+            #{memberId},
+            #{productName},
+            #{price},
+            #{description},
+            COALESCE(#{productStatus}, 'SALE'),
+            #{place},
+            #{category},
+            0,
+            0,
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- ── 상품 수정 ──────────────────────────────────────── -->
+    <update id="updateProduct" parameterType="com.univus.app.community.dto.MarketDto$ProductUpdateDto">
+        UPDATE PRODUCT
+        SET
+            PRODUCT_NAME   = #{productName},
+            PRICE          = #{price},
+            DESCRIPTION    = #{description},
+            PLACE          = #{place},
+            CATEGORY       = #{category},
+            PRODUCT_STATUS = #{productStatus},
+            UPDATED_AT     = SYSTIMESTAMP
+        WHERE PRODUCT_ID = #{productId}
+          AND IS_DELETED = 0
+    </update>
+
+    <!-- ── 상품 삭제 (소프트 딜리트) ─────────────────────── -->
+    <update id="deleteProduct" parameterType="long">
+        UPDATE PRODUCT
+        SET IS_DELETED = 1,
+            UPDATED_AT = SYSTIMESTAMP
+        WHERE PRODUCT_ID = #{productId}
+    </update>
+
+    <!-- ── 조회수 증가 ─────────────────────────────────────── -->
+    <update id="updateViewCount" parameterType="long">
+        UPDATE PRODUCT
+        SET VIEW_COUNT = VIEW_COUNT + 1
+        WHERE PRODUCT_ID = #{productId}
+    </update>
+
+    <!-- ── 이미지 등록 ─────────────────────────────────────── -->
+    <insert id="insertProductImage" parameterType="com.univus.app.community.dto.MarketDto$ProductImageDto">
+        INSERT INTO PRODUCT_IMAGE (
+            IMAGE_ID,
+            PRODUCT_ID,
+            IMAGE_URL,
+            IMAGE_SORT,
+            CREATED_AT
+        ) VALUES (
+            SEQ_PRODUCT_IMAGE.NEXTVAL,
+            #{productId},
+            #{imageUrl},
+            #{imageSort},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- ── 이미지 목록 조회 ───────────────────────────────── -->
+    <select id="selectProductImageList" parameterType="long"
+            resultType="com.univus.app.community.dto.MarketDto$ProductImageDto">
+        SELECT
+            IMAGE_ID   AS imageId,
+            PRODUCT_ID AS productId,
+            IMAGE_URL  AS imageUrl,
+            IMAGE_SORT AS imageSort,
+            CREATED_AT AS createdAt
+        FROM PRODUCT_IMAGE
+        WHERE PRODUCT_ID = #{productId}
+        ORDER BY IMAGE_SORT ASC
+    </select>
+
+    <!-- ── 이미지 전체 삭제 ───────────────────────────────── -->
+    <delete id="deleteProductImageAll" parameterType="long">
+        DELETE FROM PRODUCT_IMAGE
+        WHERE PRODUCT_ID = #{productId}
+    </delete>
+
+    <!-- ── 댓글 목록 (부모 댓글만) ───────────────────────── -->
+    <select id="selectProductCommentList" parameterType="long"
+            resultMap="ProductCommentResultMap">
+        SELECT
+            PC.COMMENT_ID,
+            PC.MEMBER_ID,
+            PC.PRODUCT_ID,
+            PC.PARENT_ID,
+            PC.CONTENT,
+            PC.IS_ANONYMOUS,
+            PC.IS_DELETED,
+            PC.CREATED_AT,
+            M.MEMBER_NAME        AS AUTHOR_NAME,
+            M.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+        FROM PRODUCT_COMMENT PC
+        JOIN MEMBER M ON PC.MEMBER_ID = M.MEMBER_ID
+        WHERE PC.PRODUCT_ID = #{productId}
+          AND PC.PARENT_ID IS NULL
+          AND PC.IS_DELETED = 0
+        ORDER BY PC.CREATED_AT ASC
+    </select>
+
+    <!-- ── 대댓글 목록 ────────────────────────────────────── -->
+    <select id="selectProductReplyList" parameterType="long"
+            resultMap="ProductCommentResultMap">
+        SELECT
+            PC.COMMENT_ID,
+            PC.MEMBER_ID,
+            PC.PRODUCT_ID,
+            PC.PARENT_ID,
+            PC.CONTENT,
+            PC.IS_ANONYMOUS,
+            PC.IS_DELETED,
+            PC.CREATED_AT,
+            M.MEMBER_NAME        AS AUTHOR_NAME,
+            M.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+        FROM PRODUCT_COMMENT PC
+        JOIN MEMBER M ON PC.MEMBER_ID = M.MEMBER_ID
+        WHERE PC.PARENT_ID = #{parentId}
+          AND PC.IS_DELETED = 0
+        ORDER BY PC.CREATED_AT ASC
+    </select>
+
+    <!-- ── 댓글 등록 ──────────────────────────────────────── -->
+    <insert id="insertProductComment"
+            parameterType="com.univus.app.community.dto.MarketDto$ProductCommentCreateDto">
+        INSERT INTO PRODUCT_COMMENT (
+            COMMENT_ID,
+            MEMBER_ID,
+            PRODUCT_ID,
+            PARENT_ID,
+            CONTENT,
+            IS_ANONYMOUS,
+            IS_DELETED,
+            CREATED_AT
+        ) VALUES (
+            SEQ_PRODUCT_COMMENT.NEXTVAL,
+            #{memberId},
+            #{productId},
+            #{parentId},
+            #{content},
+            #{isAnonymous},
+            0,
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- ── 댓글 삭제 (소프트 딜리트) ─────────────────────── -->
+    <update id="deleteProductComment" parameterType="long">
+        UPDATE PRODUCT_COMMENT
+        SET IS_DELETED = 1
+        WHERE COMMENT_ID = #{commentId}
+    </update>
+
+    <!-- ── 찜 추가 ────────────────────────────────────────── -->
+    <insert id="insertProductLike" parameterType="com.univus.app.community.dto.MarketDto$ProductLikeDto">
+        INSERT INTO PRODUCT_LIKE (
+            LIKE_ID,
+            MEMBER_ID,
+            PRODUCT_ID,
+            PRESSED_AT
+        ) VALUES (
+            SEQ_PRODUCT_LIKE.NEXTVAL,
+            #{memberId},
+            #{productId},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <!-- ── 찜 취소 ────────────────────────────────────────── -->
+    <delete id="deleteProductLike" parameterType="com.univus.app.community.dto.MarketDto$ProductLikeDto">
+        DELETE FROM PRODUCT_LIKE
+        WHERE MEMBER_ID  = #{memberId}
+          AND PRODUCT_ID = #{productId}
+    </delete>
+
+    <!-- ── 찜 여부 확인 ───────────────────────────────────── -->
+    <select id="selectProductLikeCount"
+            parameterType="com.univus.app.community.dto.MarketDto$ProductLikeDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM PRODUCT_LIKE
+        WHERE MEMBER_ID  = #{memberId}
+          AND PRODUCT_ID = #{productId}
+    </select>
+
+    <!-- ── 내 찜 목록 ─────────────────────────────────────── -->
+    <select id="selectMyLikeList" parameterType="long" resultMap="ProductResultMap">
+        SELECT
+            P.PRODUCT_ID,
+            P.MEMBER_ID,
+            P.PRODUCT_NAME,
+            P.PRICE,
+            P.VIEW_COUNT,
+            P.IS_DELETED,
+            P.CREATED_AT,
+            P.UPDATED_AT,
+            P.PRODUCT_STATUS,
+            P.PLACE,
+            P.CATEGORY,
+            M.MEMBER_NAME        AS SELLER_NAME,
+            M.COMMUNITY_NICKNAME AS SELLER_NICKNAME,
+            (SELECT COUNT(*) FROM PRODUCT_LIKE PL2 WHERE PL2.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
+            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC  WHERE TC.PRODUCT_ID  = P.PRODUCT_ID) AS CHAT_COUNT
+        FROM PRODUCT_LIKE PL
+        JOIN PRODUCT P ON PL.PRODUCT_ID = P.PRODUCT_ID
+        JOIN MEMBER  M ON P.MEMBER_ID   = M.MEMBER_ID
+        WHERE PL.MEMBER_ID = #{memberId}
+          AND P.IS_DELETED = 0
+        ORDER BY PL.PRESSED_AT DESC
+    </select>
+
+</mapper>
