@@ -1,10 +1,10 @@
 package com.univus.app.member.service;
 
-import com.univus.app.member.dto.MemberDto;
-import com.univus.app.member.dto.MemberResponseDto;
-import com.univus.app.member.dto.SignupRequestDto;
+import com.univus.app.member.dto.*;
 import com.univus.app.member.exception.DuplicateMemberException;
+import com.univus.app.member.exception.InvalidLoginException;
 import com.univus.app.member.mapper.MemberMapper;
+import com.univus.app.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,6 +19,7 @@ public class MemberService {
 
   private final MemberMapper memberMapper;
   private final PasswordEncoder passwordEncoder;
+  private final JwtTokenProvider jwtTokenProvider;
 
   @Transactional
   public void signup(SignupRequestDto request) {
@@ -60,6 +61,55 @@ public class MemberService {
     response.setBirth(member.getBirth());
     response.setCommunityNickname(member.getCommunityNickname());
     return response;
+  }
+
+  @Transactional(noRollbackFor = InvalidLoginException.class)
+  public LoginResponseDto login(LoginRequestDto request, String ipAddress) {
+
+    MemberDto member = memberMapper.findByMemberId(request.getMemberId());
+
+    if (member == null) {
+      insertLoginFailLog(null, "MEMBER_NOT_FOUND");
+      throw new InvalidLoginException("아이디 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
+      insertLoginFailLog(member.getMemberId(), "INVALID_PASSWORD");
+      throw new InvalidLoginException("아이디 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    String accessToken = jwtTokenProvider.createAccessToken(member.getMemberId(), member.getRole());
+    String refreshToken = jwtTokenProvider.createRefreshToken(member.getMemberId());
+
+    memberMapper.updateLogtimeAt(member.getMemberId());
+
+    LoginLogDto loginLog = new LoginLogDto();
+    loginLog.setMemberId(member.getMemberId());
+    loginLog.setResult("SUCCESS");
+    memberMapper.insertLoginLog(loginLog);
+
+    LoginSessionDto loginSession = new LoginSessionDto();
+    loginSession.setMemberId(member.getMemberId());
+    loginSession.setRefreshToken(refreshToken);
+    loginSession.setIpAddress(ipAddress);
+    memberMapper.insertLoginSession(loginSession);
+
+    LoginResponseDto response = new LoginResponseDto();
+    response.setAccessToken(accessToken);
+    response.setRefreshToken(refreshToken);
+    response.setTokenType(jwtTokenProvider.getTokenType());
+    response.setMemberId(member.getMemberId());
+    response.setRole(member.getRole());
+
+    return response;
+  }
+
+  private void insertLoginFailLog(Long memberId, String failReason) {
+    LoginLogDto loginLog = new LoginLogDto();
+    loginLog.setMemberId(memberId);
+    loginLog.setResult("FAIL");
+    loginLog.setFailReason(failReason);
+    memberMapper.insertLoginLog(loginLog);
   }
 
 }

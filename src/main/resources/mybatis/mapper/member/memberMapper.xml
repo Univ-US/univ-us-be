@@ -74,4 +74,53 @@
                  )
     </insert>
 
+    <update id="updateLogtimeAt">
+        UPDATE MEMBER
+        SET LOGTIME_AT = SYSTIMESTAMP
+        WHERE MEMBER_ID = #{memberId}
+    </update>
+
+    <insert id="insertLoginLog" parameterType="com.univus.app.member.dto.LoginLogDto">
+        INSERT INTO LOGIN_LOG (
+            LOG_ID,
+            MEMBER_ID,
+            RESULT,
+            FAIL_REASON,
+            LOG_TIME
+        ) VALUES (
+                     SEQ_LOGIN_LOG.NEXTVAL,
+                     #{memberId},
+                     #{result},
+                     #{failReason},
+                     SYSTIMESTAMP
+                 )
+    </insert>
+
+    <insert id="insertLoginSession" parameterType="com.univus.app.member.dto.LoginSessionDto">
+        INSERT INTO LOGIN_SESSION (
+            SESSION_ID,
+            MEMBER_ID,
+            REFRESH_TOKEN,
+            CREATED_AT,
+            EXPIRED_AT,
+            REVOKED_AT,
+            IP_ADDRESS
+        ) VALUES (
+                     SEQ_LOGIN_SESSION.NEXTVAL,
+                     #{memberId},
+                     #{refreshToken},
+                     SYSTIMESTAMP,
+                     SYSTIMESTAMP + 7,
+                     NULL,
+                     #{ipAddress}
+                 )
+    </insert>
+
+    <update id="revokeLoginSession">
+        UPDATE LOGIN_SESSION
+        SET REVOKED_AT = SYSTIMESTAMP
+        WHERE REFRESH_TOKEN = #{refreshToken}
+          AND REVOKED_AT IS NULL
+    </update>
+
 </mapper>
