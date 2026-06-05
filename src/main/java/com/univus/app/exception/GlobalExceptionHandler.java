@@ -3,6 +3,7 @@ package com.univus.app.exception;
 import com.univus.app.member.exception.DuplicateMemberException;
 import com.univus.app.member.exception.InvalidLoginException;
 import com.univus.app.member.exception.InvalidLogoutException;
+import com.univus.app.member.exception.InvalidRefreshTokenException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -117,6 +118,26 @@ public class GlobalExceptionHandler {
 
         ModelAndView mav = new ModelAndView("error/error2");
         mav.addObject("title", "로그인 실패");
+        mav.addObject("message", ex.getMessage());
+        mav.setStatus(HttpStatus.UNAUTHORIZED);
+        return mav;
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public Object handleInvalidRefreshTokenException(InvalidRefreshTokenException ex,
+                                                     HttpServletRequest request) {
+        log.info("UNAUTHORIZED - ", ex);
+
+        if (isApiRequest(request)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "success", false,
+                            "message", ex.getMessage()
+                    ));
+        }
+
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "토큰 재발급 실패");
         mav.addObject("message", ex.getMessage());
         mav.setStatus(HttpStatus.UNAUTHORIZED);
         return mav;
