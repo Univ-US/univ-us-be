@@ -2,9 +2,9 @@
 
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.univus.app.mapper.MemberMapper">
+<mapper namespace="com.univus.app.member.mapper.MemberMapper">
 
-    <select id="findByMemberId" resultType="com.univus.app.domain.dto.MemberDto">
+    <select id="findByMemberId" resultType="com.univus.app.member.dto.MemberDto">
         SELECT
             M.MEMBER_ID,
             M.UNIV_ID,
@@ -36,7 +36,7 @@
         WHERE COMMUNITY_NICKNAME = #{communityNickname}
     </select>
 
-    <insert id="insertMember" parameterType="com.univus.app.domain.dto.MemberDto">
+    <insert id="insertMember" parameterType="com.univus.app.member.dto.MemberDto">
         INSERT INTO MEMBER (
             MEMBER_ID,
             PASSWORD,
@@ -62,7 +62,7 @@
                  )
     </insert>
 
-    <insert id="insertMemberDetail" parameterType="com.univus.app.domain.dto.MemberDto">
+    <insert id="insertMemberDetail" parameterType="com.univus.app.member.dto.MemberDto">
         INSERT INTO MEMBER_DETAIL (
             MEMBER_ID,
             DEPT_ID,

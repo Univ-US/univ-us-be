@@ -1,10 +1,10 @@
-package com.univus.app.service;
+package com.univus.app.member.service;
 
-import com.univus.app.domain.dto.MemberDto;
-import com.univus.app.domain.dto.MemberResponseDto;
-import com.univus.app.domain.dto.SignupRequestDto;
-import com.univus.app.exception.DuplicateMemberException;
-import com.univus.app.mapper.MemberMapper;
+import com.univus.app.member.dto.MemberDto;
+import com.univus.app.member.dto.MemberResponseDto;
+import com.univus.app.member.dto.SignupRequestDto;
+import com.univus.app.member.exception.DuplicateMemberException;
+import com.univus.app.member.mapper.MemberMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class AuthService {
+public class MemberService {
 
   private static final String DEFAULT_ROLE = "GUEST";
   private static final String DEFAULT_STATUS = "ACTIVE";

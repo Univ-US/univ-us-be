@@ -1,6 +1,6 @@
-package com.univus.app.mapper;
+package com.univus.app.member.mapper;
 
-import com.univus.app.domain.dto.MemberDto;
+import com.univus.app.member.dto.MemberDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
