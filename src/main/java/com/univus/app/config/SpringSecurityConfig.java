@@ -33,6 +33,10 @@ public class SpringSecurityConfig {
             	        "/oauth2/**",
             	        "/ws-univus/**",
 
+
+						//ai챗봇
+						"/api/ai/**",
+
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
 
