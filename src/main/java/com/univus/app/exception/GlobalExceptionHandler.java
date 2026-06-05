@@ -1,6 +1,7 @@
 package com.univus.app.exception;
 
 import com.univus.app.member.exception.DuplicateMemberException;
+import com.univus.app.member.exception.InvalidLoginException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,6 +98,26 @@ public class GlobalExceptionHandler {
         mav.addObject("title", "중복된 회원입니다.");
         mav.addObject("message", ex.getMessage());
         mav.setStatus(HttpStatus.CONFLICT);
+        return mav;
+    }
+
+    @ExceptionHandler(InvalidLoginException.class)
+    public Object handleInvalidLoginException(InvalidLoginException ex,
+                                              HttpServletRequest request) {
+        log.info("UNAUTHORIZED - ", ex);
+
+        if (isApiRequest(request)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                            "success", false,
+                            "message", ex.getMessage()
+                    ));
+        }
+
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "로그인 실패");
+        mav.addObject("message", ex.getMessage());
+        mav.setStatus(HttpStatus.UNAUTHORIZED);
         return mav;
     }
 
