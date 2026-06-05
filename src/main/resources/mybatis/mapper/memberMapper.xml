@@ -6,21 +6,22 @@
 
     <select id="findByMemberId" resultType="com.univus.app.domain.dto.MemberDto">
         SELECT
-            MEMBER_ID,
-            DEPT_ID,
-            LOG_ID,
-            PASSWORD,
-            MEMBER_NAME,
-            ROLE,
-            PHONE_NUMBER,
-            GENDER,
-            STATUS,
-            CREATED_AT,
-            LOGTIME_AT,
-            BIRTH,
-            COMMUNITY_NICKNAME
-        FROM MEMBER
-        WHERE MEMBER_ID = #{memberId}
+            M.MEMBER_ID,
+            M.UNIV_ID,
+            MD.DEPT_ID,
+            M.PASSWORD,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.PHONE_NUMBER,
+            M.GENDER,
+            M.STATUS,
+            M.CREATED_AT,
+            M.LOGTIME_AT,
+            M.BIRTH,
+            MD.COMMUNITY_NICKNAME
+        FROM MEMBER M
+                 LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+        WHERE M.MEMBER_ID = #{memberId}
     </select>
 
     <select id="existsByMemberId" resultType="int">
@@ -31,15 +32,13 @@
 
     <select id="existsByCommunityNickname" resultType="int">
         SELECT COUNT(*)
-        FROM MEMBER
+        FROM MEMBER_DETAIL
         WHERE COMMUNITY_NICKNAME = #{communityNickname}
     </select>
 
     <insert id="insertMember" parameterType="com.univus.app.domain.dto.MemberDto">
         INSERT INTO MEMBER (
             MEMBER_ID,
-            DEPT_ID,
-            LOG_ID,
             PASSWORD,
             MEMBER_NAME,
             ROLE,
@@ -48,12 +47,9 @@
             STATUS,
             CREATED_AT,
             LOGTIME_AT,
-            BIRTH,
-            COMMUNITY_NICKNAME
+            BIRTH
         ) VALUES (
                      #{memberId},
-                     #{deptId},
-                     #{logId},
                      #{password},
                      #{memberName},
                      #{role},
@@ -62,7 +58,18 @@
                      #{status},
                      SYSTIMESTAMP,
                      SYSTIMESTAMP,
-                     #{birth},
+                     #{birth}
+                 )
+    </insert>
+
+    <insert id="insertMemberDetail" parameterType="com.univus.app.domain.dto.MemberDto">
+        INSERT INTO MEMBER_DETAIL (
+            MEMBER_ID,
+            DEPT_ID,
+            COMMUNITY_NICKNAME
+        ) VALUES (
+                     #{memberId},
+                     #{deptId},
                      #{communityNickname}
                  )
     </insert>
