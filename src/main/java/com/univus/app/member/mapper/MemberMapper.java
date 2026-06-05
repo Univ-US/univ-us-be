@@ -30,6 +30,9 @@ public interface MemberMapper {
   // 로그인 성공 시 refresh token 저장
   int insertLoginSession(LoginSessionDto loginSession);
 
+  // 활성 로그인 세션 조회
+  LoginSessionDto findActiveLoginSessionByRefreshToken(@Param("refreshToken") String refreshToken);
+
   // 로그아웃 시 refresh token 폐기
   int revokeLoginSession(@Param("refreshToken") String refreshToken);
 
