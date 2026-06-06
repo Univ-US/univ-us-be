@@ -70,7 +70,13 @@ public class SpringSecurityConfig {
             	        "/api/chat/**",
 
             	        // 결제
-            	        "/api/payments/**"
+            	        "/api/payments/**",
+            	        // 레디스
+            	        "/api/redis",
+            	        "/api/redis/*",
+            	        // 예약
+            	        "/api/reservations/seats/availability",
+            	        "/api/reservations/seats/availability/**"
 
             	    ).permitAll()
             	    .anyRequest().authenticated()
