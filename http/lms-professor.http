@@ -1,0 +1,87 @@
+###############################################################
+#  Univ-US LMS 교수 프로필 — 로컬 테스트
+#  사용법: 각 "###" 요청 블록 왼쪽의 초록 ▶ 아이콘 클릭 → 아래에 응답이 뜸
+#  순서:  (0 가입) → 1 로그인 → 2 토큰확인 → 3 조회 → 4 수정 → 3 재조회 → 5 탈퇴
+###############################################################
+
+# 공통 변수: 서버 주소 (포트 9090)
+@host = http://localhost:9090
+
+
+### 0) (계정 없을 때만) 테스트 계정 생성  ─ 성공 시 201
+#   memberId 는 직접 정하는 값. 기존과 겹치지 않게 큰 숫자(9999999) 사용.
+POST {{host}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "memberId": 9999999,
+  "password": "test1234",
+  "memberName": "테스트교수",
+  "phoneNumber": 1012345678,
+  "gender": "M",
+  "birth": "1980-01-01"
+}
+
+
+### 1) 로그인  ─ 성공 시 accessToken 을 변수에 자동 저장
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "memberId": 9999999,
+  "password": "test1234"
+}
+
+> {% client.global.set("accessToken", response.body.accessToken); %}
+
+
+### 2) 토큰 확인  ─ 내 memberId(숫자)가 나오면 인증 성공
+GET {{host}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+
+### 3) 교수 프로필 조회  ─ 첫 호출이면 LMS_PROFILE 자동 생성 → 이메일/소개/이미지 null
+GET {{host}}/api/lms/professor/profile
+Authorization: Bearer {{accessToken}}
+
+
+### 4) 교수 프로필 수정 (텍스트만)  ─ 끝나면 3)을 다시 실행해 반영 확인
+PUT {{host}}/api/lms/professor/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebBoundary
+
+--WebBoundary
+Content-Disposition: form-data; name="lmsProfessorProfileEmail"
+
+prof@univus.ac.kr
+--WebBoundary
+Content-Disposition: form-data; name="lmsProfessorProfileIntroduction"
+
+안녕하세요, 테스트 교수입니다.
+--WebBoundary
+Content-Disposition: form-data; name="lmsProfessorProfilePhoneNumber"
+
+010-1234-5678
+--WebBoundary--
+
+
+### 4-b) 이미지까지 수정  ─ 이 http 파일과 같은 폴더(http/)에 profile.png 를 두고 실행
+PUT {{host}}/api/lms/professor/profile
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebBoundary
+
+--WebBoundary
+Content-Disposition: form-data; name="lmsProfessorProfileIntroduction"
+
+이미지 포함 테스트
+--WebBoundary
+Content-Disposition: form-data; name="lmsProfessorProfileImage"; filename="10mb-png-copy.png"
+Content-Type: image/png
+
+< ./10mb-png-copy.png
+--WebBoundary--
+
+
+### 5) 탈퇴 요청  ─ 성공 시 204 (본문 없음)
+DELETE {{host}}/api/lms/professor/profile
+Authorization: Bearer {{accessToken}}
