@@ -41,7 +41,7 @@
         P.CREATED_AT,
         P.UPDATED_AT,
         M.MEMBER_NAME        AS AUTHOR_NAME,
-        M.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME,
+        MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME,
         B.BOARD_NAME,
         B.IS_ANONYMOUS,
         (SELECT COUNT(*) FROM POST_LIKE    PL WHERE PL.POST_ID = P.POST_ID) AS LIKE_COUNT,
@@ -52,6 +52,7 @@
     <sql id="postFromJoin">
         FROM POST P
         JOIN MEMBER     M ON P.MEMBER_ID = M.MEMBER_ID
+        LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
         JOIN BOARD_TYPE B ON P.BOARD_ID  = B.BOARD_ID
     </sql>
 
@@ -161,6 +162,29 @@
         SET VIEW_COUNT = VIEW_COUNT + 1
         WHERE POST_ID = #{postId}
     </update>
+
+	<!-- ── 좋아요 ────────────────────────────────────────────── -->
+
+	<!-- 좋아요 여부 확인 -->
+	<select id="selectLikeCount" resultType="int">
+	    SELECT COUNT(*)
+	    FROM POST_LIKE
+	    WHERE POST_ID  = #{param1}
+	      AND MEMBER_ID = #{param2}
+	</select>
+
+	<!-- 좋아요 추가 -->
+	<insert id="insertLike">
+	    INSERT INTO POST_LIKE (LIKE_ID, MEMBER_ID, POST_ID, PRESSED_AT)
+	    VALUES (SEQ_POST_LIKE.NEXTVAL, #{param2}, #{param1}, SYSTIMESTAMP)
+	</insert>
+
+	<!-- 좋아요 취소 -->
+	<delete id="deleteLike">
+	    DELETE FROM POST_LIKE
+	    WHERE POST_ID   = #{param1}
+	      AND MEMBER_ID = #{param2}
+	</delete>
 	
 	<!-- ── 댓글 ─────────────────────────────────────────── -->
 
@@ -190,9 +214,10 @@
 	        C.IS_DELETED,
 	        C.CREATED_AT,
 	        M.MEMBER_NAME        AS AUTHOR_NAME,
-	        M.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+	        MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
 	    FROM POST_COMMENT C
 	    JOIN MEMBER M ON C.MEMBER_ID = M.MEMBER_ID
+	    LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
 	    WHERE C.POST_ID    = #{postId}
 	      AND C.IS_DELETED = 0
 	    ORDER BY C.CREATED_AT ASC
