@@ -29,6 +29,17 @@ public interface PostMapper {
 
     // 조회수 증가
     int updateViewCount(Long postId);
+
+    // ── 좋아요 ──────────────────────────────────────────────────────
+
+    // 좋아요 여부 확인 (0 or 1)
+    int selectLikeCount(Long postId, Long memberId);
+
+    // 좋아요 추가
+    int insertLike(Long postId, Long memberId);
+
+    // 좋아요 취소
+    int deleteLike(Long postId, Long memberId);
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	

@@ -73,6 +73,24 @@ public class PostController {
         return ResponseEntity.internalServerError()
                 .body(Map.of("message", "게시글 삭제에 실패했습니다."));
     }
+
+    // ── 좋아요 ──────────────────────────────────────────────
+
+    // POST /api/posts/{postId}/like — 좋아요 토글 (로그인 구현 전 임시 memberId=1)
+    @PostMapping("/{postId}/like")
+    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable("postId") Long postId) {
+        Long memberId = 1L;
+        Map<String, Object> result = postService.toggleLike(postId, memberId);
+        return ResponseEntity.ok(result);
+    }
+
+    // GET /api/posts/{postId}/like — 좋아요 여부 확인
+    @GetMapping("/{postId}/like")
+    public ResponseEntity<Map<String, Object>> getLikeStatus(@PathVariable("postId") Long postId) {
+        Long memberId = 1L;
+        boolean liked = postService.isLiked(postId, memberId);
+        return ResponseEntity.ok(Map.of("liked", liked));
+    }
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	

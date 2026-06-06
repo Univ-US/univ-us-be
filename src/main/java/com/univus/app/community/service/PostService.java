@@ -61,6 +61,25 @@ public class PostService {
     public int removePost(Long postId) {
         return postMapper.deletePost(postId);
     }
+
+    // 좋아요 토글 (없으면 추가, 있으면 취소)
+    public Map<String, Object> toggleLike(Long postId, Long memberId) {
+        int exists = postMapper.selectLikeCount(postId, memberId);
+        Map<String, Object> result = new HashMap<>();
+        if (exists > 0) {
+            postMapper.deleteLike(postId, memberId);
+            result.put("liked", false);
+        } else {
+            postMapper.insertLike(postId, memberId);
+            result.put("liked", true);
+        }
+        return result;
+    }
+
+    // 좋아요 여부 확인
+    public boolean isLiked(Long postId, Long memberId) {
+        return postMapper.selectLikeCount(postId, memberId) > 0;
+    }
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	
