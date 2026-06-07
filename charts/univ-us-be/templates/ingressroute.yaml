@@ -1,0 +1,20 @@
+# =====================================================================
+# ingressroute.yaml — Traefik 라우팅 규칙
+#
+# [무엇] 외부 요청 중 '/api' 경로를 이 백엔드 Service(9090)로 보냄.
+# [왜]   게이트웨이(Traefik, 192.168.50.200)에서 FE('/')와 BE('/api')를
+#        경로로 갈라줘야 함. (strip 없음 — 앱이 /api 네이티브)
+# =====================================================================
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  entryPoints:
+    - {{ .Values.ingress.entryPoint }}
+  routes:
+    - match: PathPrefix(`{{ .Values.ingress.pathPrefix }}`)
+      kind: Rule
+      services:
+        - name: {{ .Release.Name }}
+          port: {{ .Values.service.port }}

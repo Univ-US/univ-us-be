@@ -1,0 +1,26 @@
+# =====================================================================
+# values.yaml — 차트 기본 설정값(템플릿에 꽂히는 변수 모음)
+#
+# [무엇] 이미지 주소·포트·라우팅·참조할 ConfigMap/Secret/PVC 이름 등.
+# [왜]   templates/*.yaml 이 {{ .Values.xxx }} 로 이 값을 가져다 씀
+#        → 값만 바꾸면 배포 동작이 바뀜(코드 수정 없이).
+# [주의] image.tag 는 배포 시 helm --set 으로 커밋SHA 로 덮어씀.
+# =====================================================================
+replicaCount: 1
+image:
+  repository: ghcr.io/univ-us/univ-us-be
+  tag: latest
+  pullPolicy: IfNotPresent
+imagePullSecret: ghcr-cred
+containerPort: 9090
+service:
+  port: 9090
+ingress:
+  entryPoint: web
+  pathPrefix: /api
+config:
+  configMapName: univ-us-be-config
+  secretName: univ-us-be-secret
+persistence:
+  claimName: univ-us-be-uploads
+  mountPath: /data/uploads

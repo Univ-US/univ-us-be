@@ -1,0 +1,12 @@
+# =====================================================================
+# Chart.yaml — Helm 차트의 신분증(메타데이터)
+#
+# [무엇] 이 Helm 차트의 이름/버전 정보.
+# [왜]   helm 이 차트를 식별·버전관리하는 데 필요한 필수 파일.
+# =====================================================================
+apiVersion: v2
+name: univ-us-be
+description: Univ-US backend (Spring Boot) Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0"
