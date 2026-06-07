@@ -1,57 +1,91 @@
 package com.univus.app.reservation.controller;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.univus.app.security.CustomUserDetails;
+import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.service.ReservationService;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
-// @RestController // 💡 React와 JSON 통신을 하려면 RestController 필수!
-// @RequestMapping("/api/v1/reservations") // 💡 Base URI 공통화
-// @RequiredArgsConstructor
-// @Slf4j
-/*
+@RestController
+@RequestMapping("/api/reservations")
+@RequiredArgsConstructor
 public class SpaceReservationController {
 
-    // private final SpaceReservationService reservationService;
+    private final ReservationService reservationService;
 
-    @PostMapping("/spaces/library/seats")
-    public ResponseEntity<?> reserveLibrarySeat(@RequestBody ReservationReqDto requestDto,
-                                                @AuthenticationPrincipal CustomUserDetails userDetails) {
-        log.info("도서관 예약 요청 발생 - 유저: {}, 좌석: {}", userDetails.getUsername(), requestDto.getSeatId());
-        
-        // 여기서 Service 호출해서 Redis 분산 락(Redisson) 태우기!
-        // reservationService.reserveLibrarySeat(userDetails.getUsername(), requestDto);
-        
-        return ResponseEntity.ok().body("도서관 좌석 예약 성공!");
+    @GetMapping("/seats/availability")
+    public ResponseEntity<List<ReservationDto.ReadingRoomAvailabilityDto>> getReadingRoomAvailability(
+            @RequestParam("startTime")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime startTime,
+            @RequestParam("endTime")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime endTime) {
+        return ResponseEntity.ok(reservationService.getReadingRoomAvailability(startTime, endTime));
     }
 
-
-    @PostMapping("/spaces/meeting-rooms")
-    public ResponseEntity<?> reserveMeetingRoom(@RequestBody MeetingRoomReqDto requestDto,
-                                                @AuthenticationPrincipal CustomUserDetails userDetails) {
-        log.info("회의실 예약 요청 발생 - 유저: {}, 회의실: {}", userDetails.getUsername(), requestDto.getRoomId());
-        
-        // reservationService.reserveMeetingRoom(userDetails.getUsername(), requestDto);
-        
-        return ResponseEntity.ok().body("회의실 예약 성공!");
+    @GetMapping("/seats/availability/{readingRoomId}")
+    public ResponseEntity<List<ReservationDto.ReadingSeatAvailabilityDto>> getReadingSeatAvailability(
+            @PathVariable("readingRoomId") Long readingRoomId,
+            @RequestParam("startTime")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime startTime,
+            @RequestParam("endTime")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime endTime) {
+        return ResponseEntity.ok(
+                reservationService.getReadingSeatAvailability(readingRoomId, startTime, endTime));
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<?> getMyReservations(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        // Spring Security JWT 필터가 넣어준 userDetails에서 학번/ID 추출!
-        String memberId = userDetails.getUsername(); 
-        log.info("내 예약 내역 조회 요청 - 유저: {}", memberId);
-        
-        // return ResponseEntity.ok(reservationService.getMyReservations(memberId));
-        return ResponseEntity.ok().body("내 예약 내역 리스트 리턴 공간");
+    @PostMapping("/seats")
+    public ResponseEntity<?> reserveReadingSeat(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody ReservationDto.ReadingSeatReservationRequestDto request) {
+        try {
+            ReservationDto.ReadingSeatReservationDto reservation =
+                    reservationService.reserveReadingSeat(memberId, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/seats/me")
+    public ResponseEntity<List<ReservationDto.ReadingSeatReservationDto>> getMyReadingSeatReservations(
+            @AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(reservationService.getMyReadingSeatReservations(memberId));
+    }
+
+    @DeleteMapping("/seats/{reservationId}")
+    public ResponseEntity<?> cancelReadingSeatReservation(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("reservationId") Long reservationId) {
+        try {
+            reservationService.cancelReadingSeatReservation(memberId, reservationId);
+            return ResponseEntity.ok(Map.of("success", true, "message", "예약이 취소되었습니다."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
     }
 }
-*/

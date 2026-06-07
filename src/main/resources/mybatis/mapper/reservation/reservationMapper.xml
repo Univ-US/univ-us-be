@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.reservation.mapper.ReservationMapper">
+
+    <resultMap id="ReadingRoomAvailabilityResultMap"
+               type="com.univus.app.reservation.dto.ReservationDto$ReadingRoomAvailabilityDto">
+        <id     property="readingRoomId"      column="READING_ROOM_ID"/>
+        <result property="roomName"           column="ROOM_NAME"/>
+        <result property="floorName"          column="FLOOR_NAME"/>
+        <result property="description"        column="DESCRIPTION"/>
+        <result property="isActive"           column="IS_ACTIVE"/>
+        <result property="createdAt"          column="CREATED_AT"/>
+        <result property="totalSeatCount"     column="TOTAL_SEAT_COUNT"/>
+        <result property="availableSeatCount" column="AVAILABLE_SEAT_COUNT"/>
+        <result property="usingSeatCount"     column="USING_SEAT_COUNT"/>
+        <result property="disabledSeatCount"  column="DISABLED_SEAT_COUNT"/>
+    </resultMap>
+
+    <resultMap id="ReadingSeatAvailabilityResultMap"
+               type="com.univus.app.reservation.dto.ReservationDto$ReadingSeatAvailabilityDto">
+        <id     property="seatId"           column="SEAT_ID"/>
+        <result property="readingRoomId"    column="READING_ROOM_ID"/>
+        <result property="roomName"         column="ROOM_NAME"/>
+        <result property="seatNumber"       column="SEAT_NUMBER"/>
+        <result property="zoneName"         column="ZONE_NAME"/>
+        <result property="isUsable"         column="IS_USABLE"/>
+        <result property="seatStatus"       column="SEAT_STATUS"/>
+        <result property="reservationId"    column="RESERVATION_ID"/>
+        <result property="reservedMemberId" column="RESERVED_MEMBER_ID"/>
+        <result property="startTime"        column="START_TIME"/>
+        <result property="endTime"          column="END_TIME"/>
+    </resultMap>
+
+    <resultMap id="ReadingSeatReservationResultMap"
+               type="com.univus.app.reservation.dto.ReservationDto$ReadingSeatReservationDto">
+        <id     property="reservationId" column="RESERVATION_ID"/>
+        <result property="memberId"      column="MEMBER_ID"/>
+        <result property="seatId"        column="SEAT_ID"/>
+        <result property="readingRoomId" column="READING_ROOM_ID"/>
+        <result property="roomName"      column="ROOM_NAME"/>
+        <result property="seatNumber"    column="SEAT_NUMBER"/>
+        <result property="startTime"     column="START_TIME"/>
+        <result property="endTime"       column="END_TIME"/>
+        <result property="status"        column="STATUS"/>
+        <result property="createdAt"     column="CREATED_AT"/>
+    </resultMap>
+
+    <select id="selectReadingRoomAvailability" resultMap="ReadingRoomAvailabilityResultMap">
+        SELECT
+            RR.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            RR.FLOOR_NAME,
+            RR.DESCRIPTION,
+            RR.IS_ACTIVE,
+            RR.CREATED_AT,
+            COUNT(S.SEAT_ID) AS TOTAL_SEAT_COUNT,
+            NVL(SUM(CASE
+                WHEN S.IS_USABLE = 1 AND AR.SEAT_ID IS NULL THEN 1
+                ELSE 0
+            END), 0) AS AVAILABLE_SEAT_COUNT,
+            NVL(SUM(CASE
+                WHEN S.IS_USABLE = 1 AND AR.SEAT_ID IS NOT NULL THEN 1
+                ELSE 0
+            END), 0) AS USING_SEAT_COUNT,
+            NVL(SUM(CASE
+                WHEN S.IS_USABLE = 0 THEN 1
+                ELSE 0
+            END), 0) AS DISABLED_SEAT_COUNT
+        FROM READING_ROOMS RR
+        LEFT JOIN READING_ROOM_SEATS S
+               ON S.READING_ROOM_ID = RR.READING_ROOM_ID
+        LEFT JOIN (
+            SELECT DISTINCT SEAT_ID
+            FROM READING_SEAT_RESERVATIONS
+            WHERE STATUS IN ('USING', 'RESERVED')
+              AND START_TIME <![CDATA[ < ]]> #{endTime}
+              AND END_TIME <![CDATA[ > ]]> #{startTime}
+        ) AR ON AR.SEAT_ID = S.SEAT_ID
+        WHERE RR.IS_ACTIVE = 1
+        GROUP BY
+            RR.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            RR.FLOOR_NAME,
+            RR.DESCRIPTION,
+            RR.IS_ACTIVE,
+            RR.CREATED_AT
+        ORDER BY RR.READING_ROOM_ID
+    </select>
+
+    <select id="selectReadingSeatAvailability" resultMap="ReadingSeatAvailabilityResultMap">
+        SELECT
+            S.SEAT_ID,
+            S.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            S.SEAT_NUMBER,
+            S.ZONE_NAME,
+            S.IS_USABLE,
+            CASE
+                WHEN S.IS_USABLE = 0 THEN 'UNUSABLE'
+                WHEN AR.RESERVATION_ID IS NOT NULL THEN 'USING'
+                ELSE 'AVAILABLE'
+            END AS SEAT_STATUS,
+            AR.RESERVATION_ID,
+            AR.MEMBER_ID AS RESERVED_MEMBER_ID,
+            AR.START_TIME,
+            AR.END_TIME
+        FROM READING_ROOM_SEATS S
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        LEFT JOIN (
+            SELECT
+                RESERVATION_ID,
+                MEMBER_ID,
+                SEAT_ID,
+                START_TIME,
+                END_TIME
+            FROM READING_SEAT_RESERVATIONS
+            WHERE STATUS IN ('USING', 'RESERVED')
+              AND START_TIME <![CDATA[ < ]]> #{endTime}
+              AND END_TIME <![CDATA[ > ]]> #{startTime}
+        ) AR ON AR.SEAT_ID = S.SEAT_ID
+        WHERE S.READING_ROOM_ID = #{readingRoomId}
+          AND RR.IS_ACTIVE = 1
+        ORDER BY
+            CASE
+                WHEN REGEXP_LIKE(S.SEAT_NUMBER, '^[0-9]+$') THEN TO_NUMBER(S.SEAT_NUMBER)
+                ELSE NULL
+            END,
+            S.SEAT_NUMBER
+    </select>
+
+    <select id="countOverlappingReadingSeatReservation" resultType="int">
+        SELECT COUNT(*)
+        FROM READING_SEAT_RESERVATIONS
+        WHERE SEAT_ID = #{seatId}
+          AND STATUS IN ('USING', 'RESERVED')
+          AND START_TIME <![CDATA[ < ]]> #{endTime}
+          AND END_TIME <![CDATA[ > ]]> #{startTime}
+    </select>
+
+    <select id="countUsableReadingSeat" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+        FROM READING_ROOM_SEATS S
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE S.SEAT_ID = #{seatId}
+          AND S.IS_USABLE = 1
+          AND RR.IS_ACTIVE = 1
+    </select>
+
+    <insert id="insertReadingSeatReservation"
+            parameterType="com.univus.app.reservation.dto.ReservationDto$ReadingSeatReservationDto">
+        <selectKey keyProperty="reservationId" resultType="long" order="BEFORE">
+            SELECT SEQ_READING_SEAT_RESERVATIONS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO READING_SEAT_RESERVATIONS (
+            RESERVATION_ID,
+            MEMBER_ID,
+            SEAT_ID,
+            START_TIME,
+            END_TIME,
+            STATUS,
+            CREATED_AT
+        ) VALUES (
+            #{reservationId},
+            #{memberId},
+            #{seatId},
+            #{startTime},
+            #{endTime},
+            COALESCE(#{status}, 'USING'),
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="selectMyReadingSeatReservations" resultMap="ReadingSeatReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.SEAT_ID,
+            S.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            S.SEAT_NUMBER,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT
+        FROM READING_SEAT_RESERVATIONS R
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = R.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE R.MEMBER_ID = #{memberId}
+        ORDER BY R.START_TIME DESC
+    </select>
+
+    <update id="cancelReadingSeatReservation">
+        UPDATE READING_SEAT_RESERVATIONS
+        SET STATUS = 'CANCELLED'
+        WHERE RESERVATION_ID = #{reservationId}
+          AND MEMBER_ID = #{memberId}
+          AND STATUS IN ('USING', 'RESERVED')
+    </update>
+</mapper>
