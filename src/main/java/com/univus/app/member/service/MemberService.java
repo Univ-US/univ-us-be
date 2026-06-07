@@ -12,6 +12,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 public class MemberService {
@@ -67,7 +69,24 @@ public class MemberService {
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto login(LoginRequestDto request, String ipAddress) {
+    return loginWithAllowedRoles(request, ipAddress, null);
+  }
 
+  @Transactional(noRollbackFor = InvalidLoginException.class)
+  public LoginResponseDto adminLogin(LoginRequestDto request, String ipAddress) {
+    return loginWithAllowedRoles(request, ipAddress, Set.of("SUA", "ADM", "GUEST"));
+  }
+
+  @Transactional(noRollbackFor = InvalidLoginException.class)
+  public LoginResponseDto userLogin(LoginRequestDto request, String ipAddress) {
+    return loginWithAllowedRoles(request, ipAddress, Set.of("PROF", "STU", "ALU"));
+  }
+
+  private LoginResponseDto loginWithAllowedRoles(
+      LoginRequestDto request,
+      String ipAddress,
+      Set<String> allowedRoles
+  ) {
     MemberDto member = memberMapper.findByMemberId(request.getMemberId());
 
     if (member == null) {
@@ -78,6 +97,11 @@ public class MemberService {
     if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
       insertLoginFailLog(member.getMemberId(), "INVALID_PASSWORD");
       throw new InvalidLoginException("아이디 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    if (allowedRoles != null && !allowedRoles.contains(member.getRole())) {
+      insertLoginFailLog(member.getMemberId(), "ROLE_NOT_ALLOWED");
+      throw new InvalidLoginException("허용되지 않은 로그인 유형입니다.");
     }
 
     String accessToken = jwtTokenProvider.createAccessToken(member.getMemberId(), member.getRole());
