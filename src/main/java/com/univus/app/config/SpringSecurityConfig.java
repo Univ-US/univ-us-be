@@ -48,13 +48,15 @@ public class SpringSecurityConfig {
 			// 그 외 요청은 인증된 사용자만 접근하도록 설정한다.
             .authorizeHttpRequests(auth -> auth
             	    .requestMatchers(
-            	        "/",
-//            	        "/api/test/**",
-//            	        "/api/auth/**",
-						"/api/auth/signup",
-						"/api/auth/login",
-						"/api/auth/refresh",
-						"/api/auth/logout",
+											"/",
+//            	       "/api/test/**",
+//            	       "/api/auth/**",
+											"/api/auth/signup",
+											"/api/auth/login",
+											"/api/auth/refresh",
+											"/api/auth/logout",
+											"/api/auth/admin/login",
+											"/api/auth/user/login",
             	        "/oauth2/**",
             	        "/ws-univus/**",
 

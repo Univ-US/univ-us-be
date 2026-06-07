@@ -27,6 +27,20 @@ public class MemberController {
     return memberService.login(request, httpServletRequest.getRemoteAddr());
   }
 
+  // SUA, ADM, GUEST 로그인
+  @PostMapping("/admin/login")
+  public LoginResponseDto adminLogin(@RequestBody LoginRequestDto request,
+                                     HttpServletRequest httpServletRequest) {
+    return memberService.adminLogin(request, httpServletRequest.getRemoteAddr());
+  }
+
+  // PROF, STU, ALU 로그인
+  @PostMapping("/user/login")
+  public LoginResponseDto userLogin(@RequestBody LoginRequestDto request,
+                                    HttpServletRequest httpServletRequest) {
+    return memberService.userLogin(request, httpServletRequest.getRemoteAddr());
+  }
+
   @PostMapping("/refresh")
   public RefreshTokenResponseDto refreshAccessToken(@RequestBody RefreshTokenRequestDto request) {
     return memberService.refreshAccessToken(request);
