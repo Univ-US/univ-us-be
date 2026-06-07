@@ -74,16 +74,14 @@ public class SpringSecurityConfig {
 
             	        // 결제
             	        "/api/payments/**",
+
             	        // 레디스
             	        "/api/redis",
             	        "/api/redis/*",
             	        // 예약
             	        "/api/reservations/seats/availability",
             	        "/api/reservations/seats/availability/**"
-
             	    ).permitAll()
-							//TODO: LMS 교수 페이지 -교수/관리자/슈퍼관리자 코드 변경
-							.requestMatchers("/api/lms/professor/**").hasAnyRole("PROFESSOR", "ADMIN", "SUPER_ADMIN")
             	    .anyRequest().authenticated()
             )
 				// JWT 토큰 인증 필터 등록
