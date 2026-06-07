@@ -4,6 +4,7 @@ import com.univus.app.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -20,6 +21,8 @@ public class SpringSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
+            .cors(Customizer.withDefaults())
+
 			// REST API 서버이므로 CSRF 토큰 검증을 비활성화한다.
 			// JWT 기반 인증에서는 세션 쿠키를 사용하지 않기 때문에 CSRF 보호 대상이 아니다.
             .csrf(csrf -> csrf.disable())
