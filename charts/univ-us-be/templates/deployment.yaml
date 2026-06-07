@@ -1,0 +1,55 @@
+# =====================================================================
+# deployment.yaml — 파드(앱 실행 단위) 정의 템플릿
+#
+# [무엇] 어떤 이미지를·몇 개·무슨 설정/볼륨/프로브로 띄울지.
+# [핵심] envFrom 으로 ConfigMap(설정)+Secret(비밀)을 env 주입 /
+#        PVC 를 /data/uploads 마운트(업로드 영속) / 프로브로 헬스체크.
+# [왜]   앱이 실제로 돌아가는 핵심 명세. helm 이 렌더해 K8s 에 적용.
+# =====================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret }}
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.claimName }}
+      containers:
+        - name: be
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.containerPort }}
+          envFrom:                              # 설정(ConfigMap)+비밀(Secret)을 env로 주입
+            - configMapRef:
+                name: {{ .Values.config.configMapName }}
+            - secretRef:
+                name: {{ .Values.config.secretName }}
+          volumeMounts:
+            - name: uploads
+              mountPath: {{ .Values.persistence.mountPath }}
+          readinessProbe:                       # 포트 열림 = 컨텍스트 로드 완료 = 트래픽 받을 준비
+            tcpSocket:
+              port: {{ .Values.containerPort }}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.containerPort }}
+            initialDelaySeconds: 60
+            periodSeconds: 20

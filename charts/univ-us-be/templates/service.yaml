@@ -1,0 +1,20 @@
+# =====================================================================
+# service.yaml — 파드 앞단의 내부 고정 주소(Service)
+#
+# [무엇] 파드(들)를 묶어 'univ-us-be:9090' 고정 주소로 노출(ClusterIP).
+# [왜]   파드는 죽고살며 IP 가 바뀜 → 안정적 호출용 주소 필요.
+#        트래픽: IngressRoute(외부) → 이 Service → 파드.
+# =====================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.containerPort }}
+  selector:
+    app: {{ .Release.Name }}

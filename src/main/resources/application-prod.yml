@@ -1,0 +1,84 @@
+# =====================================================================
+# 해당 파일 gitignore에 추가하면 안 됩니다!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# application-prod.yml — 운영(prod) 프로파일 설정 (커밋용 · 비밀 없음)
+#
+# [무엇] SPRING_PROFILES_ACTIVE=prod 일 때 로드되는 Spring 설정.
+# [왜]   로컬용 application.yml 은 .gitignore 라 빌드 JAR 에 안 들어감
+#        → 운영 컨테이너가 읽을 설정이 사라짐. 그래서 "비밀 뺀 운영 설정"을
+#        커밋해 JAR 에 포함시킨다.
+# [구조] 비밀/환경별 값은 ${ENV:기본값} placeholder → 운영에선 K8s
+#        ConfigMap/Secret 의 env 가 채움. (로컬 application.yml 은 그대로 둠)
+# =====================================================================
+server:
+  port: 9090
+  tomcat:
+    max-part-count: 100
+    relaxed-path-chars: "[,]"
+    relaxed-query-chars: "[,]"
+
+spring:
+  datasource:                                  # hikari 중첩 → 표준 위치(그래야 env가 먹음)
+    url: ${SPRING_DATASOURCE_URL:jdbc:oracle:thin:@localhost:1521/XEPDB1}
+    username: ${SPRING_DATASOURCE_USERNAME:univus}
+    password: ${SPRING_DATASOURCE_PASSWORD:changeme}     # 진짜 비번은 K8s Secret(env)에서
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}                       # 진짜 비번은 default에 두지 않음
+  mvc:
+    view: { prefix: /WEB-INF/views/, suffix: .jsp }
+  servlet:
+    multipart: { max-file-size: 30MB, max-request-size: 100MB }
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            client-id: ${KAKAO_CLIENT_ID:}
+            redirect-uri: "{baseUrl}/oauth/{registrationId}/callback"
+            authorization-grant-type: authorization_code
+            client-authentication-method: client_secret_post
+            client-name: Kakao
+            scope: [profile_nickname, profile_image, account_email, name, birthday, birthyear]
+        provider:
+          kakao:
+            authorization-uri: https://kauth.kakao.com/oauth/authorize
+            token-uri: https://kauth.kakao.com/oauth/token
+            user-info-uri: https://kapi.kakao.com/v2/user/me
+            user-name-attribute: id
+  jpa:
+    hibernate: { ddl-auto: none }
+    properties:
+      hibernate: { '[show_sql]': true, '[format_sql]': true, '[use_sql_comments]': true }
+
+mybatis:
+  mapper-locations: classpath*:/mybatis/mapper/**/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: VARCHAR
+
+file:
+  upload-root: ${FILE_UPLOAD_ROOT:/data/uploads}
+
+univus:
+  api:
+    kto-base-url: ${KTO_BASE_URL:}
+    kto-service-key: ${KTO_SERVICE_KEY:}
+    kakao-map-api-key: ${KAKAO_MAP_API_KEY:}
+    kakao-rest-api-key: ${KAKAO_REST_API_KEY:}
+    google-gemini-api-key: ${GEMINI_API_KEY:}
+    kma-service-key: ${KMA_SERVICE_KEY:}
+    kma-base-url: ${KMA_BASE_URL:}
+    kma-mid-base-url: ${KMA_MID_BASE_URL:}
+    groq-api-key: ${GROQ_API_KEY:}
+
+portone:
+  api: { key: ${PORTONE_API_KEY:}, secret: ${PORTONE_API_SECRET:} }
+  imp: { code: ${PORTONE_IMP_CODE:} }
+
+jwt:
+  secret: ${JWT_SECRET:dev-only-change-me-min-32-bytes-0000000000}
+  access-token-validity-ms: 3600000
+  refresh-token-validity-ms: 604800000
