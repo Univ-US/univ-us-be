@@ -80,8 +80,61 @@ GitHub Actions 워크플로우 2개로 구성됩니다.
 - **Discord 알림** (`[main]` 태그):
   - ✅ 정기 병합 성공(실제 병합 시만) / ❌ 검사·병합 실패
 
+### `deploy.yml` — CD (배포) 🚀
+
+`main`에 반영되면(또는 수동 실행) **빌드 → 이미지 → K8s 배포**가 자동으로 굴러갑니다.
+(배포 대상 = 서버 K8s 클러스터: kubeadm + MetalLB + Traefik + Helm)
+
+**전체 흐름**
+```
+main push / 수동 실행 (workflow_dispatch)
+   │ ⟶ 트리거
+[GitHub Actions: deploy.yml]
+   ├─ ① build 잡 (GitHub 클라우드 러너, ubuntu-latest)
+   │     setup-java 21 → ./gradlew build → docker build(Dockerfile)
+   │     → GHCR push: ghcr.io/univ-us/univ-us-be:<커밋SHA>
+   │
+   └─ ② deploy 잡 (서버 VM의 self-hosted 러너)
+         helm upgrade --install univ-us-be ./charts/univ-us-be --set image.tag=<SHA>
+                ▼
+         [Kubernetes]  GHCR에서 이미지 pull
+            → 새 파드 생성 → Ready 확인 → 옛 파드 종료   (롤링 업데이트 = 무중단)
+                ▼
+         [Traefik]  /api → univ-us-be Service(9090) → 파드
+```
+
+**누가 무슨 역할? (도구 정리)**
+
+| 도구 | 역할 | 비유 |
+|------|------|------|
+| GitHub Actions | 빌드·배포를 자동 실행하는 파이프라인 | 작업 지시서 |
+| Docker 이미지 | 앱 + 실행환경을 한 덩어리로 포장 | 택배 상자 |
+| GHCR | 그 이미지를 보관하는 레지스트리(창고) | 택배 보관소 |
+| Kubernetes(K8s) | 이미지를 컨테이너로 굴리는 오케스트레이터 | 물류센터(지휘자) |
+| kubectl | K8s에 직접 명령하는 저수준 CLI | 지휘자에게 거는 전화 |
+| Helm | K8s 매니페스트를 "차트"로 묶어 한 번에 배포 (kubectl 위 고수준) | 포장·배달 매니저 |
+| self-hosted 러너 | 서버 VM에서 helm 명령을 실제 실행 | 현장 작업자 |
+| Traefik | 외부 요청을 경로(`/api`)로 갈라 보내는 게이트웨이 | 안내 데스크 |
+
+> 관계 한 줄: **Helm**이 `charts/univ-us-be/`를 렌더해 **K8s**에 적용 → K8s가 **GHCR**에서 이미지를 받아 파드로 실행. (kubectl=직접 명령, Helm=그 위 패키지 매니저)
+
+**무중단 배포(롤링 업데이트)**: 새 SHA 배포 시 K8s가 → ① **새 파드 먼저** 띄워 Ready(헬스체크) 확인 → ② 그 다음 **옛 파드 종료**. 끊김 없음. 새 파드가 고장나면 옛 파드가 계속 떠 있어 **안전**.
+
+**산출물 / 설정 규칙**
+- 산출물: `Dockerfile` · `.dockerignore` · Helm 차트 `charts/univ-us-be/` · `application-prod.yml`(운영 프로파일, **비밀 없는 placeholder**)
+- 이미지 태그 = **커밋 SHA**(불변 → 롤백 용이)
+- 비밀·환경설정은 **K8s Secret/ConfigMap**으로 주입(코드/이미지엔 없음). 운영은 `SPRING_PROFILES_ACTIVE=prod`로 `application-prod.yml`을 로드하고, K8s env가 `${...}` placeholder를 채움.
+- 헬스 프로브 = `tcpSocket:9090` (현재 `/api/test`가 인증 필요라 httpGet은 부적합)
+
+**⚠️ 트리거 현실 (중요)**
+- 트리거 = `workflow_dispatch`(수동) + `push: main`.
+- 단, `ci-cd-main.yml`이 `GITHUB_TOKEN`으로 dev→main을 머지하면 **그 `main` push는 다른 워크플로를 트리거하지 않음**(GitHub 재귀 방지). → **현재 배포는 수동(`workflow_dispatch`)으로 실행.** 완전 자동화하려면 **PAT 또는 `repository_dispatch`** 필요(향후).
+- `pull_request` 트리거 **금지** (public 레포 + self-hosted 러너 = fork PR RCE 방지).
+
+> 첫 배포 전 **클러스터 1회 세팅**(네임스페이스 · `ghcr-cred` imagePullSecret · ConfigMap/Secret/PVC · local-path StorageClass · IngressRoute)은 **서버 인프라 측 담당**.
+
 ### 인증 / 권한
-- `GITHUB_TOKEN` + 워크플로우 `permissions: contents: write, pull-requests: write` → **PAT 불필요**
+- `GITHUB_TOKEN` + 워크플로우 `permissions: contents: write, pull-requests: write` → **PAT 불필요** (CD의 GHCR push는 `packages: write`)
 - Repo Secret: `DISCORD_WEBHOOK`
 
 ### 🔒 브랜치 보호 (dev Ruleset)
@@ -123,7 +176,7 @@ GitHub Actions 워크플로우 2개로 구성됩니다.
 
 **효과**: 사람 직접·강제 push 차단(PR로만), 봇 dev→main은 PR 머지로 유지 → dev·main **동일 거버넌스**.
 
-> 🔭 **향후 CD 헤드업**: `GITHUB_TOKEN`이 머지한 `main` push는 **다른 워크플로를 트리거하지 않음**(재귀 방지). CD가 "main push 트리거"라면 **PAT 또는 `repository_dispatch`** 필요 — CD 단계에서 설계.
+> 🔭 **CD 트리거 헤드업** *(CD 구현 완료 → 위 `deploy.yml` 절 참고)*: `GITHUB_TOKEN`이 머지한 `main` push는 **다른 워크플로를 미트리거**(재귀 방지) → CD는 현재 **수동 `workflow_dispatch`** 로 실행, 완전 자동화는 **PAT 또는 `repository_dispatch`** 필요(향후 과제).
 
 ## ⚠️ 현재 CI/CD의 한계와 개선 과제
 
