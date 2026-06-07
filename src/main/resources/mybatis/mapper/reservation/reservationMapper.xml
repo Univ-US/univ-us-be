@@ -169,7 +169,7 @@
             #{seatId},
             #{startTime},
             #{endTime},
-            COALESCE(#{status}, 'USING'),
+            COALESCE(#{status}, 'RESERVED'),
             SYSTIMESTAMP
         )
     </insert>
