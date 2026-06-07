@@ -75,8 +75,11 @@ univus:
     groq-api-key: ${GROQ_API_KEY:}
 
 portone:
-  api: { key: ${PORTONE_API_KEY:}, secret: ${PORTONE_API_SECRET:} }
-  imp: { code: ${PORTONE_IMP_CODE:} }
+  api:
+    key: ${PORTONE_API_KEY:}
+    secret: ${PORTONE_API_SECRET:}
+  imp:
+    code: ${PORTONE_IMP_CODE:}
 
 jwt:
   secret: ${JWT_SECRET:dev-only-change-me-min-32-bytes-0000000000}
