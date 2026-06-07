@@ -72,11 +72,17 @@ public class SpringSecurityConfig {
             	        // 결제
             	        "/api/payments/**",
 
-						// LMS
-						//TODO: ERD ROLE 코드(STU/PROF/ADM/SUA/ALU)
-						"/api/lms/professor/**",
-						"/api/lms/student/**"
+                        // LMS
+                        //TODO: ERD ROLE 코드(STU/PROF/ADM/SUA/ALU)
+                        "/api/lms/professor/**",
+                        "/api/lms/student/**",
 
+            	        // 레디스
+            	        "/api/redis",
+            	        "/api/redis/*",
+            	        // 예약
+            	        "/api/reservations/seats/availability",
+            	        "/api/reservations/seats/availability/**"
             	    ).permitAll()
             	    .anyRequest().authenticated()
             )
