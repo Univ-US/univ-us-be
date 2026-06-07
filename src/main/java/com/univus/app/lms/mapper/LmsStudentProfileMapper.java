@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface LmsStudentProfileMapper {
 
-    // 조회 (MEMBER + MEMBER_DETAIL + DEPARTMENT + LMS_PROFILE + 최신 유효 이미지, 학번 파생)
+    // 조회 (MEMBER + MEMBER_DETAIL + DEPARTMENT + LMS_PROFILE + 최신 유효 이미지)
     LmsStudentProfileResponseDto findLmsStudentProfileByMemberId(@Param("memberId") Long memberId);
 
     // LMS_PRF_ID 조회 (없으면 null)

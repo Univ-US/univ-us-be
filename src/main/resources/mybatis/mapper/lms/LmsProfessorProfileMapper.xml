@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.univus.app.lms.mapper.LmsProfessorProfileMapper">
 
     <!-- 조회: MEMBER + MEMBER_DETAIL + DEPARTMENT + LMS_PROFILE + 최신 유효 이미지(VAL_STATUS=1) -->

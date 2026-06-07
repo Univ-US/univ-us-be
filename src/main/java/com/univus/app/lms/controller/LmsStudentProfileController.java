@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+//TODO: SpringSequerity ROLE 필터 추가
 @RestController
 @RequestMapping("/api/lms/student")
 @RequiredArgsConstructor
@@ -18,6 +19,7 @@ public class LmsStudentProfileController {
     private final LmsStudentProfileService lmsStudentProfileService;
 
     /** SLM-001 학생 프로필 조회 (LMS_PROFILE 없으면 지연 생성) */
+    // GET /api/lms/student/profile
     @GetMapping("/profile")
     public ResponseEntity<LmsStudentProfileResponseDto> requestGetLmsStudentProfile(Authentication authentication) {
         Long memberId = (Long) authentication.getPrincipal();
@@ -27,6 +29,7 @@ public class LmsStudentProfileController {
     /**
      * TODO: 배포 시 저장 경로 설정 필수
      * SLM-001 학생 프로필 수정 (multipart: 텍스트 + 이미지) */
+    // PUT /api/lms/student/profile (multipart/form-data)
     @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<LmsStudentProfileResponseDto> requestUpdateLmsStudentProfile(
             Authentication authentication,
@@ -36,6 +39,7 @@ public class LmsStudentProfileController {
     }
 
     /** SLM-001/012 학생 회원 탈퇴 요청 */
+    // DELETE /api/lms/student/profile
     @DeleteMapping("/profile")
     public ResponseEntity<Void> requestDeleteLmsStudentProfile(Authentication authentication) {
         Long memberId = (Long) authentication.getPrincipal();

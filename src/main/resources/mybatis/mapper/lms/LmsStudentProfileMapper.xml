@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.univus.app.lms.mapper.LmsStudentProfileMapper">
 
-    <!-- 조회: 학번 = 입학연도(CREATED_AT) + LPAD(MEMBER_ID, 4, '0')  (DB에 학번 컬럼 없음 → 파생) -->
+    <!-- 조회: 원천 데이터만 반환. 학번은 서비스에서 (입학연도 + memberId)로 조립 -->
     <select id="findLmsStudentProfileByMemberId"
             resultType="com.univus.app.lms.dto.LmsStudentProfileResponseDto">
         SELECT
             m.MEMBER_NAME    AS lmsStudentProfileName,
-            TO_CHAR(EXTRACT(YEAR FROM m.CREATED_AT)) || LPAD(TO_CHAR(m.MEMBER_ID), 4, '0')
-                             AS lmsStudentProfileStudentNo,
+            EXTRACT(YEAR FROM m.CREATED_AT) AS admissionYear,
             d.DEPT_NAME      AS lmsStudentProfileDepartment,
             m.PHONE_NUMBER   AS lmsStudentProfilePhoneNumber,
             lp.LMS_PRF_EMAIL AS lmsStudentProfileEmail,
@@ -43,13 +42,6 @@
     <update id="updateLmsStudentProfile">
         UPDATE LMS_PROFILE
         SET LMS_PRF_EMAIL = #{dto.lmsStudentProfileEmail}
-        WHERE MEMBER_ID = #{memberId}
-    </update>
-
-    <!-- 휴대폰 수정: MEMBER.PHONE_NUMBER(NUMBER) → 앞자리 0 손실 가능 -->
-    <update id="updateMemberPhoneNumber">
-        UPDATE MEMBER
-        SET PHONE_NUMBER = #{phoneNumber}
         WHERE MEMBER_ID = #{memberId}
     </update>
 
