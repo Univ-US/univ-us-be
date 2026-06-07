@@ -25,7 +25,7 @@ public class LmsProfessorProfileController {
     }
 
     /**
-     * TODO: 배포 상황에 맞춘 저장소 변경 필수
+     * TODO: 배포 시 저장 경로 설정 필수
      * PLM-001 교수 프로필 수정 (multipart: 텍스트 + 이미지) */
     @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<LmsProfessorProfileResponseDto> requestUpdateLmsProfessorProfile(

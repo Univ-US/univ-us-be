@@ -23,11 +23,14 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
     private final StorageService storageService; // common file engine reuse
 
     // file upload settings
+    //TODO: 배포 시 저장 경로 설정 필수
     @Value("${file.upload-root:${user.home}/univus/uploads}") // application.yml setting: 없으면 기본 경로
     private String uploadRoot;
     private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png"); // JPG, JPEG, PNG
     private static final long MAX_IMAGE_SIZE = 30L * 1024 * 1024; // 30MB
+    //TODO: 배포 시 저장 경로 설정 필수
     private static final String IMAGE_SUBDIR = "lms" + File.separator + "professor" + File.separator + "image"; // 저장 하위 폴더
+    //TODO: 배포 시 저장 경로 설정 필수
     private static final String IMAGE_URL_PREFIX = "/uploads/lms/professor/image/"; // 웹 접근 경로
 
     // PLM-001 교수 프로필 조회 (LMS_PROFILE 없으면 지연 생성 후 반환)
