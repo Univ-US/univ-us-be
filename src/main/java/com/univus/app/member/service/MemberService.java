@@ -49,6 +49,11 @@ public class MemberService {
     }
   }
 
+  @Transactional(readOnly = true)
+  public boolean isMemberIdAvailable(Long memberId) {
+    return memberId != null && memberMapper.existsByMemberId(memberId) == 0;
+  }
+
   // 응답용
   private MemberResponseDto toResponse(MemberDto member) {
     MemberResponseDto response = new MemberResponseDto();
@@ -79,7 +84,7 @@ public class MemberService {
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto userLogin(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, Set.of("PROF", "STU", "ALU"));
+    return loginWithAllowedRoles(request, ipAddress, Set.of("ADM", "PROF", "STU", "ALU"));
   }
 
   private LoginResponseDto loginWithAllowedRoles(
@@ -126,6 +131,8 @@ public class MemberService {
     response.setTokenType(jwtTokenProvider.getTokenType());
     response.setMemberId(member.getMemberId());
     response.setRole(member.getRole());
+    response.setMemberName(member.getMemberName());
+    response.setCommunityNickname(member.getCommunityNickname());
 
     return response;
   }

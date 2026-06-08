@@ -51,12 +51,13 @@ public class SpringSecurityConfig {
 											"/",
 //            	       "/api/test/**",
 //            	       "/api/auth/**",
-											"/api/auth/signup",
-											"/api/auth/login",
-											"/api/auth/refresh",
-											"/api/auth/logout",
-											"/api/auth/admin/login",
-											"/api/auth/user/login",
+							"/api/auth/signup",
+							"/api/auth/check-member-id",
+							"/api/auth/login",
+							"/api/auth/refresh",
+							"/api/auth/logout",
+							"/api/auth/admin/login",
+							"/api/auth/user/login",
             	        "/oauth2/**",
             	        "/ws-univus/**",
 
@@ -64,11 +65,15 @@ public class SpringSecurityConfig {
 						//ai챗봇
 						"/api/ai/**",
 
+						// 관리자 문의, 대학 목록 (비로그인 가능)
+						"/api/admin/support",
+						"/api/admin/universities",
+
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
 
             	        // 중고거래 상품
-            	        "/api/products/**",
+            	        "/api/market/**",
 
             	        // 거래 내역 + 채팅
             	        "/api/trades/**",
@@ -81,6 +86,7 @@ public class SpringSecurityConfig {
             	        "/api/redis",
             	        "/api/redis/*",
             	        // 예약
+                    "/api/reservations/date-options",
             	        "/api/reservations/seats/availability",
             	        "/api/reservations/seats/availability/**",
 
@@ -99,4 +105,4 @@ public class SpringSecurityConfig {
 
         return http.build();
     }
-}	
+}
