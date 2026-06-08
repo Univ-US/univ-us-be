@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 public class ReservationServiceImpl implements ReservationService {
 
     private static final String DEFAULT_SEAT_STATUS = "RESERVED";
+    private static final String MEMBER_LOCK_KEY_PREFIX = "reservation:reading-seat:member:";
+    private static final String SEAT_LOCK_KEY_PREFIX = "reservation:reading-seat:";
     private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
     private static final List<String> DAY_OF_WEEK_LABELS =
             List.of("일", "월", "화", "수", "목", "금", "토");
@@ -98,19 +100,33 @@ public class ReservationServiceImpl implements ReservationService {
         validateMember(memberId);
         validateReservationRequest(request);
 
-        String lockKey = "reservation:reading-seat:" + request.getSeatId();
-        RLock lock = redissonClient.getLock(lockKey);
-        boolean locked = false;
+        RLock memberLock = redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId);
+        RLock seatLock = redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + request.getSeatId());
+        boolean memberLocked = false;
+        boolean seatLocked = false;
 
         try {
-            locked = lock.tryLock(5, 10, TimeUnit.SECONDS);
-            if (!locked) {
+            memberLocked = memberLock.tryLock(5, 10, TimeUnit.SECONDS);
+            if (!memberLocked) {
+                throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
+            }
+
+            seatLocked = seatLock.tryLock(5, 10, TimeUnit.SECONDS);
+            if (!seatLocked) {
                 throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
             }
 
             int usableSeatCount = reservationMapper.countUsableReadingSeat(request.getSeatId());
             if (usableSeatCount == 0) {
                 throw new IllegalArgumentException("사용 가능한 좌석이 아닙니다.");
+            }
+
+            int memberOverlapCount = reservationMapper.countOverlappingMemberReadingSeatReservation(
+                    memberId,
+                    request.getStartTime(),
+                    request.getEndTime());
+            if (memberOverlapCount > 0) {
+                throw new IllegalStateException("같은 시간대에 이미 예약한 좌석이 있습니다.");
             }
 
             int overlapCount = reservationMapper.countOverlappingReadingSeatReservation(
@@ -136,8 +152,11 @@ public class ReservationServiceImpl implements ReservationService {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
         } finally {
-            if (locked && lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            if (seatLocked && seatLock.isHeldByCurrentThread()) {
+                seatLock.unlock();
+            }
+            if (memberLocked && memberLock.isHeldByCurrentThread()) {
+                memberLock.unlock();
             }
         }
     }
