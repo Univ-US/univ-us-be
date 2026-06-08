@@ -140,6 +140,15 @@
           AND END_TIME <![CDATA[ > ]]> #{startTime}
     </select>
 
+    <select id="countOverlappingMemberReadingSeatReservation" resultType="int">
+        SELECT COUNT(*)
+        FROM READING_SEAT_RESERVATIONS
+        WHERE MEMBER_ID = #{memberId}
+          AND STATUS IN ('USING', 'RESERVED')
+          AND START_TIME <![CDATA[ < ]]> #{endTime}
+          AND END_TIME <![CDATA[ > ]]> #{startTime}
+    </select>
+
     <select id="countUsableReadingSeat" parameterType="long" resultType="int">
         SELECT COUNT(*)
         FROM READING_ROOM_SEATS S
