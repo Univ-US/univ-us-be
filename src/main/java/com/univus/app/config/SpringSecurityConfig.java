@@ -82,7 +82,11 @@ public class SpringSecurityConfig {
             	        "/api/redis/*",
             	        // 예약
             	        "/api/reservations/seats/availability",
-            	        "/api/reservations/seats/availability/**"
+            	        "/api/reservations/seats/availability/**",
+
+						// 프로필 이미지(정적 파일) — img 태그가 토큰을 못 실어 보내므로 공개
+						"/uploads/lms/professor/image/**",
+						"/uploads/lms/student/image/**"
             	    ).permitAll()
             	    .anyRequest().authenticated()
             )
