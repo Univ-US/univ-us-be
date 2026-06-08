@@ -6,21 +6,39 @@
 #        → 값만 바꾸면 배포 동작이 바뀜(코드 수정 없이).
 # [주의] image.tag 는 배포 시 helm --set 으로 커밋SHA 로 덮어씀.
 # =====================================================================
+
+# 파드(레플리카) 개수. 1 = 단일 인스턴스(인메모리 SimpleBroker로 충분, 스케일 시만 Redis/RabbitMQ).
 replicaCount: 1
+
+# 실행할 컨테이너 이미지
 image:
-  repository: ghcr.io/univ-us/univ-us-be
-  tag: latest
-  pullPolicy: IfNotPresent
-imagePullSecret: ghcr-cred
-containerPort: 9090
+  repository: ghcr.io/univ-us/univ-us-be   # GHCR 의 BE 이미지 경로
+  tag: latest                              # 기본 태그(배포 시 --set image.tag=<커밋SHA> 로 덮어씀)
+  pullPolicy: IfNotPresent                 # 같은 태그가 노드에 있으면 다시 안 받음
+imagePullSecret: ghcr-cred                 # GHCR private 이미지 pull 용 인증 Secret(ns univus)
+
+containerPort: 9090   # 컨테이너(Spring Boot)가 리슨하는 포트
 service:
-  port: 9090
+  port: 9090          # Service 가 노출하는 포트(IngressRoute 가 이 포트로 트래픽을 보냄)
+
+# ── 라우팅(Traefik IngressRoute) 설정 ───────────────────────────────
+# Traefik 게이트웨이가 "어떤 경로"를 이 BE 로 보낼지 정의.
 ingress:
-  entryPoint: web
-  pathPrefix: /api
+  entryPoint: web     # Traefik 진입점(web = HTTP). TLS 없음.
+  # 이 BE 가 받을 경로 목록. 단수 문자열이 아니라 '리스트'라서 여러 경로를 한 번에 라우팅.
+  #   /api       = REST API
+  #   /ws-univus = WebSocket(STOMP/SockJS) 핸드셰이크
+  # 둘 다 같은 BE 파드(9090)로. (templates/ingressroute.yaml 이 이 리스트를 range 로 순회)
+  pathPrefixes:
+    - /api
+    - /ws-univus
+
+# 앱 설정·비밀 주입 — 미리 만들어 둔 ConfigMap/Secret 이름(deployment 가 envFrom 으로 주입)
 config:
-  configMapName: univ-us-be-config
-  secretName: univ-us-be-secret
+  configMapName: univ-us-be-config   # 비밀 아닌 설정(프로필·Redis 호스트·업로드 경로 등)
+  secretName: univ-us-be-secret      # 비밀(DB 비번·JWT 시크릿·외부 API 키 등)
+
+# 업로드 파일 영속 저장(PVC) — 파드 재시작에도 업로드 이미지가 안 사라지게
 persistence:
-  claimName: univ-us-be-uploads
-  mountPath: /data/uploads
+  claimName: univ-us-be-uploads   # 미리 만들어 둔 PVC 이름(StorageClass: local-path)
+  mountPath: /data/uploads        # 컨테이너 안에서 PVC 가 마운트되는 경로(= 앱의 FILE_UPLOAD_ROOT)

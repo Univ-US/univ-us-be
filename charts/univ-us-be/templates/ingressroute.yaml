@@ -1,20 +1,30 @@
 # =====================================================================
-# ingressroute.yaml — Traefik 라우팅 규칙
+# ingressroute.yaml — Traefik 라우팅 규칙(어떤 경로를 이 BE 로 보낼지)
 #
-# [무엇] 외부 요청 중 '/api' 경로를 이 백엔드 Service(9090)로 보냄.
-# [왜]   게이트웨이(Traefik, 192.168.50.200)에서 FE('/')와 BE('/api')를
-#        경로로 갈라줘야 함. (strip 없음 — 앱이 /api 네이티브)
+# [무엇] 외부 요청 중 '/api'(REST)·'/ws-univus'(WebSocket) 경로를
+#        이 백엔드 Service(9090)로 보냄.
+# [왜]   게이트웨이(Traefik, 192.168.50.200)에서 FE('/')와
+#        BE('/api'·'/ws-univus')를 경로로 갈라줘야 함.
+#        (strip 없음 — 앱이 해당 경로를 네이티브로 받음)
+# [방법] values.ingress.pathPrefixes 리스트를 range 로 순회해 경로마다 라우트 1개씩 생성.
+#        ※ range 안에서 '.' = 현재 항목(경로 문자열, 예: /api).
+#          바깥 루트값(.Release / .Values)은 가려지므로, 루트 접근은 '$'(최상위)를 써야 함
+#          → $.Release.Name / $.Values.service.port
 # =====================================================================
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
+apiVersion: traefik.io/v1alpha1   # Traefik CRD(IngressRoute)의 API 버전
+kind: IngressRoute                # 리소스 종류: Traefik 전용 라우팅 객체
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ .Release.Name }}       # 이 라우트의 이름 = 릴리스명(univ-us-be)
 spec:
   entryPoints:
-    - {{ .Values.ingress.entryPoint }}
+    - {{ .Values.ingress.entryPoint }}   # 적용할 Traefik 진입점(web = HTTP)
+
+    # pathPrefixes(리스트)를 순회하며 경로마다 라우트를 하나씩 생성
   routes:
-    - match: PathPrefix(`{{ .Values.ingress.pathPrefix }}`)
+    {{- range .Values.ingress.pathPrefixes }}
+    - match: PathPrefix(`{{ . }}`)              # '.' = 현재 경로(/api 또는 /ws-univus)로 시작하는 요청에 매칭
       kind: Rule
       services:
-        - name: {{ .Release.Name }}
-          port: {{ .Values.service.port }}
+        - name: {{ $.Release.Name }}            # 트래픽을 보낼 Service 이름(= 릴리스명 univ-us-be)
+          port: {{ $.Values.service.port }}     # 보낼 포트(9090)
+    {{- end }}
