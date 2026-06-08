@@ -49,11 +49,6 @@ public class MemberService {
     }
   }
 
-  @Transactional(readOnly = true)
-  public boolean isMemberIdAvailable(Long memberId) {
-    return memberId != null && memberMapper.existsByMemberId(memberId) == 0;
-  }
-
   // 응답용
   private MemberResponseDto toResponse(MemberDto member) {
     MemberResponseDto response = new MemberResponseDto();
