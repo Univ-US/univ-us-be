@@ -4,6 +4,26 @@
 
 <mapper namespace="com.univus.app.member.mapper.MemberMapper">
 
+    <select id="findByMemberId" resultType="com.univus.app.member.dto.MemberDto">
+        SELECT
+            M.MEMBER_ID,
+            M.UNIV_ID,
+            MD.DEPT_ID,
+            M.PASSWORD,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.PHONE_NUMBER,
+            M.GENDER,
+            M.STATUS,
+            M.CREATED_AT,
+            M.LOGTIME_AT,
+            M.BIRTH,
+            MD.COMMUNITY_NICKNAME
+        FROM MEMBER M
+                 LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+        WHERE M.MEMBER_ID = #{memberId}
+    </select>
+
     <select id="findByLoginIdAndUnivId" resultType="com.univus.app.member.dto.MemberDto">
         SELECT
             M.MEMBER_ID,
@@ -26,25 +46,10 @@
           AND M.UNIV_ID = #{univId}
     </select>
 
-    <select id="findByMemberId" resultType="com.univus.app.member.dto.MemberDto">
-        SELECT
-            M.MEMBER_ID,
-            M.LOGIN_ID,
-            M.UNIV_ID,
-            MD.DEPT_ID,
-            M.PASSWORD,
-            M.MEMBER_NAME,
-            M.ROLE,
-            M.PHONE_NUMBER,
-            M.GENDER,
-            M.STATUS,
-            M.CREATED_AT,
-            M.LOGTIME_AT,
-            M.BIRTH,
-            MD.COMMUNITY_NICKNAME
-        FROM MEMBER M
-                 LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
-        WHERE M.MEMBER_ID = #{memberId}
+    <select id="existsByMemberId" resultType="int">
+        SELECT COUNT(*)
+        FROM MEMBER
+        WHERE MEMBER_ID = #{memberId}
     </select>
 
     <select id="existsByLoginId" resultType="int">
