@@ -53,6 +53,7 @@ public class SpringSecurityConfig {
 //            	       "/api/auth/**",
 							"/api/auth/signup",
 							"/api/auth/check-member-id",
+							"/api/auth/check-login-id",
 							"/api/auth/login",
 							"/api/auth/refresh",
 							"/api/auth/logout",
