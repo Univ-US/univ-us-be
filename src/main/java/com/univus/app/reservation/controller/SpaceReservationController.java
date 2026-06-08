@@ -21,7 +21,7 @@ import com.univus.app.reservation.dto.ReservationDto.ReadingRoomAvailabilityDto;
 import com.univus.app.reservation.dto.ReservationDto.ReadingSeatAvailabilityDto;
 import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationDto;
 import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationRequestDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationDateOptionDto;
+import com.univus.app.reservation.dto.ReservationDto.ReservationDateOptionsResponseDto;
 import com.univus.app.reservation.service.ReservationService;
 
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ public class SpaceReservationController {
     private final ReservationService reservationService;
 
     @GetMapping("/date-options")
-    public ResponseEntity<List<ReservationDateOptionDto>> getReservationDateOptions(
+    public ResponseEntity<ReservationDateOptionsResponseDto> getReservationDateOptions(
             @RequestParam(value = "days", defaultValue = "5") int days) {
         return ResponseEntity.ok(reservationService.getReservationDateOptions(days));
     }

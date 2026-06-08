@@ -7,7 +7,7 @@ import com.univus.app.reservation.dto.ReservationDto;
 
 public interface ReservationService {
 
-    List<ReservationDto.ReservationDateOptionDto> getReservationDateOptions(int days);
+    ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days);
 
     List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
             LocalDateTime startTime,
