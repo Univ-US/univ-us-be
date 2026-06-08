@@ -43,7 +43,7 @@
         FROM MEMBER M
                  LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
         WHERE M.LOGIN_ID = #{loginId}
-          AND M.UNIV_ID = #{univId}
+          <if test="univId != null">AND M.UNIV_ID = #{univId}</if>
     </select>
 
     <select id="existsByMemberId" resultType="int">
