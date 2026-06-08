@@ -39,6 +39,12 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getUniversityList());
     }
 
+    // 대학 단건 조회 (비로그인 가능)
+    @GetMapping("/universities/{univId}")
+    public ResponseEntity<AdminDto.UniversityDto> getUniversity(@PathVariable Long univId) {
+        return ResponseEntity.ok(adminService.getUniversity(univId));
+    }
+
     // 회원 목록 조회 (필터 + 페이징)
     @GetMapping("/members")
     public ResponseEntity<Map<String, Object>> getMemberList(

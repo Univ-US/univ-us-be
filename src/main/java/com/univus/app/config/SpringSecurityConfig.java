@@ -67,6 +67,7 @@ public class SpringSecurityConfig {
 						// 관리자 문의, 대학 목록 (비로그인 가능)
 						"/api/admin/support",
 						"/api/admin/universities",
+						"/api/admin/universities/*",
 
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
