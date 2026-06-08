@@ -81,6 +81,7 @@ public class SpringSecurityConfig {
             	        "/api/redis",
             	        "/api/redis/*",
             	        // 예약
+                    "/api/reservations/date-options",
             	        "/api/reservations/seats/availability",
             	        "/api/reservations/seats/availability/**"
             	    ).permitAll()
@@ -95,4 +96,4 @@ public class SpringSecurityConfig {
 
         return http.build();
     }
-}	
+}

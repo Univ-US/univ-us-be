@@ -13,6 +13,23 @@ public class ReservationDto {
     @Getter
     @Setter
     @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ReservationDateOptionDto {
+        private String key;
+        private String date;
+        private Integer year;
+        private Integer month;
+        private Integer day;
+        private String dayOfWeek;
+        private Boolean today;
+        private Boolean sat;
+        private Boolean sun;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
     public static class ReadingSeatReservationRequestDto {
         private Long seatId;
         private LocalDateTime startTime;
