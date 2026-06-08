@@ -15,6 +15,8 @@ public class LmsStudentProfileResponseDto {
     private String lmsStudentProfilePhoneNumber;  // 휴대폰 (수정 가능)
     private String lmsStudentProfileEmail;        // 이메일 (수정 가능)
     private String lmsStudentProfileImageUrl;     // 프로필 이미지 URL
+    private String lmsStudentProfileUniversityName; // 대학교명 (UNIVERSITY.UNIV_NAME)
+    private String lmsStudentProfileRole;         // 역할 한글 라벨 (MEMBER.ROLE → RoleCode.label, 예: 학생)
 
     @JsonIgnore                                   // 학번 파생 원천(가입연도). 응답 JSON엔 노출 안 함
     private Integer admissionYear;

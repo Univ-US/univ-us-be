@@ -1,6 +1,7 @@
 package com.univus.app.lms.service;
 
 import com.univus.app.common.StorageService;
+import com.univus.app.lms.code.RoleCode;
 import com.univus.app.lms.code.SecReqStatusCode;
 import com.univus.app.lms.dto.LmsStudentProfileResponseDto;
 import com.univus.app.lms.dto.LmsStudentProfileUpdateDto;
@@ -83,8 +84,21 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
         LmsStudentProfileResponseDto dto = lmsStudentProfileMapper.findLmsStudentProfileByMemberId(memberId);
         if (dto != null) {
             dto.setLmsStudentProfileStudentNo(toStudentNo(dto.getAdmissionYear(), memberId));
+            dto.setLmsStudentProfileRole(toRoleLabel(dto.getLmsStudentProfileRole())); // 역할 코드→라벨
         }
         return dto;
+    }
+
+    /* MEMBER.ROLE 코드 → RoleCode 한글 라벨 (미정의/널 코드는 원본 유지) */
+    private String toRoleLabel(String roleCode) {
+        if (roleCode == null) {
+            return null;
+        }
+        try {
+            return RoleCode.fromCode(roleCode).getLabel();
+        } catch (IllegalArgumentException e) {
+            return roleCode;
+        }
     }
 
     /* 학번 = 입학연도(가입연도) + memberId 뒤 4자리. 항상 8자리 고정 (초과 자리 잘림 허용, UNIQUE 보장 안 함, 프로젝트 보여주기 식 생성 데이터라고 보면 됨)
