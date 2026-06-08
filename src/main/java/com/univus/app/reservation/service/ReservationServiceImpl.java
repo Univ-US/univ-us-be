@@ -1,10 +1,13 @@
 package com.univus.app.reservation.service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -21,12 +24,43 @@ import lombok.RequiredArgsConstructor;
 public class ReservationServiceImpl implements ReservationService {
 
     private static final String DEFAULT_SEAT_STATUS = "RESERVED";
+    private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
+    private static final List<String> DAY_OF_WEEK_LABELS =
+            List.of("일", "월", "화", "수", "목", "금", "토");
+    private static final int MIN_DATE_OPTION_DAYS = 1;
+    private static final int MAX_DATE_OPTION_DAYS = 14;
     private static final LocalTime OPEN_TIME = LocalTime.of(8, 0);
     private static final int SLOT_HOURS = 2;
     private static final int MAX_RESERVATION_HOURS = 6;
 
     private final ReservationMapper reservationMapper;
     private final RedissonClient redissonClient;
+
+    @Override
+    public List<ReservationDto.ReservationDateOptionDto> getReservationDateOptions(int days) {
+        int dateOptionDays = normalizeDateOptionDays(days);
+        LocalDate today = LocalDate.now(RESERVATION_ZONE);
+
+        return IntStream.range(0, dateOptionDays)
+                .mapToObj(index -> {
+                    LocalDate date = today.plusDays(index);
+                    int dayOfWeekValue = date.getDayOfWeek().getValue();
+                    int dayLabelIndex = dayOfWeekValue % DAY_OF_WEEK_LABELS.size();
+
+                    return ReservationDto.ReservationDateOptionDto.builder()
+                            .key(date.toString())
+                            .date(date.toString())
+                            .year(date.getYear())
+                            .month(date.getMonthValue())
+                            .day(date.getDayOfMonth())
+                            .dayOfWeek(DAY_OF_WEEK_LABELS.get(dayLabelIndex))
+                            .today(index == 0)
+                            .sat(dayOfWeekValue == 6)
+                            .sun(dayOfWeekValue == 7)
+                            .build();
+                })
+                .toList();
+    }
 
     @Override
     public List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
@@ -175,6 +209,13 @@ public class ReservationServiceImpl implements ReservationService {
                 && dateTime.getSecond() == 0
                 && dateTime.getNano() == 0
                 && dateTime.getHour() % SLOT_HOURS == 0;
+    }
+
+    private int normalizeDateOptionDays(int days) {
+        if (days < MIN_DATE_OPTION_DAYS) {
+            return MIN_DATE_OPTION_DAYS;
+        }
+        return Math.min(days, MAX_DATE_OPTION_DAYS);
     }
 
     private void validateMember(Long memberId) {
