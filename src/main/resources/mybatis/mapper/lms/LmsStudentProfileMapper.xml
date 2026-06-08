@@ -3,14 +3,14 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.univus.app.lms.mapper.LmsStudentProfileMapper">
 
-    <!-- 조회: 원천 데이터(역할 코드·UNIVERSITY 포함)만 반환. 학번·역할라벨은 서비스에서 조립/변환 -->
+    <!-- 조회: MEMBER(LOGIN_ID=학번)·UNIVERSITY·DEPARTMENT·LMS_PROFILE·최신 이미지. 역할 라벨만 서비스에서 변환 -->
     <select id="findLmsStudentProfileByMemberId"
             resultType="com.univus.app.lms.dto.LmsStudentProfileResponseDto">
         SELECT
             m.MEMBER_NAME    AS lmsStudentProfileName,
             m.ROLE           AS lmsStudentProfileRole,
             u.UNIV_NAME      AS lmsStudentProfileUniversityName,
-            EXTRACT(YEAR FROM m.CREATED_AT) AS admissionYear,
+            m.LOGIN_ID       AS lmsStudentProfileStudentNo,
             d.DEPT_NAME      AS lmsStudentProfileDepartment,
             m.PHONE_NUMBER   AS lmsStudentProfilePhoneNumber,
             lp.LMS_PRF_EMAIL AS lmsStudentProfileEmail,

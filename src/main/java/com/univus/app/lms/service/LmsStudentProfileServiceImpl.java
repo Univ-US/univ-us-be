@@ -40,7 +40,7 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
     @Transactional
     public LmsStudentProfileResponseDto requestGetLmsStudentProfile(Long memberId) {
         ensureLmsProfile(memberId);
-        return findWithStudentNo(memberId);
+        return findWithRoleLabel(memberId);
     }
 
     // SLM-001 수정 (이메일, 이미지)
@@ -67,7 +67,7 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
             lmsStudentProfileMapper.insertProfileImage(lmsPrfId, orgFileName, trnFileName, orgUrl, extType); // 신규 insert
         }
 
-        return findWithStudentNo(memberId); // 최신 재조회
+        return findWithRoleLabel(memberId); // 최신 재조회
     }
 
     // SLM-001/012 탈퇴 요청 (하드삭제 아님 → LMS_USER_SECESSION_REQUEST insert)
@@ -79,11 +79,10 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
         lmsStudentProfileMapper.insertSecessionRequest(lmsPrfId, SecReqStatusCode.REQ.getCode());
     }
 
-    /* 조회 + 학번 조립 (매퍼는 원천 데이터만 반환, 학번은 서비스에서 생성) */
-    private LmsStudentProfileResponseDto findWithStudentNo(Long memberId) {
+    /* 조회 + 역할 코드→한글 라벨 변환 (학번은 매퍼가 LOGIN_ID로 바로 내려줌) */
+    private LmsStudentProfileResponseDto findWithRoleLabel(Long memberId) {
         LmsStudentProfileResponseDto dto = lmsStudentProfileMapper.findLmsStudentProfileByMemberId(memberId);
         if (dto != null) {
-            dto.setLmsStudentProfileStudentNo(toStudentNo(dto.getAdmissionYear(), memberId));
             dto.setLmsStudentProfileRole(toRoleLabel(dto.getLmsStudentProfileRole())); // 역할 코드→라벨
         }
         return dto;
@@ -99,16 +98,6 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
         } catch (IllegalArgumentException e) {
             return roleCode;
         }
-    }
-
-    /* 학번 = 입학연도(가입연도) + memberId 뒤 4자리. 항상 8자리 고정 (초과 자리 잘림 허용, UNIQUE 보장 안 함, 프로젝트 보여주기 식 생성 데이터라고 보면 됨)
-       예) 2022 + 42 → "20220042" / 2022 + 99999 → "20229999"(뒤 4자리) */
-    private String toStudentNo(Integer admissionYear, Long memberId) {
-        if (admissionYear == null || memberId == null) {
-            return null;
-        }
-        long lastFour = memberId % 10000;                       // 뒤 4자리만 (앞자리 잘림 허용)
-        return admissionYear + String.format("%04d", lastFour); // 연도(4) + 4자리 = 항상 8자리
     }
 
     /* 지연 생성(getOrCreate): LMS_PROFILE 없으면 INSERT 후 lmsPrfId 반환 */
