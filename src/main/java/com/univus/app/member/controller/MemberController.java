@@ -23,11 +23,6 @@ public class MemberController {
     memberService.signup(request);
   }
 
-  @GetMapping("/check-member-id")
-  public Map<String, Boolean> checkMemberId(@RequestParam Long memberId) {
-    return Map.of("available", memberService.isMemberIdAvailable(memberId));
-  }
-
   @PostMapping("/login")
   public LoginResponseDto login(@RequestBody LoginRequestDto request,
                                 HttpServletRequest httpServletRequest) {
