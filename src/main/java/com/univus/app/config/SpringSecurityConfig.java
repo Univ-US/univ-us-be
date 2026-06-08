@@ -68,7 +68,7 @@ public class SpringSecurityConfig {
             	        "/api/posts/**",
 
             	        // 중고거래 상품
-            	        "/api/products/**",
+            	        "/api/market/**",
 
             	        // 거래 내역 + 채팅
             	        "/api/trades/**",

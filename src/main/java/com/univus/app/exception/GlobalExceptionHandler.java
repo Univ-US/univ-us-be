@@ -5,6 +5,8 @@ import com.univus.app.member.exception.InvalidLoginException;
 import com.univus.app.member.exception.InvalidLogoutException;
 import com.univus.app.member.exception.InvalidRefreshTokenException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -159,6 +161,34 @@ public class GlobalExceptionHandler {
         ModelAndView mav = new ModelAndView("error/error2");
         mav.addObject("title", "로그아웃 실패");
         mav.addObject("message", ex.getMessage());
+        mav.setStatus(HttpStatus.BAD_REQUEST);
+        return mav;
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    public Object handleDuplicateKey(DuplicateKeyException ex, HttpServletRequest request) {
+        log.info("CONFLICT - ", ex);
+        if (isApiRequest(request))
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", "이미 존재하는 데이터입니다."));
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "중복 데이터");
+        mav.addObject("message", "이미 존재하는 데이터입니다.");
+        mav.setStatus(HttpStatus.CONFLICT);
+        return mav;
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public Object handleDataIntegrityViolation(DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.info("BAD_REQUEST (DB 제약 조건 위반) - ", ex);
+        String message = ex.getMessage() != null && ex.getMessage().contains("NULL") ?
+                "필수 값이 누락되었습니다." : "데이터 무결성 조건에 위반됩니다.";
+        if (isApiRequest(request))
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("success", false, "message", message));
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "잘못된 요청입니다.");
+        mav.addObject("message", message);
         mav.setStatus(HttpStatus.BAD_REQUEST);
         return mav;
     }
