@@ -80,6 +80,28 @@ public class PostService {
     public boolean isLiked(Long postId, Long memberId) {
         return postMapper.selectLikeCount(postId, memberId) > 0;
     }
+
+    // ── 신고 ──────────────────────────────────────
+
+    // 신고 (중복 신고 차단)
+    public Map<String, Object> reportPost(PostDto postDto) {
+        Map<String, Object> result = new HashMap<>();
+        int exists = postMapper.selectReportCount(postDto.getPostId(), postDto.getMemberId());
+        if (exists > 0) {
+            result.put("success", false);
+            result.put("message", "이미 신고한 게시글입니다.");
+            return result;
+        }
+        postMapper.insertReport(postDto);
+        result.put("success", true);
+        result.put("message", "신고가 접수되었습니다.");
+        return result;
+    }
+
+    // 신고 여부 확인
+    public boolean isReported(Long postId, Long memberId) {
+        return postMapper.selectReportCount(postId, memberId) > 0;
+    }
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	

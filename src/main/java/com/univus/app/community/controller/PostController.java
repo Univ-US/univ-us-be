@@ -91,6 +91,25 @@ public class PostController {
         boolean liked = postService.isLiked(postId, memberId);
         return ResponseEntity.ok(Map.of("liked", liked));
     }
+
+    // POST /api/posts/{postId}/report — 신고
+    @PostMapping("/{postId}/report")
+    public ResponseEntity<Map<String, Object>> reportPost(
+            @PathVariable("postId") Long postId,
+            @RequestBody PostDto postDto) {
+        postDto.setPostId(postId);
+        postDto.setMemberId(1L); // TODO: JWT 구현 후 토큰에서 추출
+        Map<String, Object> result = postService.reportPost(postDto);
+        return ResponseEntity.ok(result);
+    }
+
+    // GET /api/posts/{postId}/report — 신고 여부 확인
+    @GetMapping("/{postId}/report")
+    public ResponseEntity<Map<String, Object>> getReportStatus(@PathVariable("postId") Long postId) {
+        Long memberId = 1L; // TODO: JWT 구현 후 토큰에서 추출
+        boolean reported = postService.isReported(postId, memberId);
+        return ResponseEntity.ok(Map.of("reported", reported));
+    }
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	

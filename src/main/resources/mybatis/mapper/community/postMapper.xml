@@ -185,6 +185,22 @@
 	    WHERE POST_ID   = #{param1}
 	      AND MEMBER_ID = #{param2}
 	</delete>
+
+	<!-- ── 신고 ────────────────────────────────────────────────── -->
+
+	<!-- 신고 여부 확인 -->
+	<select id="selectReportCount" resultType="int">
+	    SELECT COUNT(*)
+	    FROM POST_REPORT
+	    WHERE POST_ID   = #{param1}
+	      AND MEMBER_ID = #{param2}
+	</select>
+
+	<!-- 신고 등록 -->
+	<insert id="insertReport" parameterType="com.univus.app.community.dto.PostDto">
+	    INSERT INTO POST_REPORT (REPORT_ID, MEMBER_ID, POST_ID, REASON, DETAIL, PRESSED_AT)
+	    VALUES (SEQ_POST_REPORT.NEXTVAL, #{memberId}, #{postId}, #{reason}, #{detail}, SYSTIMESTAMP)
+	</insert>
 	
 	<!-- ── 댓글 ─────────────────────────────────────────── -->
 
