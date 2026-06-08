@@ -53,6 +53,7 @@ public class SpringSecurityConfig {
 //            	       "/api/auth/**",
 							"/api/auth/signup",
 							"/api/auth/check-member-id",
+							"/api/auth/check-login-id",
 							"/api/auth/login",
 							"/api/auth/refresh",
 							"/api/auth/logout",
@@ -68,6 +69,7 @@ public class SpringSecurityConfig {
 						// 관리자 문의, 대학 목록 (비로그인 가능)
 						"/api/admin/support",
 						"/api/admin/universities",
+						"/api/admin/universities/*",
 
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
