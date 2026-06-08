@@ -96,5 +96,6 @@ public class AdminDto {
     public static class UniversityDto {
         private Long univId;
         private String univName;
+        private String schoolPhone;
     }
 }

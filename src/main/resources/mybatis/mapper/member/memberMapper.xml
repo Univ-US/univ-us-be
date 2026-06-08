@@ -4,9 +4,32 @@
 
 <mapper namespace="com.univus.app.member.mapper.MemberMapper">
 
+    <select id="findByLoginIdAndUnivId" resultType="com.univus.app.member.dto.MemberDto">
+        SELECT
+            M.MEMBER_ID,
+            M.LOGIN_ID,
+            M.UNIV_ID,
+            MD.DEPT_ID,
+            M.PASSWORD,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.PHONE_NUMBER,
+            M.GENDER,
+            M.STATUS,
+            M.CREATED_AT,
+            M.LOGTIME_AT,
+            M.BIRTH,
+            MD.COMMUNITY_NICKNAME
+        FROM MEMBER M
+                 LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+        WHERE M.LOGIN_ID = #{loginId}
+          AND M.UNIV_ID = #{univId}
+    </select>
+
     <select id="findByMemberId" resultType="com.univus.app.member.dto.MemberDto">
         SELECT
             M.MEMBER_ID,
+            M.LOGIN_ID,
             M.UNIV_ID,
             MD.DEPT_ID,
             M.PASSWORD,
@@ -24,10 +47,10 @@
         WHERE M.MEMBER_ID = #{memberId}
     </select>
 
-    <select id="existsByMemberId" resultType="int">
+    <select id="existsByLoginId" resultType="int">
         SELECT COUNT(*)
         FROM MEMBER
-        WHERE MEMBER_ID = #{memberId}
+        WHERE LOGIN_ID = #{loginId}
     </select>
 
     <select id="existsByCommunityNickname" resultType="int">
@@ -38,7 +61,7 @@
 
     <insert id="insertMember" parameterType="com.univus.app.member.dto.MemberDto">
         INSERT INTO MEMBER (
-            MEMBER_ID,
+            LOGIN_ID,
             PASSWORD,
             MEMBER_NAME,
             ROLE,
@@ -49,7 +72,7 @@
             LOGTIME_AT,
             BIRTH
         ) VALUES (
-                     #{memberId},
+                     #{loginId},
                      #{password},
                      #{memberName},
                      #{role},

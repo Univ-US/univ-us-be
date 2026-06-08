@@ -32,4 +32,6 @@ public interface AdminMapper {
     List<AdminDto.SupportListDto> selectSupportList(@Param("univId") Long univId);
 
     List<AdminDto.UniversityDto> selectUniversityList();
+
+    AdminDto.UniversityDto selectUniversityById(@Param("univId") Long univId);
 }
