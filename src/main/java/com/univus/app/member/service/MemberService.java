@@ -126,6 +126,8 @@ public class MemberService {
     response.setTokenType(jwtTokenProvider.getTokenType());
     response.setMemberId(member.getMemberId());
     response.setRole(member.getRole());
+    response.setMemberName(member.getMemberName());
+    response.setCommunityNickname(member.getCommunityNickname());
 
     return response;
   }

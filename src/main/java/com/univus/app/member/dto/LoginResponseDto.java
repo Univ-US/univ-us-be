@@ -12,5 +12,7 @@ public class LoginResponseDto {
     private String tokenType;
     private Long memberId;
     private String role;
+    private String memberName;
+    private String communityNickname;
 
 }
