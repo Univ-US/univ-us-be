@@ -37,11 +37,12 @@ public class ReservationServiceImpl implements ReservationService {
     private final RedissonClient redissonClient;
 
     @Override
-    public List<ReservationDto.ReservationDateOptionDto> getReservationDateOptions(int days) {
+    public ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days) {
         int dateOptionDays = normalizeDateOptionDays(days);
-        LocalDate today = LocalDate.now(RESERVATION_ZONE);
+        LocalDateTime serverNow = LocalDateTime.now(RESERVATION_ZONE);
+        LocalDate today = serverNow.toLocalDate();
 
-        return IntStream.range(0, dateOptionDays)
+        List<ReservationDto.ReservationDateOptionDto> dates = IntStream.range(0, dateOptionDays)
                 .mapToObj(index -> {
                     LocalDate date = today.plusDays(index);
                     int dayOfWeekValue = date.getDayOfWeek().getValue();
@@ -60,6 +61,11 @@ public class ReservationServiceImpl implements ReservationService {
                             .build();
                 })
                 .toList();
+
+        return ReservationDto.ReservationDateOptionsResponseDto.builder()
+                .serverNow(serverNow)
+                .dates(dates)
+                .build();
     }
 
     @Override
@@ -179,6 +185,10 @@ public class ReservationServiceImpl implements ReservationService {
     private void validateReservationTimePolicy(LocalDateTime startTime, LocalDateTime endTime) {
         if (!isEvenHourBoundary(startTime) || !isEvenHourBoundary(endTime)) {
             throw new IllegalArgumentException("예약 시간은 짝수 시간대의 2시간 단위로 선택해야 합니다.");
+        }
+
+        if (!endTime.isAfter(LocalDateTime.now(RESERVATION_ZONE))) {
+            throw new IllegalArgumentException("이미 종료된 예약 시간입니다.");
         }
 
         LocalDateTime closeTime = startTime.toLocalDate().plusDays(1).atStartOfDay();
