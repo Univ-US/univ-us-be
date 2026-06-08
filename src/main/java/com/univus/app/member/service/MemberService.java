@@ -82,6 +82,13 @@ public class MemberService {
     return loginWithAllowedRoles(request, ipAddress, Set.of("ADM", "PROF", "STU", "ALU"));
   }
 
+  @Transactional(readOnly = true)
+  public boolean isLoginIdAvailable(String loginId) {
+    return loginId != null
+            && !loginId.isBlank()
+            && memberMapper.existsByLoginId(loginId) == 0;
+  }
+
   private LoginResponseDto loginWithAllowedRoles(
       LoginRequestDto request,
       String ipAddress,

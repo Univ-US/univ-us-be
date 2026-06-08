@@ -43,6 +43,11 @@ public class MemberController {
     return memberService.userLogin(request, httpServletRequest.getRemoteAddr());
   }
 
+  @GetMapping("/check-login-id")
+  public Map<String, Boolean> checkLoginId(@RequestParam String loginId) {
+    return Map.of("available", memberService.isLoginIdAvailable(loginId));
+  }
+
   @PostMapping("/refresh")
   public RefreshTokenResponseDto refreshAccessToken(@RequestBody RefreshTokenRequestDto request) {
     return memberService.refreshAccessToken(request);
