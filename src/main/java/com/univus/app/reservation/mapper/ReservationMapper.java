@@ -25,6 +25,11 @@ public interface ReservationMapper {
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
+    int countOverlappingMemberReadingSeatReservation(
+            @Param("memberId") Long memberId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
     int countUsableReadingSeat(@Param("seatId") Long seatId);
 
     int insertReadingSeatReservation(ReservationDto.ReadingSeatReservationDto reservation);

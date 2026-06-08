@@ -40,4 +40,8 @@ public class PostDto {
     private int page;
     private int size;
     private String keyword;
+
+    // ── 신고 ──────────────────────────────────────
+    private String reason;           // POST_REPORT.REASON
+    private String detail;           // POST_REPORT.DETAIL
 }
