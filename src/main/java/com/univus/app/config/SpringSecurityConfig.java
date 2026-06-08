@@ -65,6 +65,10 @@ public class SpringSecurityConfig {
 						//ai챗봇
 						"/api/ai/**",
 
+						// 관리자 문의, 대학 목록 (비로그인 가능)
+						"/api/admin/support",
+						"/api/admin/universities",
+
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
 
