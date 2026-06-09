@@ -22,4 +22,5 @@ public class MemberDto {
   private LocalDateTime logtimeAt;
   private String birth;
   private String communityNickname;
+  private String univName;
 }

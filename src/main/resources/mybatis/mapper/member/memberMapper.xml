@@ -4,26 +4,6 @@
 
 <mapper namespace="com.univus.app.member.mapper.MemberMapper">
 
-    <select id="findByMemberId" resultType="com.univus.app.member.dto.MemberDto">
-        SELECT
-            M.MEMBER_ID,
-            M.UNIV_ID,
-            MD.DEPT_ID,
-            M.PASSWORD,
-            M.MEMBER_NAME,
-            M.ROLE,
-            M.PHONE_NUMBER,
-            M.GENDER,
-            M.STATUS,
-            M.CREATED_AT,
-            M.LOGTIME_AT,
-            M.BIRTH,
-            MD.COMMUNITY_NICKNAME
-        FROM MEMBER M
-                 LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
-        WHERE M.MEMBER_ID = #{memberId}
-    </select>
-
     <select id="findByLoginIdAndUnivId" resultType="com.univus.app.member.dto.MemberDto">
         SELECT
             M.MEMBER_ID,
@@ -39,11 +19,35 @@
             M.CREATED_AT,
             M.LOGTIME_AT,
             M.BIRTH,
-            MD.COMMUNITY_NICKNAME
+            MD.COMMUNITY_NICKNAME,
+            U.UNIV_NAME
         FROM MEMBER M
                  LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+                 LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID
         WHERE M.LOGIN_ID = #{loginId}
-          <if test="univId != null">AND M.UNIV_ID = #{univId}</if>
+          AND M.UNIV_ID = #{univId}
+    </select>
+
+    <select id="findByMemberId" resultType="com.univus.app.member.dto.MemberDto">
+        SELECT
+            M.MEMBER_ID,
+            M.UNIV_ID,
+            MD.DEPT_ID,
+            M.PASSWORD,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.PHONE_NUMBER,
+            M.GENDER,
+            M.STATUS,
+            M.CREATED_AT,
+            M.LOGTIME_AT,
+            M.BIRTH,
+            MD.COMMUNITY_NICKNAME,
+            U.UNIV_NAME
+        FROM MEMBER M
+                 LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+                 LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID
+        WHERE M.MEMBER_ID = #{memberId}
     </select>
 
     <select id="existsByMemberId" resultType="int">
@@ -77,17 +81,17 @@
             LOGTIME_AT,
             BIRTH
         ) VALUES (
-                     #{loginId},
-                     #{password},
-                     #{memberName},
-                     #{role},
-                     #{phoneNumber},
-                     #{gender},
-                     #{status},
-                     SYSTIMESTAMP,
-                     SYSTIMESTAMP,
-                     #{birth}
-                 )
+            #{loginId},
+            #{password},
+            #{memberName},
+            #{role},
+            #{phoneNumber},
+            #{gender},
+            #{status},
+            SYSTIMESTAMP,
+            SYSTIMESTAMP,
+            #{birth}
+        )
     </insert>
 
     <insert id="insertMemberDetail" parameterType="com.univus.app.member.dto.MemberDto">
@@ -96,10 +100,10 @@
             DEPT_ID,
             COMMUNITY_NICKNAME
         ) VALUES (
-                     #{memberId},
-                     #{deptId},
-                     #{communityNickname}
-                 )
+            #{memberId},
+            #{deptId},
+            #{communityNickname}
+        )
     </insert>
 
     <update id="updateLogtimeAt">
@@ -116,12 +120,12 @@
             FAIL_REASON,
             LOG_TIME
         ) VALUES (
-                     SEQ_LOGIN_LOG.NEXTVAL,
-                     #{memberId},
-                     #{result},
-                     #{failReason},
-                     SYSTIMESTAMP
-                 )
+            SEQ_LOGIN_LOG.NEXTVAL,
+            #{memberId},
+            #{result},
+            #{failReason},
+            SYSTIMESTAMP
+        )
     </insert>
 
     <insert id="insertLoginSession" parameterType="com.univus.app.member.dto.LoginSessionDto">
@@ -134,14 +138,14 @@
             REVOKED_AT,
             IP_ADDRESS
         ) VALUES (
-                     SEQ_LOGIN_SESSION.NEXTVAL,
-                     #{memberId},
-                     #{refreshToken},
-                     SYSTIMESTAMP,
-                     SYSTIMESTAMP + 7,
-                     NULL,
-                     #{ipAddress}
-                 )
+            SEQ_LOGIN_SESSION.NEXTVAL,
+            #{memberId},
+            #{refreshToken},
+            SYSTIMESTAMP,
+            SYSTIMESTAMP + 7,
+            NULL,
+            #{ipAddress}
+        )
     </insert>
 
     <select id="findActiveLoginSessionByRefreshToken"

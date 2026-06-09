@@ -13,6 +13,7 @@ public class LoginResponseDto {
     private Long memberId;
     private String role;
     private Long univId;
+    private String univName;
     private String memberName;
     private String communityNickname;
 
