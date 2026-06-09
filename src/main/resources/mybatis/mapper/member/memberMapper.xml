@@ -28,6 +28,33 @@
           AND M.UNIV_ID = #{univId}
     </select>
 
+    <!--
+    관리자/게스트 로그인처럼 학교 선택 없이 loginId만으로 회원을 조회합니다.
+    admin/login은 프론트에서 univId를 보내지 않으므로 이 쿼리를 사용합니다.
+    -->
+    <select id="findByLoginId" resultType="com.univus.app.member.dto.MemberDto">
+        SELECT
+            M.MEMBER_ID,
+            M.LOGIN_ID,
+            M.UNIV_ID,
+            MD.DEPT_ID,
+            M.PASSWORD,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.PHONE_NUMBER,
+            M.GENDER,
+            M.STATUS,
+            M.CREATED_AT,
+            M.LOGTIME_AT,
+            M.BIRTH,
+            MD.COMMUNITY_NICKNAME,
+            U.UNIV_NAME
+        FROM MEMBER M
+                 LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+                 LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID
+        WHERE M.LOGIN_ID = #{loginId}
+    </select>
+
     <select id="findByMemberId" resultType="com.univus.app.member.dto.MemberDto">
         SELECT
             M.MEMBER_ID,
