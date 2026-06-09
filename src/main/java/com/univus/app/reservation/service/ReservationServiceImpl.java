@@ -13,6 +13,8 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.univus.app.reservation.dto.ReservationDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
@@ -109,12 +111,12 @@ public class ReservationServiceImpl implements ReservationService {
         boolean seatLocked = false;
 
         try {
-            memberLocked = memberLock.tryLock(5, 10, TimeUnit.SECONDS);
+            memberLocked = memberLock.tryLock(5, TimeUnit.SECONDS);
             if (!memberLocked) {
                 throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
             }
 
-            seatLocked = seatLock.tryLock(5, 10, TimeUnit.SECONDS);
+            seatLocked = seatLock.tryLock(5, TimeUnit.SECONDS);
             if (!seatLocked) {
                 throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
             }
@@ -155,11 +157,11 @@ public class ReservationServiceImpl implements ReservationService {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
         } finally {
-            if (seatLocked && seatLock.isHeldByCurrentThread()) {
-                seatLock.unlock();
+            if (seatLocked) {
+                unlockAfterTransaction(seatLock);
             }
-            if (memberLocked && memberLock.isHeldByCurrentThread()) {
-                memberLock.unlock();
+            if (memberLocked) {
+                unlockAfterTransaction(memberLock);
             }
         }
     }
@@ -236,7 +238,7 @@ public class ReservationServiceImpl implements ReservationService {
         boolean roomLocked = false;
 
         try {
-            roomLocked = roomLock.tryLock(5, 10, TimeUnit.SECONDS);
+            roomLocked = roomLock.tryLock(5, TimeUnit.SECONDS);
             if (!roomLocked) {
                 throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
             }
@@ -270,9 +272,34 @@ public class ReservationServiceImpl implements ReservationService {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
         } finally {
-            if (roomLocked && roomLock.isHeldByCurrentThread()) {
-                roomLock.unlock();
+            if (roomLocked) {
+                unlockAfterTransaction(roomLock);
             }
+        }
+    }
+
+    private void unlockAfterTransaction(RLock lock) {
+        if (!lock.isHeldByCurrentThread()) {
+            return;
+        }
+
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            lock.unlock();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                unlockIfHeldByCurrentThread(lock);
+            }
+        });
+    }
+
+    private void unlockIfHeldByCurrentThread(RLock lock) {
+        if (lock.isHeldByCurrentThread()) {
+            lock.unlock();
         }
     }
 
