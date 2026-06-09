@@ -3,10 +3,13 @@ package com.univus.app.community.controller;
 import com.univus.app.community.dto.PostDto;
 import com.univus.app.community.service.PostService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import com.univus.app.community.dto.PostCommentDto;
@@ -39,9 +42,10 @@ public class PostController {
 
     // POST /api/posts
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Map<String, Object>> writePost(@RequestBody PostDto postDto) {
-        // 임시 멤버 ID (로그인 구현 전)
-        postDto.setMemberId(1L);
+    public ResponseEntity<Map<String, Object>> writePost(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody PostDto postDto) {
+        postDto.setMemberId(requireMemberId(memberId));
 
         int result = postService.writePost(postDto);
         if (result > 0) {
@@ -58,9 +62,10 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @AuthenticationPrincipal Long memberId) {
         PostDto postDto = new PostDto();
-        postDto.setMemberId(1L);
+        postDto.setMemberId(requireMemberId(memberId));
         postDto.setBoardId(boardId);
         postDto.setTitle(title);
         postDto.setContent(content);
@@ -108,19 +113,21 @@ public class PostController {
 
     // ── 좋아요 ──────────────────────────────────────────────
 
-    // POST /api/posts/{postId}/like — 좋아요 토글 (로그인 구현 전 임시 memberId=1)
+    // POST /api/posts/{postId}/like — 좋아요 토글
     @PostMapping("/{postId}/like")
-    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable("postId") Long postId) {
-        Long memberId = 1L;
-        Map<String, Object> result = postService.toggleLike(postId, memberId);
+    public ResponseEntity<Map<String, Object>> toggleLike(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId) {
+        Map<String, Object> result = postService.toggleLike(postId, requireMemberId(memberId));
         return ResponseEntity.ok(result);
     }
 
     // GET /api/posts/{postId}/like — 좋아요 여부 확인
     @GetMapping("/{postId}/like")
-    public ResponseEntity<Map<String, Object>> getLikeStatus(@PathVariable("postId") Long postId) {
-        Long memberId = 1L;
-        boolean liked = postService.isLiked(postId, memberId);
+    public ResponseEntity<Map<String, Object>> getLikeStatus(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId) {
+        boolean liked = postService.isLiked(postId, requireMemberId(memberId));
         return ResponseEntity.ok(Map.of("liked", liked));
     }
 
@@ -128,18 +135,20 @@ public class PostController {
     @PostMapping("/{postId}/report")
     public ResponseEntity<Map<String, Object>> reportPost(
             @PathVariable("postId") Long postId,
-            @RequestBody PostDto postDto) {
+            @RequestBody PostDto postDto,
+            @AuthenticationPrincipal Long memberId) {
         postDto.setPostId(postId);
-        postDto.setMemberId(1L); // TODO: JWT 구현 후 토큰에서 추출
+        postDto.setMemberId(requireMemberId(memberId));
         Map<String, Object> result = postService.reportPost(postDto);
         return ResponseEntity.ok(result);
     }
 
     // GET /api/posts/{postId}/report — 신고 여부 확인
     @GetMapping("/{postId}/report")
-    public ResponseEntity<Map<String, Object>> getReportStatus(@PathVariable("postId") Long postId) {
-        Long memberId = 1L; // TODO: JWT 구현 후 토큰에서 추출
-        boolean reported = postService.isReported(postId, memberId);
+    public ResponseEntity<Map<String, Object>> getReportStatus(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId) {
+        boolean reported = postService.isReported(postId, requireMemberId(memberId));
         return ResponseEntity.ok(Map.of("reported", reported));
     }
     
@@ -156,9 +165,9 @@ public class PostController {
 	 @PostMapping("/{postId}/comments")
 	 public ResponseEntity<Map<String, Object>> writeComment(
 	         @PathVariable("postId") Long postId,
-	         @RequestBody PostCommentDto commentDto) {
-	     // 임시 멤버 ID (로그인 구현 전)
-	     commentDto.setMemberId(1L);
+	         @RequestBody PostCommentDto commentDto,
+	         @AuthenticationPrincipal Long memberId) {
+	     commentDto.setMemberId(requireMemberId(memberId));
 	     commentDto.setPostId(postId);
 	
 	     int result = postService.writeComment(commentDto);
@@ -214,5 +223,12 @@ public class PostController {
     @GetMapping("/{postId}/images")
     public ResponseEntity<List<PostImageDto>> getPostImages(@PathVariable("postId") Long postId) {
         return ResponseEntity.ok(postService.getPostImageList(postId));
+    }
+
+    private Long requireMemberId(Long memberId) {
+        if (memberId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        return memberId;
     }
 }
