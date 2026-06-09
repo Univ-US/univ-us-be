@@ -39,7 +39,7 @@ public class MarketController {
     // GET /api/market/products/{productId}
     @GetMapping("/products/{productId}")
     public ResponseEntity<Map<String, Object>> getProductDetail(
-            @PathVariable Long productId) {
+            @PathVariable("productId") Long productId) {
 
         MarketDto.ProductDto product = marketService.getProductDetail(productId);
 
@@ -60,6 +60,7 @@ public class MarketController {
     public ResponseEntity<Map<String, Object>> createProduct(
             @RequestBody MarketDto.ProductCreateDto createDto) {
 
+        createDto.setMemberId(1L); // TODO: JWT 구현 후 토큰에서 추출
         int rows = marketService.createProduct(createDto);
 
         Map<String, Object> result = new HashMap<>();
@@ -72,7 +73,7 @@ public class MarketController {
     // PUT /api/market/products/{productId}
     @PutMapping("/products/{productId}")
     public ResponseEntity<Map<String, Object>> updateProduct(
-            @PathVariable Long productId,
+            @PathVariable("productId") Long productId,
             @RequestBody MarketDto.ProductUpdateDto updateDto) {
 
         updateDto.setProductId(productId);
@@ -88,7 +89,7 @@ public class MarketController {
     // DELETE /api/market/products/{productId}
     @DeleteMapping("/products/{productId}")
     public ResponseEntity<Map<String, Object>> deleteProduct(
-            @PathVariable Long productId) {
+            @PathVariable("productId") Long productId) {
 
         int rows = marketService.deleteProduct(productId);
 
@@ -104,7 +105,7 @@ public class MarketController {
     // GET /api/market/products/{productId}/comments
     @GetMapping("/products/{productId}/comments")
     public ResponseEntity<Map<String, Object>> getCommentList(
-            @PathVariable Long productId) {
+            @PathVariable("productId") Long productId) {
 
         List<MarketDto.ProductCommentDto> comments =
                 marketService.getProductCommentList(productId);
@@ -119,10 +120,11 @@ public class MarketController {
     // POST /api/market/products/{productId}/comments
     @PostMapping("/products/{productId}/comments")
     public ResponseEntity<Map<String, Object>> createComment(
-            @PathVariable Long productId,
+            @PathVariable("productId") Long productId,
             @RequestBody MarketDto.ProductCommentCreateDto createDto) {
 
         createDto.setProductId(productId);
+        createDto.setMemberId(1L); // TODO: JWT 구현 후 토큰에서 추출
         int rows = marketService.createProductComment(createDto);
 
         Map<String, Object> result = new HashMap<>();
@@ -135,7 +137,7 @@ public class MarketController {
     // DELETE /api/market/comments/{commentId}
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<Map<String, Object>> deleteComment(
-            @PathVariable Long commentId) {
+            @PathVariable("commentId") Long commentId) {
 
         int rows = marketService.deleteProductComment(commentId);
 
@@ -151,10 +153,11 @@ public class MarketController {
     // POST /api/market/products/{productId}/like
     @PostMapping("/products/{productId}/like")
     public ResponseEntity<Map<String, Object>> toggleLike(
-            @PathVariable Long productId,
+            @PathVariable("productId") Long productId,
             @RequestBody MarketDto.ProductLikeDto likeDto) {
 
         likeDto.setProductId(productId);
+        likeDto.setMemberId(1L); // TODO: JWT 구현 후 토큰에서 추출
         boolean liked = marketService.toggleProductLike(likeDto);
 
         Map<String, Object> result = new HashMap<>();
@@ -168,7 +171,7 @@ public class MarketController {
     // GET /api/market/likes?memberId=1
     @GetMapping("/likes")
     public ResponseEntity<Map<String, Object>> getMyLikeList(
-            @RequestParam Long memberId) {
+            @RequestParam("memberId") Long memberId) {
 
         List<MarketDto.ProductDto> list = marketService.getMyLikeList(memberId);
 

@@ -50,6 +50,12 @@
         WHERE M.MEMBER_ID = #{memberId}
     </select>
 
+    <select id="existsByMemberId" resultType="int">
+        SELECT COUNT(*)
+        FROM MEMBER
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
     <select id="existsByLoginId" resultType="int">
         SELECT COUNT(*)
         FROM MEMBER
@@ -75,17 +81,17 @@
             LOGTIME_AT,
             BIRTH
         ) VALUES (
-                     #{loginId},
-                     #{password},
-                     #{memberName},
-                     #{role},
-                     #{phoneNumber},
-                     #{gender},
-                     #{status},
-                     SYSTIMESTAMP,
-                     SYSTIMESTAMP,
-                     #{birth}
-                 )
+            #{loginId},
+            #{password},
+            #{memberName},
+            #{role},
+            #{phoneNumber},
+            #{gender},
+            #{status},
+            SYSTIMESTAMP,
+            SYSTIMESTAMP,
+            #{birth}
+        )
     </insert>
 
     <insert id="insertMemberDetail" parameterType="com.univus.app.member.dto.MemberDto">
@@ -94,10 +100,10 @@
             DEPT_ID,
             COMMUNITY_NICKNAME
         ) VALUES (
-                     #{memberId},
-                     #{deptId},
-                     #{communityNickname}
-                 )
+            #{memberId},
+            #{deptId},
+            #{communityNickname}
+        )
     </insert>
 
     <update id="updateLogtimeAt">
@@ -114,12 +120,12 @@
             FAIL_REASON,
             LOG_TIME
         ) VALUES (
-                     SEQ_LOGIN_LOG.NEXTVAL,
-                     #{memberId},
-                     #{result},
-                     #{failReason},
-                     SYSTIMESTAMP
-                 )
+            SEQ_LOGIN_LOG.NEXTVAL,
+            #{memberId},
+            #{result},
+            #{failReason},
+            SYSTIMESTAMP
+        )
     </insert>
 
     <insert id="insertLoginSession" parameterType="com.univus.app.member.dto.LoginSessionDto">
@@ -132,14 +138,14 @@
             REVOKED_AT,
             IP_ADDRESS
         ) VALUES (
-                     SEQ_LOGIN_SESSION.NEXTVAL,
-                     #{memberId},
-                     #{refreshToken},
-                     SYSTIMESTAMP,
-                     SYSTIMESTAMP + 7,
-                     NULL,
-                     #{ipAddress}
-                 )
+            SEQ_LOGIN_SESSION.NEXTVAL,
+            #{memberId},
+            #{refreshToken},
+            SYSTIMESTAMP,
+            SYSTIMESTAMP + 7,
+            NULL,
+            #{ipAddress}
+        )
     </insert>
 
     <select id="findActiveLoginSessionByRefreshToken"

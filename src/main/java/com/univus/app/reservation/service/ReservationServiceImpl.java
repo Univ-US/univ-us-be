@@ -1,10 +1,13 @@
 package com.univus.app.reservation.service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -21,12 +24,51 @@ import lombok.RequiredArgsConstructor;
 public class ReservationServiceImpl implements ReservationService {
 
     private static final String DEFAULT_SEAT_STATUS = "RESERVED";
+    private static final String MEMBER_LOCK_KEY_PREFIX = "reservation:reading-seat:member:";
+    private static final String SEAT_LOCK_KEY_PREFIX = "reservation:reading-seat:";
+    private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
+    private static final List<String> DAY_OF_WEEK_LABELS =
+            List.of("일", "월", "화", "수", "목", "금", "토");
+    private static final int MIN_DATE_OPTION_DAYS = 1;
+    private static final int MAX_DATE_OPTION_DAYS = 14;
     private static final LocalTime OPEN_TIME = LocalTime.of(8, 0);
     private static final int SLOT_HOURS = 2;
     private static final int MAX_RESERVATION_HOURS = 6;
 
     private final ReservationMapper reservationMapper;
     private final RedissonClient redissonClient;
+
+    @Override
+    public ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days) {
+        int dateOptionDays = normalizeDateOptionDays(days);
+        LocalDateTime serverNow = LocalDateTime.now(RESERVATION_ZONE);
+        LocalDate today = serverNow.toLocalDate();
+
+        List<ReservationDto.ReservationDateOptionDto> dates = IntStream.range(0, dateOptionDays)
+                .mapToObj(index -> {
+                    LocalDate date = today.plusDays(index);
+                    int dayOfWeekValue = date.getDayOfWeek().getValue();
+                    int dayLabelIndex = dayOfWeekValue % DAY_OF_WEEK_LABELS.size();
+
+                    return ReservationDto.ReservationDateOptionDto.builder()
+                            .key(date.toString())
+                            .date(date.toString())
+                            .year(date.getYear())
+                            .month(date.getMonthValue())
+                            .day(date.getDayOfMonth())
+                            .dayOfWeek(DAY_OF_WEEK_LABELS.get(dayLabelIndex))
+                            .today(index == 0)
+                            .sat(dayOfWeekValue == 6)
+                            .sun(dayOfWeekValue == 7)
+                            .build();
+                })
+                .toList();
+
+        return ReservationDto.ReservationDateOptionsResponseDto.builder()
+                .serverNow(serverNow)
+                .dates(dates)
+                .build();
+    }
 
     @Override
     public List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
@@ -58,19 +100,33 @@ public class ReservationServiceImpl implements ReservationService {
         validateMember(memberId);
         validateReservationRequest(request);
 
-        String lockKey = "reservation:reading-seat:" + request.getSeatId();
-        RLock lock = redissonClient.getLock(lockKey);
-        boolean locked = false;
+        RLock memberLock = redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId);
+        RLock seatLock = redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + request.getSeatId());
+        boolean memberLocked = false;
+        boolean seatLocked = false;
 
         try {
-            locked = lock.tryLock(5, 10, TimeUnit.SECONDS);
-            if (!locked) {
+            memberLocked = memberLock.tryLock(5, 10, TimeUnit.SECONDS);
+            if (!memberLocked) {
+                throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
+            }
+
+            seatLocked = seatLock.tryLock(5, 10, TimeUnit.SECONDS);
+            if (!seatLocked) {
                 throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
             }
 
             int usableSeatCount = reservationMapper.countUsableReadingSeat(request.getSeatId());
             if (usableSeatCount == 0) {
                 throw new IllegalArgumentException("사용 가능한 좌석이 아닙니다.");
+            }
+
+            int memberOverlapCount = reservationMapper.countOverlappingMemberReadingSeatReservation(
+                    memberId,
+                    request.getStartTime(),
+                    request.getEndTime());
+            if (memberOverlapCount > 0) {
+                throw new IllegalStateException("같은 시간대에 이미 예약한 좌석이 있습니다.");
             }
 
             int overlapCount = reservationMapper.countOverlappingReadingSeatReservation(
@@ -96,8 +152,11 @@ public class ReservationServiceImpl implements ReservationService {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
         } finally {
-            if (locked && lock.isHeldByCurrentThread()) {
-                lock.unlock();
+            if (seatLocked && seatLock.isHeldByCurrentThread()) {
+                seatLock.unlock();
+            }
+            if (memberLocked && memberLock.isHeldByCurrentThread()) {
+                memberLock.unlock();
             }
         }
     }
@@ -147,6 +206,10 @@ public class ReservationServiceImpl implements ReservationService {
             throw new IllegalArgumentException("예약 시간은 짝수 시간대의 2시간 단위로 선택해야 합니다.");
         }
 
+        if (!endTime.isAfter(LocalDateTime.now(RESERVATION_ZONE))) {
+            throw new IllegalArgumentException("이미 종료된 예약 시간입니다.");
+        }
+
         LocalDateTime closeTime = startTime.toLocalDate().plusDays(1).atStartOfDay();
         if (startTime.toLocalTime().isBefore(OPEN_TIME) || endTime.isAfter(closeTime)) {
             throw new IllegalArgumentException("예약 가능 시간은 08:00부터 24:00까지입니다.");
@@ -175,6 +238,13 @@ public class ReservationServiceImpl implements ReservationService {
                 && dateTime.getSecond() == 0
                 && dateTime.getNano() == 0
                 && dateTime.getHour() % SLOT_HOURS == 0;
+    }
+
+    private int normalizeDateOptionDays(int days) {
+        if (days < MIN_DATE_OPTION_DAYS) {
+            return MIN_DATE_OPTION_DAYS;
+        }
+        return Math.min(days, MAX_DATE_OPTION_DAYS);
     }
 
     private void validateMember(Long memberId) {

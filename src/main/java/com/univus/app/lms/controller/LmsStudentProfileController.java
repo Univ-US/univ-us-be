@@ -19,6 +19,7 @@ public class LmsStudentProfileController {
     private final LmsStudentProfileService lmsStudentProfileService;
 
     /** SLM-001 학생 프로필 조회 (LMS_PROFILE 없으면 지연 생성) */
+    //TODO: 멤버 테이블에 이메일이랑 학번(ID) 생기면 로직 변경
     // GET /api/lms/student/profile
     @GetMapping("/profile")
     public ResponseEntity<LmsStudentProfileResponseDto> requestGetLmsStudentProfile(Authentication authentication) {
@@ -26,9 +27,8 @@ public class LmsStudentProfileController {
         return ResponseEntity.ok(lmsStudentProfileService.requestGetLmsStudentProfile(memberId)); // 200
     }
 
-    /**
-     * TODO: 배포 시 저장 경로 설정 필수
-     * SLM-001 학생 프로필 수정 (multipart: 텍스트 + 이미지) */
+    /** SLM-001 학생 프로필 수정 (multipart: 텍스트 + 이미지) */
+    //TODO: 멤버 테이블에 이메일이랑 학번(ID) 생기면 로직 변경
     // PUT /api/lms/student/profile (multipart/form-data)
     @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<LmsStudentProfileResponseDto> requestUpdateLmsStudentProfile(

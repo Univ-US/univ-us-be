@@ -79,7 +79,14 @@ public class MemberService {
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto userLogin(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, Set.of("PROF", "STU", "ALU"));
+    return loginWithAllowedRoles(request, ipAddress, Set.of("ADM", "PROF", "STU", "ALU"));
+  }
+
+  @Transactional(readOnly = true)
+  public boolean isLoginIdAvailable(String loginId) {
+    return loginId != null
+            && !loginId.isBlank()
+            && memberMapper.existsByLoginId(loginId) == 0;
   }
 
   private LoginResponseDto loginWithAllowedRoles(
@@ -129,6 +136,7 @@ public class MemberService {
     response.setUnivId(member.getUnivId());
     response.setUnivName(member.getUnivName());
     response.setMemberName(member.getMemberName());
+    response.setCommunityNickname(member.getCommunityNickname());
 
     return response;
   }

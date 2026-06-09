@@ -133,6 +133,41 @@ main push / 수동 실행 (workflow_dispatch)
 
 > 첫 배포 전 **클러스터 1회 세팅**(네임스페이스 · `ghcr-cred` imagePullSecret · ConfigMap/Secret/PVC · local-path StorageClass · IngressRoute)은 **서버 인프라 측 담당**.
 
+### 🔙 롤백 (배포 되돌리기)
+
+> **핵심: 런타임 롤백(helm) ≠ 코드 롤백(git revert)** — 둘은 독립이다. `main` 병합은 항상 **앞으로(배포)** 가는 동작이고, 되돌리기는 helm·revert가 담당한다. 이미지 태그가 **커밋 SHA(불변)** 이고 helm이 **릴리스 리비전**을 추적하므로 언제든 이전 상태로 복구 가능.
+
+**① `helm rollback` — 서버 즉시 복구 (가장 빠름, git 무관 · 서버 VM에서)**
+```bash
+helm history univ-us-be -n univus                # 리비전 이력 (REVISION / STATUS / DESCRIPTION)
+helm rollback univ-us-be <이전리비전> -n univus    # 그 리비전(이미지SHA+차트)으로 즉시 롤링
+```
+- 재빌드·GitHub Actions를 안 거쳐 **1분 내 복구** → **장애 긴급복구 1순위**.
+- ⚠️ 차트(IngressRoute 등)까지 그 리비전 상태로 **통째** 되돌아감(부분 롤백 아님).
+- git 히스토리엔 잘못된 코드가 그대로 남으므로, 안정화 후 **③으로 정리**.
+
+**② 특정 good 이미지(커밋 SHA)로 재배포 (서버 VM에서)**
+```bash
+helm upgrade univ-us-be ./charts/univ-us-be --set image.tag=<good-sha> -n univus
+```
+- 이미지가 커밋 SHA 불변 태그라 과거 이미지가 **GHCR에 그대로** → 원하는 버전을 콕 집어 소환.
+
+**③ `git revert` — 코드 영구 수정 (fix-forward)**
+```bash
+git switch -c fix/revert-bad dev
+git revert <잘못된커밋SHA>     # 그 변경을 취소하는 새 커밋 (머지커밋이면 -m 1)
+# → dev로 PR → 병합 → (main) → 재배포
+```
+- ⚠️ 공유 브랜치(`dev`/`main`)에서 **`git reset --hard`(히스토리 삭제) 금지** — 협업이 깨진다. 공유 브랜치는 **revert**(되돌리는 커밋을 쌓는 방식)가 정석.
+- 커밋 "일부만" 잘못이면 revert 대신 **그 부분만 고치는 새 커밋**(fix-forward)이 깔끔.
+
+**🚑 실전 순서 (장애 발생 시)**
+1. **`helm rollback`** 으로 서버부터 즉시 복구 (사용자 끊김 방지 — 시간 버는 단계)
+2. 차분히 **`git revert`** 또는 수정 커밋 → dev PR → 병합
+3. **재배포**(정상 코드) → `helm history`에 새 정상 리비전이 쌓임
+
+> FE(`univ-us-fe`)도 동일: `helm rollback univ-us-fe -n univus`.
+
 ### 인증 / 권한
 - `GITHUB_TOKEN` + 워크플로우 `permissions: contents: write, pull-requests: write` → **PAT 불필요** (CD의 GHCR push는 `packages: write`)
 - Repo Secret: `DISCORD_WEBHOOK`

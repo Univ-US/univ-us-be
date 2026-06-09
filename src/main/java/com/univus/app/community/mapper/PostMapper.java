@@ -40,6 +40,14 @@ public interface PostMapper {
 
     // 좋아요 취소
     int deleteLike(Long postId, Long memberId);
+
+    // ── 신고 ──────────────────────────────────────
+
+    // 신고 여부 확인 (0 or 1)
+    int selectReportCount(Long postId, Long memberId);
+
+    // 신고 등록
+    int insertReport(PostDto postDto);
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	

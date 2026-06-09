@@ -15,5 +15,6 @@ public class LoginResponseDto {
     private Long univId;
     private String univName;
     private String memberName;
+    private String communityNickname;
 
 }
