@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.subscription.mapper.SubscriptionMapper">
+
+    <select id="findActivePlans"
+            resultType="com.univus.app.subscription.dto.SubscriptionPlanResponseDto">
+        SELECT
+            PLAN_ID AS planId,
+            PLAN_NAME AS planName,
+            PRICE AS price,
+            DESCRIPTION AS description,
+            BILLING_CYCLE AS billingCycle
+        FROM SUBSCRIPTION_PLANS
+        WHERE DELETED_AT IS NULL
+        ORDER BY PRICE ASC
+    </select>
+
+    <select id="findActivePlanById"
+            resultType="com.univus.app.subscription.dto.SubscriptionPlanResponseDto">
+        SELECT
+            PLAN_ID AS planId,
+            PLAN_NAME AS planName,
+            PRICE AS price,
+            DESCRIPTION AS description,
+            BILLING_CYCLE AS billingCycle
+        FROM SUBSCRIPTION_PLANS
+        WHERE PLAN_ID = #{planId}
+          AND DELETED_AT IS NULL
+    </select>
+
+    <insert id="insertUniversity"
+            parameterType="com.univus.app.subscription.dto.SubscriptionUniversityDto">
+        <selectKey keyProperty="univId" resultType="long" order="BEFORE">
+            SELECT SEQ_UNIVERSITY.NEXTVAL FROM DUAL
+        </selectKey>
+
+        INSERT INTO UNIVERSITY (
+        UNIV_ID,
+        UNIV_NAME,
+        SIDO,
+        ADDRESS,
+        SCHOOL_PHONE,
+        HOMEPAGE
+        ) VALUES (
+        #{univId},
+        #{univName},
+        #{sido},
+        #{address},
+        #{schoolPhone},
+        #{homepage}
+        )
+    </insert>
+
+    <insert id="insertSubscription"
+            parameterType="com.univus.app.subscription.dto.SubscriptionInsertDto">
+        <selectKey keyProperty="subscriptionId" resultType="long" order="BEFORE">
+            SELECT SEQ_SUBSCRIPTIONS.NEXTVAL FROM DUAL
+        </selectKey>
+
+        INSERT INTO SUBSCRIPTIONS (
+        SUBSCRIPTION_ID,
+        PLAN_ID,
+        BILLINGKEY_ID,
+        MEMBER_ID,
+        UNIV_ID,
+        STARTED_AT,
+        NEXT_BILLING_AT,
+        STATUS,
+        ENDED_AT
+        ) VALUES (
+        #{subscriptionId},
+        #{planId},
+        #{billingKeyId},
+        #{memberId},
+        #{univId},
+        #{startedAt},
+        #{nextBillingAt},
+        #{status},
+        #{endedAt}
+        )
+    </insert>
+
+    <insert id="insertPaymentHistory"
+            parameterType="com.univus.app.subscription.dto.SubscriptionPaymentHistoryInsertDto">
+        <selectKey keyProperty="historyId" resultType="long" order="BEFORE">
+            SELECT SEQ_SUBSCRIPTION_PAYMENT_HISTORIES.NEXTVAL FROM DUAL
+        </selectKey>
+
+        INSERT INTO SUBSCRIPTION_PAYMENT_HISTORIES (
+        HISTORY_ID,
+        SUBSCRIPTION_ID,
+        UNIV_ID,
+        MEMBER_ID,
+        BILLINGKEY_ID,
+        STATUS,
+        MERCHANT_UID,
+        PORTONE_PAYMENT_ID,
+        PAID_AT,
+        FAIL_REASON,
+        AMOUNT
+        ) VALUES (
+        #{historyId},
+        #{subscriptionId},
+        #{univId},
+        #{memberId},
+        #{billingKeyId},
+        #{status},
+        #{merchantUid},
+        #{portonePaymentId},
+        #{paidAt},
+        #{failReason},
+        #{amount}
+        )
+    </insert>
+
+    <select id="countPendingOrActiveSubscriptionByMemberId" resultType="int">
+        SELECT COUNT(*)
+        FROM SUBSCRIPTIONS
+        WHERE MEMBER_ID = #{memberId}
+          AND STATUS IN ('PENDING', 'ACTIVE')
+          AND ENDED_AT IS NULL
+    </select>
+
+    <select id="countPendingOrActiveSubscriptionByUnivName" resultType="int">
+        SELECT COUNT(*)
+        FROM SUBSCRIPTIONS S
+                 JOIN UNIVERSITY U
+                      ON U.UNIV_ID = S.UNIV_ID
+        WHERE U.UNIV_NAME = #{univName}
+          AND S.STATUS IN ('PENDING', 'ACTIVE')
+          AND S.ENDED_AT IS NULL
+    </select>
+
+    <!--
+    merchantUid로 결제 검증 대상 데이터를 조회합니다.
+    -->
+    <select id="findPaymentVerifyTargetByMerchantUid"
+            resultType="com.univus.app.subscription.dto.SubscriptionPaymentVerifyTargetDto">
+        SELECT
+            H.HISTORY_ID AS paymentHistoryId,
+            H.SUBSCRIPTION_ID AS subscriptionId,
+            H.MEMBER_ID AS memberId,
+            H.UNIV_ID AS univId,
+            S.PLAN_ID AS planId,
+            H.MERCHANT_UID AS merchantUid,
+            H.AMOUNT AS amount,
+            H.STATUS AS paymentStatus,
+            S.STATUS AS subscriptionStatus
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+                 JOIN SUBSCRIPTIONS S
+                      ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+        WHERE H.MERCHANT_UID = #{merchantUid}
+    </select>
+
+    <!--
+        결제 검증 성공 시 결제 이력을 PAID 상태로 변경합니다.
+        PortOne 결제 ID와 결제 완료 시각도 함께 저장합니다.
+    -->
+    <update id="markPaymentHistoryPaid">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET
+            STATUS = 'PAID',
+            PORTONE_PAYMENT_ID = #{portonePaymentId},
+            PAID_AT = SYSTIMESTAMP,
+            FAIL_REASON = NULL
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+
+    <!--
+        결제 검증 실패 시 결제 이력을 FAILED 상태로 변경합니다.
+        실패 사유를 저장해서 이후 확인할 수 있게 합니다.
+    -->
+    <update id="markPaymentHistoryFailed">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET
+            STATUS = 'FAILED',
+            FAIL_REASON = #{failReason}
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+
+    <!--
+        결제 검증 성공 시 구독을 ACTIVE 상태로 변경합니다.
+        다음 결제일은 서비스에서 계산해서 nextBillingAt으로 넘깁니다.
+    -->
+    <update id="activateSubscription">
+        UPDATE SUBSCRIPTIONS
+        SET
+            STATUS = 'ACTIVE',
+            NEXT_BILLING_AT = #{nextBillingAt}
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'PENDING'
+    </update>
+
+    <!--
+    구독 결제 성공 후 결제한 회원을 해당 학교 관리자(ADM)로 변경합니다.
+    처리 내용:
+    - MEMBER.UNIV_ID = 새로 생성된 학교 ID
+    - MEMBER.ROLE = ADM
+    이 업데이트가 성공해야 새로 발급하는 accessToken에도 ADM 권한을 반영할 수 있습니다.
+-->
+    <update id="updateMemberAsUniversityAdmin">
+        UPDATE MEMBER
+        SET
+            UNIV_ID = #{univId},
+            ROLE = 'ADM'
+        WHERE MEMBER_ID = #{memberId}
+    </update>
+
+</mapper>
