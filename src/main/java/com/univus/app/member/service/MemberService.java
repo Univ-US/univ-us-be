@@ -69,17 +69,23 @@ public class MemberService {
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto login(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, null);
+    MemberDto member = memberMapper.findByLoginId(request.getLoginId());
+    return loginWithAllowedRoles(member, request, ipAddress, null);
   }
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto adminLogin(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, Set.of("SUA", "ADM", "GUEST"));
+    MemberDto member = memberMapper.findByLoginId(request.getLoginId());
+    return loginWithAllowedRoles(member,request, ipAddress, Set.of("SUA", "ADM", "GUEST"));
   }
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto userLogin(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, Set.of("ADM", "PROF", "STU", "ALU"));
+    MemberDto member = memberMapper.findByLoginIdAndUnivId(
+            request.getLoginId(),
+            request.getUnivId()
+    );
+    return loginWithAllowedRoles(member,request, ipAddress, Set.of("ADM", "PROF", "STU", "ALU"));
   }
 
   @Transactional(readOnly = true)
@@ -90,11 +96,11 @@ public class MemberService {
   }
 
   private LoginResponseDto loginWithAllowedRoles(
+      MemberDto member,
       LoginRequestDto request,
       String ipAddress,
       Set<String> allowedRoles
   ) {
-    MemberDto member = memberMapper.findByLoginIdAndUnivId(request.getLoginId(), request.getUnivId());
 
     if (member == null) {
       insertLoginFailLog(null, "MEMBER_NOT_FOUND");

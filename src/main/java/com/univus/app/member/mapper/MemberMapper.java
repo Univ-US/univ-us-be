@@ -11,6 +11,9 @@ public interface MemberMapper {
 
   MemberDto findByLoginIdAndUnivId(@Param("loginId") String loginId, @Param("univId") Long univId);
 
+  // 관리자/게스트 로그인처럼 학교 선택 없이 loginId만으로 회원을 조회할 때 사용합니다.
+  MemberDto findByLoginId(@Param("loginId") String loginId);
+
   MemberDto findByMemberId(@Param("memberId") Long memberId);
 
   // 아이디 중복 검사
