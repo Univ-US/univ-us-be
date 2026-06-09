@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,8 +45,13 @@ public class PostController {
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> writePost(
             @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
             @RequestBody PostDto postDto) {
-        postDto.setMemberId(requireMemberId(memberId));
+        Long currentMemberId = requireMemberId(memberId);
+        if (isNoticeBoard(postDto.getBoardId()) && !isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항 작성 권한이 없습니다.");
+        }
+        postDto.setMemberId(currentMemberId);
 
         int result = postService.writePost(postDto);
         if (result > 0) {
@@ -63,9 +69,14 @@ public class PostController {
             @RequestParam("content") String content,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
-            @AuthenticationPrincipal Long memberId) {
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication) {
+        Long currentMemberId = requireMemberId(memberId);
+        if (isNoticeBoard(boardId) && !isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "공지사항 작성 권한이 없습니다.");
+        }
         PostDto postDto = new PostDto();
-        postDto.setMemberId(requireMemberId(memberId));
+        postDto.setMemberId(currentMemberId);
         postDto.setBoardId(boardId);
         postDto.setTitle(title);
         postDto.setContent(content);
@@ -89,7 +100,10 @@ public class PostController {
     @PutMapping("/{postId}")
     public ResponseEntity<Map<String, Object>> modifyPost(
             @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
             @RequestBody PostDto postDto) {
+        assertCanManagePost(postId, requireMemberId(memberId), authentication);
         postDto.setPostId(postId);
 
         int result = postService.modifyPost(postDto);
@@ -102,7 +116,11 @@ public class PostController {
 
     // DELETE /api/posts/{postId}
     @DeleteMapping("/{postId}")
-    public ResponseEntity<Map<String, Object>> removePost(@PathVariable("postId") Long postId) {
+    public ResponseEntity<Map<String, Object>> removePost(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication) {
+        assertCanManagePost(postId, requireMemberId(memberId), authentication);
         int result = postService.removePost(postId);
         if (result > 0) {
             return ResponseEntity.ok(Map.of("message", "게시글이 삭제되었습니다."));
@@ -230,5 +248,26 @@ public class PostController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
         return memberId;
+    }
+
+    private void assertCanManagePost(Long postId, Long memberId, Authentication authentication) {
+        PostDto post = postService.findPostById(postId);
+        if (post == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
+        }
+        if (!post.getMemberId().equals(memberId) && !isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 수정/삭제 권한이 없습니다.");
+        }
+    }
+
+    private boolean isNoticeBoard(Long boardId) {
+        return Long.valueOf(3L).equals(boardId);
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority ->
+                        "ROLE_SUA".equals(authority.getAuthority())
+                                || "ROLE_ADM".equals(authority.getAuthority()));
     }
 }

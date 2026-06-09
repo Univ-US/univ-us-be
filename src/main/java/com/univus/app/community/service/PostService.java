@@ -71,6 +71,10 @@ public class PostService {
         return post;
     }
 
+    public PostDto findPostById(Long postId) {
+        return postMapper.selectPostById(postId);
+    }
+
     // 게시글 등록
     @Transactional
     public int writePost(PostDto postDto) {

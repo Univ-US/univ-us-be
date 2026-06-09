@@ -57,6 +57,10 @@ public class MarketService {
         return product;
     }
 
+    public MarketDto.ProductDto findProductById(Long productId) {
+        return marketMapper.selectProductDetail(productId);
+    }
+
     // 상품 등록
     @Transactional
     public int createProduct(MarketDto.ProductCreateDto createDto) {
