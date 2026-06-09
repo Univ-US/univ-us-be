@@ -163,7 +163,7 @@
         SET
             STATUS = 'PAID',
             PORTONE_PAYMENT_ID = #{portonePaymentId},
-            PAID_AT = SYSTIMESTAMP,
+            PAID_AT =  #{paidAt},
             FAIL_REASON = NULL
         WHERE HISTORY_ID = #{historyId}
           AND STATUS = 'READY'

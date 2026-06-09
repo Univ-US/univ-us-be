@@ -4,6 +4,7 @@ import com.univus.app.subscription.dto.*;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -47,7 +48,8 @@ public interface SubscriptionMapper {
     // PortOne 결제 ID와 결제 완료 시각도 함께 저장합니다.
     int markPaymentHistoryPaid(
             @Param("historyId") Long historyId,
-            @Param("portonePaymentId") String portonePaymentId
+            @Param("portonePaymentId") String portonePaymentId,
+            @Param("paidAt") LocalDateTime paidAt
     );
 
     // 결제 검증 실패 시 결제 이력을 FAILED 상태로 변경합니다.
