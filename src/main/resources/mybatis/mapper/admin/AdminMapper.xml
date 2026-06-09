@@ -11,6 +11,9 @@
             SELECT ROW_NUMBER() OVER (ORDER BY M.CREATED_AT DESC) AS RN,
                    M.MEMBER_ID,
                    M.UNIV_ID,
+                   U.UNIV_NAME,
+                   U.SCHOOL_PHONE,
+                   U.ADDRESS,
                    MD.DEPT_ID,
                    M.MEMBER_NAME,
                    M.ROLE,
@@ -21,6 +24,7 @@
                    MD.COMMUNITY_NICKNAME
             FROM MEMBER M
             LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+            LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID
             WHERE 1=1
             <if test="memberId != null">
                 AND M.MEMBER_ID = #{memberId}
@@ -30,6 +34,9 @@
             </if>
             <if test="deptId != null">
                 AND MD.DEPT_ID = #{deptId}
+            </if>
+            <if test="univId != null">
+                AND M.UNIV_ID = #{univId}
             </if>
         )
         WHERE RN BETWEEN (#{page} - 1) * #{size} + 1 AND #{page} * #{size}
@@ -50,6 +57,9 @@
         </if>
         <if test="deptId != null">
             AND MD.DEPT_ID = #{deptId}
+        </if>
+        <if test="univId != null">
+            AND M.UNIV_ID = #{univId}
         </if>
     </select>
 
@@ -83,8 +93,8 @@
 
     <!-- 공지 등록 -->
     <insert id="insertNotice" parameterType="com.univus.app.admin.dto.AdminDto$NoticeDto">
-        INSERT INTO NOTICE (NOTICE_ID, MEMBER_ID, TITLE, CONTENT, POSTED_AT, IS_DELETE)
-        VALUES (SEQ_NOTICE.NEXTVAL, #{memberId}, #{title}, #{content}, SYSTIMESTAMP, 0)
+        INSERT INTO NOTICE (NOTICE_ID, MEMBER_ID, UNIV_ID, TITLE, CONTENT, POSTED_AT, IS_DELETED)
+        VALUES (SEQ_NOTICE.NEXTVAL, #{memberId}, #{univId}, #{title}, #{content}, SYSTIMESTAMP, 0)
     </insert>
 
     <!-- 공지 수정 -->
@@ -94,25 +104,31 @@
             CONTENT    = #{content},
             UPDATED_AT = SYSTIMESTAMP
         WHERE NOTICE_ID = #{noticeId}
-          AND IS_DELETE = 0
+          AND IS_DELETED = 0
     </update>
 
     <!-- 공지 삭제 (소프트 삭제) -->
     <update id="deleteNotice">
         UPDATE NOTICE
-        SET IS_DELETE = 1
+        SET IS_DELETED = 1
         WHERE NOTICE_ID = #{noticeId}
     </update>
 
-    <!-- 공지 목록 조회 -->
+    <!-- 공지 목록 조회 (SUA: 전체, ADM: 자기 학교만) -->
     <select id="selectNoticeList" resultType="com.univus.app.admin.dto.AdminDto$NoticeListDto">
         SELECT NOTICE_ID,
                MEMBER_ID,
+               UNIV_ID,
                TITLE,
                POSTED_AT,
                UPDATED_AT
         FROM NOTICE
-        WHERE IS_DELETE = 0
+        <where>
+            IS_DELETED = 0
+            <if test="univId != null">
+                AND UNIV_ID = #{univId}
+            </if>
+        </where>
         ORDER BY POSTED_AT DESC
     </select>
 
@@ -142,16 +158,23 @@
         ORDER BY S.CREATED_AT DESC
     </select>
 
+    <!-- 문의 상태 변경 -->
+    <update id="updateSupportStatus" parameterType="com.univus.app.admin.dto.AdminDto$SupportStatusDto">
+        UPDATE SUPPORT
+        SET STATUS = #{status}
+        WHERE SUPPORT_ID = #{supportId}
+    </update>
+
     <!-- 대학 목록 조회 -->
     <select id="selectUniversityList" resultType="com.univus.app.admin.dto.AdminDto$UniversityDto">
-        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE
+        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE, HOMEPAGE, ADDRESS
         FROM UNIVERSITY
         ORDER BY UNIV_NAME
     </select>
 
     <!-- 대학 단건 조회 -->
     <select id="selectUniversityById" resultType="com.univus.app.admin.dto.AdminDto$UniversityDto">
-        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE
+        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE, HOMEPAGE, ADDRESS
         FROM UNIVERSITY
         WHERE UNIV_ID = #{univId}
     </select>

@@ -20,9 +20,14 @@ public class AdminService {
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
 
-    public Map<String, Object> getMemberList(AdminDto.MemberSearchDto search) {
+    public Map<String, Object> getMemberList(AdminDto.MemberSearchDto search, Long requesterId) {
         if (search.getSize() <= 0) search.setSize(10);
         if (search.getPage() <= 0) search.setPage(1);
+
+        MemberDto requester = memberMapper.findByMemberId(requesterId);
+        if ("ADM".equals(requester.getRole())) {
+            search.setUnivId(requester.getUnivId());
+        }
 
         List<AdminDto.MemberListDto> list = adminMapper.selectMemberList(search);
         int total = adminMapper.countMemberList(search);
@@ -42,7 +47,9 @@ public class AdminService {
     }
 
     @Transactional
-    public void createNotice(AdminDto.NoticeDto notice) {
+    public void createNotice(AdminDto.NoticeDto notice, Long requesterId) {
+        MemberDto requester = memberMapper.findByMemberId(requesterId);
+        notice.setUnivId(requester.getUnivId());
         adminMapper.insertNotice(notice);
     }
 
@@ -55,18 +62,27 @@ public class AdminService {
         adminMapper.deleteNotice(noticeId);
     }
 
-    public List<AdminDto.NoticeListDto> getNoticeList() {
-        return adminMapper.selectNoticeList();
+    public List<AdminDto.NoticeListDto> getNoticeList(Long requesterId) {
+        MemberDto requester = memberMapper.findByMemberId(requesterId);
+        Long univId = "SUA".equals(requester.getRole()) ? null : requester.getUnivId();
+        return adminMapper.selectNoticeList(univId);
     }
 
     public void createSupport(AdminDto.SupportRequestDto support) {
         adminMapper.insertSupport(support);
     }
 
-    public List<AdminDto.SupportListDto> getSupportList(Long memberId) {
+    public List<AdminDto.SupportListDto> getSupportList(Long memberId, Long univId) {
         MemberDto member = memberMapper.findByMemberId(memberId);
-        Long univId = "SUA".equals(member.getRole()) ? null : member.getUnivId();
-        return adminMapper.selectSupportList(univId);
+        Long effectiveUnivId = "SUA".equals(member.getRole()) ? univId : member.getUnivId();
+        return adminMapper.selectSupportList(effectiveUnivId);
+    }
+
+    public void updateSupportStatus(Long supportId, Integer status) {
+        AdminDto.SupportStatusDto dto = new AdminDto.SupportStatusDto();
+        dto.setSupportId(supportId);
+        dto.setStatus(status);
+        adminMapper.updateSupportStatus(dto);
     }
 
     public List<AdminDto.UniversityDto> getUniversityList() {

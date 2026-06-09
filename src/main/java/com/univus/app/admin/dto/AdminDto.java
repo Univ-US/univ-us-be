@@ -11,6 +11,9 @@ public class AdminDto {
     public static class MemberListDto {
         private Long memberId;
         private Long univId;
+        private String univName;
+        private String schoolPhone;
+        private String address;
         private Long deptId;
         private String memberName;
         private String role;
@@ -26,6 +29,7 @@ public class AdminDto {
         private Long memberId;
         private String memberName;
         private Long deptId;
+        private Long univId;
         private int page;
         private int size;
     }
@@ -58,6 +62,7 @@ public class AdminDto {
     public static class NoticeDto {
         private Long noticeId;
         private Long memberId;
+        private Long univId;
         private String title;
         private String content;
     }
@@ -66,6 +71,7 @@ public class AdminDto {
     public static class NoticeListDto {
         private Long noticeId;
         private Long memberId;
+        private Long univId;
         private String title;
         private LocalDateTime postedAt;
         private LocalDateTime updatedAt;
@@ -93,9 +99,17 @@ public class AdminDto {
     }
 
     @Data
+    public static class SupportStatusDto {
+        private Long supportId;
+        private Integer status;
+    }
+
+    @Data
     public static class UniversityDto {
         private Long univId;
         private String univName;
         private String schoolPhone;
+        private String homepage;
+        private String address;
     }
 }
