@@ -137,4 +137,55 @@ public class MarketDto {
         private int page;
         private int size;
     }
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class PaymentConfigDto {
+        private String impCode;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class PaymentCompleteDto {
+        private Long productId;
+        private Long buyerId;
+        private String impUid;
+        private String merchantUid;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class TradeDto {
+        private Long tradeId;
+        private Long productId;
+        private Long sellerId;
+        private Long buyerId;
+        private String tradeStatus;
+        private Long price;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PaymentDto {
+        private Long paymentId;
+        private Long tradeId;
+        private String impUid;
+        private String merchantUid;
+        private Long amount;
+        private String status;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class PaymentResultDto {
+        private Long tradeId;
+        private Long paymentId;
+        private String productStatus;
+        private String paymentStatus;
+    }
 }

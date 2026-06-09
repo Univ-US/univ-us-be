@@ -2,6 +2,7 @@ package com.univus.app.community.mapper;
 
 import com.univus.app.community.dto.PostCommentDto;
 import com.univus.app.community.dto.PostDto;
+import com.univus.app.community.dto.PostImageDto;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;
@@ -62,4 +63,8 @@ public interface PostMapper {
 	
 	 // 댓글 삭제 (소프트 삭제)
 	 int deleteComment(Long commentId);
+
+    List<PostImageDto> selectPostImageList(Long postId);
+
+    int insertPostImage(PostImageDto imageDto);
 }

@@ -180,4 +180,22 @@ public class MarketController {
         result.put("list", list);
         return ResponseEntity.ok(result);
     }
+
+    // GET /api/market/payments/config
+    @GetMapping("/payments/config")
+    public ResponseEntity<MarketDto.PaymentConfigDto> getPaymentConfig() {
+        return ResponseEntity.ok(marketService.getPaymentConfig());
+    }
+
+    // POST /api/market/payments/complete
+    @PostMapping("/payments/complete")
+    public ResponseEntity<Map<String, Object>> completePayment(
+            @RequestBody MarketDto.PaymentCompleteDto completeDto) {
+        MarketDto.PaymentResultDto paymentResult = marketService.completePayment(completeDto);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("payment", paymentResult);
+        return ResponseEntity.ok(result);
+    }
 }

@@ -1,13 +1,20 @@
 package com.univus.app.community.service;
 
+import com.univus.app.common.StorageService;
 import com.univus.app.community.dto.PostDto;
+import com.univus.app.community.dto.PostImageDto;
 import com.univus.app.community.mapper.PostMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import com.univus.app.community.dto.PostCommentDto;
 
 @Service
@@ -15,6 +22,19 @@ import com.univus.app.community.dto.PostCommentDto;
 public class PostService {
 
     private final PostMapper postMapper;
+    private final StorageService storageService;
+
+    @Value("${file.upload-root:${user.home}/univus/uploads}")
+    private String uploadRoot;
+
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+    );
+    private static final long MAX_IMAGE_SIZE = 30L * 1024 * 1024;
+    private static final String POST_IMAGE_SUBDIR = "community" + File.separator + "post";
+    private static final String POST_IMAGE_URL_PREFIX = "/uploads/community/post/";
 
     // 게시글 목록 조회 (페이징 + 검색)
     public Map<String, Object> getPostList(PostDto postDto) {
@@ -44,10 +64,15 @@ public class PostService {
     // 게시글 단건 조회 + 조회수 증가
     public PostDto getPostById(Long postId) {
         postMapper.updateViewCount(postId);
-        return postMapper.selectPostById(postId);
+        PostDto post = postMapper.selectPostById(postId);
+        if (post != null) {
+            post.setImages(postMapper.selectPostImageList(postId));
+        }
+        return post;
     }
 
     // 게시글 등록
+    @Transactional
     public int writePost(PostDto postDto) {
         return postMapper.insertPost(postDto);
     }
@@ -124,4 +149,53 @@ public class PostService {
 	 public int removeComment(Long commentId) {
 	     return postMapper.deleteComment(commentId);
 	 }
+
+    @Transactional
+    public List<PostImageDto> uploadPostImages(Long postId, List<MultipartFile> images) {
+        PostDto post = postMapper.selectPostById(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post not found.");
+        }
+        if (images == null || images.isEmpty()) {
+            return postMapper.selectPostImageList(postId);
+        }
+
+        int nextSort = postMapper.selectPostImageList(postId).size() + 1;
+        String directoryPath = uploadRoot + File.separator + POST_IMAGE_SUBDIR + File.separator + postId;
+        String urlPrefix = POST_IMAGE_URL_PREFIX + postId + "/";
+
+        for (MultipartFile image : images) {
+            if (image == null || image.isEmpty()) {
+                continue;
+            }
+            validatePostImage(image);
+            String savedFilename = storageService.uploadFileToServer(image, directoryPath);
+            if (savedFilename == null) {
+                continue;
+            }
+
+            PostImageDto imageDto = PostImageDto.builder()
+                    .postId(postId)
+                    .imageUrl(urlPrefix + savedFilename)
+                    .imageSort(nextSort++)
+                    .build();
+            postMapper.insertPostImage(imageDto);
+        }
+
+        return postMapper.selectPostImageList(postId);
+    }
+
+    public List<PostImageDto> getPostImageList(Long postId) {
+        return postMapper.selectPostImageList(postId);
+    }
+
+    private void validatePostImage(MultipartFile image) {
+        String contentType = image.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Only JPG, PNG, and WEBP images can be uploaded.");
+        }
+        if (image.getSize() > MAX_IMAGE_SIZE) {
+            throw new IllegalArgumentException("Image size must be 30MB or less.");
+        }
+    }
 }
