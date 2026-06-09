@@ -2,7 +2,6 @@ package com.univus.app.lms.service;
 
 import com.univus.app.common.StorageService;
 import com.univus.app.lms.code.RoleCode;
-import com.univus.app.lms.code.SecReqStatusCode;
 import com.univus.app.lms.dto.LmsStudentProfileResponseDto;
 import com.univus.app.lms.dto.LmsStudentProfileUpdateDto;
 import com.univus.app.lms.exception.InvalidProfileImageException;
@@ -75,8 +74,8 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
     @Transactional
     public void requestDeleteLmsStudentProfile(Long memberId) {
         Long lmsPrfId = ensureLmsProfile(memberId);
-        // 탈퇴 상태값은 공통코드에서 (SecReqStatusCode.REQ.getCode() = "REQ")
-        lmsStudentProfileMapper.insertSecessionRequest(lmsPrfId, SecReqStatusCode.REQ.getCode());
+        // 탈퇴 요청 상태값 = "REQ" (공통코드 LMS_USR_SEC_REQ_STATUS)
+        lmsStudentProfileMapper.insertSecessionRequest(lmsPrfId, "REQ");
     }
 
     /* 조회 + 역할 코드→한글 라벨 변환 (학번은 매퍼가 LOGIN_ID로 바로 내려줌) */

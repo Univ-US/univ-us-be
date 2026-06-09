@@ -72,6 +72,9 @@ public class SpringSecurityConfig {
 						"/api/admin/universities",
 						"/api/admin/universities/*",
 
+						// 공통코드 (FE 드롭다운, 비로그인 가능)
+						"/api/common-codes/**",
+
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
             	        
