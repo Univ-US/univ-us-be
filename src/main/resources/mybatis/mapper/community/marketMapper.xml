@@ -350,4 +350,56 @@
         ORDER BY PL.PRESSED_AT DESC
     </select>
 
+    <insert id="insertTrade" parameterType="com.univus.app.community.dto.MarketDto$TradeDto">
+        <selectKey keyProperty="tradeId" resultType="long" order="BEFORE">
+            SELECT SEQ_TRADE.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO TRADE (
+            TRADE_ID,
+            PRODUCT_ID,
+            SELLER_ID,
+            BUYER_ID,
+            TRADE_STATUS,
+            PRICE
+        ) VALUES (
+            #{tradeId},
+            #{productId},
+            #{sellerId},
+            #{buyerId},
+            #{tradeStatus},
+            #{price}
+        )
+    </insert>
+
+    <insert id="insertPayment" parameterType="com.univus.app.community.dto.MarketDto$PaymentDto">
+        <selectKey keyProperty="paymentId" resultType="long" order="BEFORE">
+            SELECT SEQ_PAYMENT.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO PAYMENT (
+            PAYMENT_ID,
+            TRADE_ID,
+            IMP_UID,
+            MERCHANT_UID,
+            AMOUNT,
+            STATUS,
+            PAID_AT
+        ) VALUES (
+            #{paymentId},
+            #{tradeId},
+            #{impUid},
+            #{merchantUid},
+            #{amount},
+            #{status},
+            CASE WHEN #{status} = 'PAID' THEN SYSTIMESTAMP ELSE NULL END
+        )
+    </insert>
+
+    <update id="updateProductStatus">
+        UPDATE PRODUCT
+        SET PRODUCT_STATUS = #{productStatus},
+            UPDATED_AT = SYSTIMESTAMP
+        WHERE PRODUCT_ID = #{productId}
+          AND IS_DELETED = 0
+    </update>
+
 </mapper>

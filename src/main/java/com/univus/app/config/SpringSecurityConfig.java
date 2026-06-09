@@ -73,6 +73,9 @@ public class SpringSecurityConfig {
 
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
+            	        
+            	        // 게시글 이미지
+            	        "/uploads/community/post/**",
 
             	        // 중고거래 상품
             	        "/api/market/**",

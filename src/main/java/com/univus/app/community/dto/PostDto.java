@@ -2,6 +2,7 @@ package com.univus.app.community.dto;
 
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -35,6 +36,7 @@ public class PostDto {
     // ── COUNT JOIN ────────────────────────────────
     private int likeCount;           // POST_LIKE COUNT
     private int commentCount;        // POST_COMMENT COUNT
+    private List<PostImageDto> images;
 
     // ── 요청 파라미터용 ───────────────────────────
     private int page;

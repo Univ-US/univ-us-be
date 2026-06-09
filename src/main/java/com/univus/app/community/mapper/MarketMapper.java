@@ -2,6 +2,7 @@ package com.univus.app.community.mapper;
 
 import com.univus.app.community.dto.MarketDto;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -69,4 +70,10 @@ public interface MarketMapper {
 
     // 내 찜 목록
     List<MarketDto.ProductDto> selectMyLikeList(Long memberId);
+
+    int insertTrade(MarketDto.TradeDto tradeDto);
+
+    int insertPayment(MarketDto.PaymentDto paymentDto);
+
+    int updateProductStatus(@Param("productId") Long productId, @Param("productStatus") String productStatus);
 }

@@ -3,11 +3,14 @@ package com.univus.app.community.controller;
 import com.univus.app.community.dto.PostDto;
 import com.univus.app.community.service.PostService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import com.univus.app.community.dto.PostCommentDto;
+import com.univus.app.community.dto.PostImageDto;
 import java.util.List;
 
 @RestController
@@ -35,7 +38,7 @@ public class PostController {
     }
 
     // POST /api/posts
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> writePost(@RequestBody PostDto postDto) {
         // 임시 멤버 ID (로그인 구현 전)
         postDto.setMemberId(1L);
@@ -46,6 +49,35 @@ public class PostController {
         }
         return ResponseEntity.internalServerError()
                 .body(Map.of("message", "게시글 등록에 실패했습니다."));
+    }
+
+    // POST /api/posts multipart
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> writePostWithImages(
+            @RequestParam("boardId") Long boardId,
+            @RequestParam("title") String title,
+            @RequestParam("content") String content,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images) {
+        PostDto postDto = new PostDto();
+        postDto.setMemberId(1L);
+        postDto.setBoardId(boardId);
+        postDto.setTitle(title);
+        postDto.setContent(content);
+        postDto.setCategory(category);
+
+        int result = postService.writePost(postDto);
+        if (result <= 0) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("message", "Post creation failed."));
+        }
+
+        List<PostImageDto> uploadedImages = postService.uploadPostImages(postDto.getPostId(), images);
+        return ResponseEntity.ok(Map.of(
+                "message", "Post created successfully.",
+                "postId", postDto.getPostId(),
+                "images", uploadedImages
+        ));
     }
 
     // PUT /api/posts/{postId}
@@ -166,4 +198,21 @@ public class PostController {
 	     return ResponseEntity.internalServerError()
 	             .body(Map.of("message", "댓글 삭제에 실패했습니다."));
 	 }
+    // POST /api/posts/{postId}/images
+    @PostMapping("/{postId}/images")
+    public ResponseEntity<Map<String, Object>> uploadPostImages(
+            @PathVariable("postId") Long postId,
+            @RequestParam("images") List<MultipartFile> images) {
+        List<PostImageDto> uploadedImages = postService.uploadPostImages(postId, images);
+        return ResponseEntity.ok(Map.of(
+                "message", "Images uploaded successfully.",
+                "images", uploadedImages
+        ));
+    }
+
+    // GET /api/posts/{postId}/images
+    @GetMapping("/{postId}/images")
+    public ResponseEntity<List<PostImageDto>> getPostImages(@PathVariable("postId") Long postId) {
+        return ResponseEntity.ok(postService.getPostImageList(postId));
+    }
 }
