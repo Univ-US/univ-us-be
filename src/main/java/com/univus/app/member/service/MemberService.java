@@ -128,6 +128,7 @@ public class MemberService {
     response.setRole(member.getRole());
     response.setUnivId(member.getUnivId());
     response.setUnivName(member.getUnivName());
+    response.setMemberName(member.getMemberName());
 
     return response;
   }
