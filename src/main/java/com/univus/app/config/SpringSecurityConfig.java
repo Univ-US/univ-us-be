@@ -53,12 +53,14 @@ public class SpringSecurityConfig {
 											"/",
 //            	       "/api/test/**",
 //            	       "/api/auth/**",
-											"/api/auth/signup",
-											"/api/auth/login",
-											"/api/auth/refresh",
-											"/api/auth/logout",
-											"/api/auth/admin/login",
-											"/api/auth/user/login",
+							"/api/auth/signup",
+							"/api/auth/check-member-id",
+							"/api/auth/check-login-id",
+							"/api/auth/login",
+							"/api/auth/refresh",
+							"/api/auth/logout",
+							"/api/auth/admin/login",
+							"/api/auth/user/login",
             	        "/oauth2/**",
             	        "/ws-univus/**",
 
@@ -68,12 +70,16 @@ public class SpringSecurityConfig {
 
 						// 대학 목록 (비로그인 가능)
 						"/api/admin/universities",
+						"/api/admin/universities/*",
 
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
+            	        
+            	        // 게시글 이미지
+            	        "/uploads/community/post/**",
 
             	        // 중고거래 상품
-            	        "/api/products/**",
+            	        "/api/market/**",
 
             	        // 거래 내역 + 채팅
             	        "/api/trades/**",
@@ -82,12 +88,20 @@ public class SpringSecurityConfig {
             	        // 결제
             	        "/api/payments/**",
 
+						// 구독 플랜 조회
+						"/api/subscriptions/plans",
+
             	        // 레디스
             	        "/api/redis",
             	        "/api/redis/*",
             	        // 예약
+                    "/api/reservations/date-options",
             	        "/api/reservations/seats/availability",
-            	        "/api/reservations/seats/availability/**"
+            	        "/api/reservations/seats/availability/**",
+
+						// 프로필 이미지(정적 파일) — img 태그가 토큰을 못 실어 보내므로 공개
+						"/uploads/lms/professor/image/**",
+						"/uploads/lms/student/image/**"
             	    ).permitAll()
             	    .anyRequest().authenticated()
             )
@@ -100,4 +114,4 @@ public class SpringSecurityConfig {
 
         return http.build();
     }
-}	
+}

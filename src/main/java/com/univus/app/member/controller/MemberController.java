@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
@@ -39,6 +41,11 @@ public class MemberController {
   public LoginResponseDto userLogin(@RequestBody LoginRequestDto request,
                                     HttpServletRequest httpServletRequest) {
     return memberService.userLogin(request, httpServletRequest.getRemoteAddr());
+  }
+
+  @GetMapping("/check-login-id")
+  public Map<String, Boolean> checkLoginId(@RequestParam String loginId) {
+    return Map.of("available", memberService.isLoginIdAvailable(loginId));
   }
 
   @PostMapping("/refresh")

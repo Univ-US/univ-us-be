@@ -1,5 +1,6 @@
 package com.univus.app.reservation.controller;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +18,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReservationDto.ReadingRoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReservationDto.ReadingSeatAvailabilityDto;
+import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationDto.ReservationDateOptionsResponseDto;
+import com.univus.app.reservation.dto.ReservationDto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReservationDto.RoomReservationDto;
+import com.univus.app.reservation.dto.ReservationDto.RoomReservationRequestDto;
 import com.univus.app.reservation.service.ReservationService;
 
 import lombok.RequiredArgsConstructor;
@@ -29,8 +37,57 @@ public class SpaceReservationController {
 
     private final ReservationService reservationService;
 
+    @GetMapping("/date-options")
+    public ResponseEntity<ReservationDateOptionsResponseDto> getReservationDateOptions(
+            @RequestParam(value = "days", defaultValue = "5") int days) {
+        return ResponseEntity.ok(reservationService.getReservationDateOptions(days));
+    }
+
+    @GetMapping("/rooms/availability")
+    public ResponseEntity<List<RoomAvailabilityDto>> getRoomAvailability(
+            @RequestParam("date")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate date) {
+        return ResponseEntity.ok(reservationService.getRoomAvailability(date));
+    }
+
+    @GetMapping("/rooms/me")
+    public ResponseEntity<List<RoomReservationDto>> getMyRoomReservations(
+            @AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(reservationService.getMyRoomReservations(memberId));
+    }
+
+    @PostMapping("/rooms")
+    public ResponseEntity<?> reserveRoom(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody RoomReservationRequestDto request) {
+        try {
+            RoomReservationDto reservation = reservationService.reserveRoom(memberId, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/rooms/{reservationId}")
+    public ResponseEntity<?> cancelRoomReservation(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("reservationId") Long reservationId) {
+        try {
+            reservationService.cancelRoomReservation(memberId, reservationId);
+            return ResponseEntity.ok(Map.of("success", true, "message", "공간 예약이 취소되었습니다."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
     @GetMapping("/seats/availability")
-    public ResponseEntity<List<ReservationDto.ReadingRoomAvailabilityDto>> getReadingRoomAvailability(
+    public ResponseEntity<List<ReadingRoomAvailabilityDto>> getReadingRoomAvailability(
             @RequestParam("startTime")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime startTime,
@@ -41,7 +98,7 @@ public class SpaceReservationController {
     }
 
     @GetMapping("/seats/availability/{readingRoomId}")
-    public ResponseEntity<List<ReservationDto.ReadingSeatAvailabilityDto>> getReadingSeatAvailability(
+    public ResponseEntity<List<ReadingSeatAvailabilityDto>> getReadingSeatAvailability(
             @PathVariable("readingRoomId") Long readingRoomId,
             @RequestParam("startTime")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -56,9 +113,9 @@ public class SpaceReservationController {
     @PostMapping("/seats")
     public ResponseEntity<?> reserveReadingSeat(
             @AuthenticationPrincipal Long memberId,
-            @RequestBody ReservationDto.ReadingSeatReservationRequestDto request) {
+            @RequestBody ReadingSeatReservationRequestDto request) {
         try {
-            ReservationDto.ReadingSeatReservationDto reservation =
+            ReadingSeatReservationDto reservation =
                     reservationService.reserveReadingSeat(memberId, request);
             return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
         } catch (IllegalArgumentException ex) {
@@ -71,7 +128,7 @@ public class SpaceReservationController {
     }
 
     @GetMapping("/seats/me")
-    public ResponseEntity<List<ReservationDto.ReadingSeatReservationDto>> getMyReadingSeatReservations(
+    public ResponseEntity<List<ReadingSeatReservationDto>> getMyReadingSeatReservations(
             @AuthenticationPrincipal Long memberId) {
         return ResponseEntity.ok(reservationService.getMyReadingSeatReservations(memberId));
     }

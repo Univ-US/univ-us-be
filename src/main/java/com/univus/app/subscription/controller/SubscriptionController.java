@@ -1,0 +1,87 @@
+package com.univus.app.subscription.controller;
+
+import com.univus.app.subscription.dto.*;
+import com.univus.app.subscription.service.SubscriptionService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/subscriptions")
+@RequiredArgsConstructor
+public class SubscriptionController {
+
+    private final SubscriptionService subscriptionService;
+
+    // 구독 플랜 목록 조회 API입니다.
+    // 로그인하지 않은 사용자도 결제 전 플랜을 볼 수 있어야 하므로,
+    // 이 경로는 나중에 SpringSecurityConfig에서 permitAll로 열어줍니다.
+    @GetMapping("/plans")
+    public ResponseEntity<List<SubscriptionPlanResponseDto>> getActivePlans() {
+        return ResponseEntity.ok(subscriptionService.getActivePlans());
+    }
+
+    // 구독 결제 준비 API입니다.
+    // 로그인한 사용자의 memberId를 JWT 인증 결과에서 받아옵니다.
+    // 이 API는 실제 결제를 완료하는 API가 아닙니다.
+    // PortOne 결제창을 띄우기 전에 DB에 PENDING 구독과 READY 결제 이력을 만들고,
+    // 프론트에 merchantUid와 amount를 내려주는 역할만 합니다.
+    @PostMapping("/prepare")
+    public ResponseEntity<?> prepareSubscription(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody SubscriptionPrepareRequestDto request
+    ) {
+        try {
+            SubscriptionPrepareResponseDto response =
+                    subscriptionService.prepareSubscription(memberId, request);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (IllegalArgumentException ex) {
+            // 요청값 누락, 잘못된 플랜 ID 같은 클라이언트 오류입니다.
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            // 이미 구독이 있거나 중복 학교 구독이 있는 경우입니다.
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
+    // PortOne 결제 완료 후 프론트가 호출하는 결제 검증 API입니다.
+    // 현재 서비스 구현은 임시 검증 버전입니다.
+    // merchantUid로 READY 결제 이력을 찾고,
+    // portonePaymentId가 있으면 결제 성공으로 보고
+    // 결제 이력은 PAID, 구독은 ACTIVE로 변경합니다.
+    // 추후 PortOne 서버 API를 연동하면 여기 경로는 그대로 두고,
+    // service 내부 검증 로직만 실제 PortOne 조회 방식으로 교체하면 됩니다.
+    // POST /api/subscriptions/payments/verify
+    @PostMapping("/payments/verify")
+    public ResponseEntity<?> verifySubscriptionPayment(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody SubscriptionPaymentVerifyRequestDto request
+    ) {
+        try {
+            SubscriptionPaymentVerifyResponseDto response =
+                    subscriptionService.verifySubscriptionPayment(memberId, request);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException ex) {
+            // 요청값 누락, 결제 이력 없음, 회원 불일치 같은 클라이언트 오류입니다.
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            // 이미 처리된 결제이거나 상태가 맞지 않는 경우입니다.
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+}

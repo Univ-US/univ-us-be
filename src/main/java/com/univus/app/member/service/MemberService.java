@@ -28,12 +28,12 @@ public class MemberService {
   @Transactional
   public void signup(SignupRequestDto request) {
 
-    if (memberMapper.existsByMemberId(request.getMemberId()) > 0) {
+    if (memberMapper.existsByLoginId(request.getLoginId()) > 0) {
       throw new DuplicateMemberException("이미 사용 중인 아이디입니다.");
     }
 
     MemberDto member = new MemberDto();
-    member.setMemberId(request.getMemberId());
+    member.setLoginId(request.getLoginId());
     member.setPassword(passwordEncoder.encode(request.getPassword()));
     member.setMemberName(request.getMemberName());
     member.setRole(DEFAULT_ROLE);
@@ -69,25 +69,38 @@ public class MemberService {
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto login(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, null);
+    MemberDto member = memberMapper.findByLoginId(request.getLoginId());
+    return loginWithAllowedRoles(member, request, ipAddress, null);
   }
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto adminLogin(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, Set.of("SUA", "ADM", "GUEST"));
+    MemberDto member = memberMapper.findByLoginId(request.getLoginId());
+    return loginWithAllowedRoles(member,request, ipAddress, Set.of("SUA", "ADM", "GUEST"));
   }
 
   @Transactional(noRollbackFor = InvalidLoginException.class)
   public LoginResponseDto userLogin(LoginRequestDto request, String ipAddress) {
-    return loginWithAllowedRoles(request, ipAddress, Set.of("PROF", "STU", "ALU"));
+    MemberDto member = memberMapper.findByLoginIdAndUnivId(
+            request.getLoginId(),
+            request.getUnivId()
+    );
+    return loginWithAllowedRoles(member,request, ipAddress, Set.of("ADM", "PROF", "STU", "ALU"));
+  }
+
+  @Transactional(readOnly = true)
+  public boolean isLoginIdAvailable(String loginId) {
+    return loginId != null
+            && !loginId.isBlank()
+            && memberMapper.existsByLoginId(loginId) == 0;
   }
 
   private LoginResponseDto loginWithAllowedRoles(
+      MemberDto member,
       LoginRequestDto request,
       String ipAddress,
       Set<String> allowedRoles
   ) {
-    MemberDto member = memberMapper.findByMemberId(request.getMemberId());
 
     if (member == null) {
       insertLoginFailLog(null, "MEMBER_NOT_FOUND");
@@ -126,6 +139,10 @@ public class MemberService {
     response.setTokenType(jwtTokenProvider.getTokenType());
     response.setMemberId(member.getMemberId());
     response.setRole(member.getRole());
+    response.setUnivId(member.getUnivId());
+    response.setUnivName(member.getUnivName());
+    response.setMemberName(member.getMemberName());
+    response.setCommunityNickname(member.getCommunityNickname());
 
     return response;
   }

@@ -88,4 +88,8 @@ public class AdminService {
     public List<AdminDto.UniversityDto> getUniversityList() {
         return adminMapper.selectUniversityList();
     }
+
+    public AdminDto.UniversityDto getUniversity(Long univId) {
+        return adminMapper.selectUniversityById(univId);
+    }
 }

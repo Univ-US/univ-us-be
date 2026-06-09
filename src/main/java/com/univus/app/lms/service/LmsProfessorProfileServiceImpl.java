@@ -1,6 +1,7 @@
 package com.univus.app.lms.service;
 
 import com.univus.app.common.StorageService;
+import com.univus.app.lms.code.RoleCode;
 import com.univus.app.lms.code.SecReqStatusCode;
 import com.univus.app.lms.dto.LmsProfessorProfileResponseDto;
 import com.univus.app.lms.dto.LmsProfessorProfileUpdateDto;
@@ -38,7 +39,7 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
     @Transactional // getOrCreate에서 INSERT 가능성이 있어 readOnly 사용 안 함
     public LmsProfessorProfileResponseDto requestGetLmsProfessorProfile(Long memberId) {
         ensureLmsProfile(memberId);
-        return lmsProfessorProfileMapper.findLmsprofessorProfileByMemberId(memberId);
+        return findProfileWithRoleLabel(memberId);
     }
 
     // PLM-001 교수 프로필 수정
@@ -63,7 +64,7 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
             lmsProfessorProfileMapper.invalidateLmsProfessorProfileOldImage(lmsPrfId); // 기존 이미지 0 처리
             lmsProfessorProfileMapper.insertProfileImage(lmsPrfId, orgFileName, trnFileName, orgUrl, extType); // 신규 이미지 insert
         }
-        return lmsProfessorProfileMapper.findLmsprofessorProfileByMemberId(memberId); // 최신 재조회
+        return findProfileWithRoleLabel(memberId); // 최신 재조회
     }
 
     // PLM-001/012 탈퇴 요청 (하드삭제 아님 → LMS_USER_SECESSION_REQUEST insert)
@@ -73,6 +74,27 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
         Long lmsPrfId = ensureLmsProfile(memberId);
         // 탈퇴 상태값은 공통코드에서 (SecReqStatusCode.REQ.getCode() = "REQ")
         lmsProfessorProfileMapper.insertSecessionRequest(lmsPrfId, SecReqStatusCode.REQ.getCode());
+    }
+
+    /* 조회 + 역할 코드→한글 라벨 변환 (get/update 공통, FO 응답은 label만 내려감) */
+    private LmsProfessorProfileResponseDto findProfileWithRoleLabel(Long memberId) {
+        LmsProfessorProfileResponseDto dto = lmsProfessorProfileMapper.findLmsprofessorProfileByMemberId(memberId);
+        if (dto != null) {
+            dto.setLmsProfessorProfileRole(toRoleLabel(dto.getLmsProfessorProfileRole()));
+        }
+        return dto;
+    }
+
+    /* MEMBER.ROLE 코드 → RoleCode 한글 라벨 (미정의/널 코드는 원본 유지) */
+    private String toRoleLabel(String roleCode) {
+        if (roleCode == null) {
+            return null;
+        }
+        try {
+            return RoleCode.fromCode(roleCode).getLabel();
+        } catch (IllegalArgumentException e) {
+            return roleCode;
+        }
     }
 
     /* 지연 생성(getOrCreate): LMS_PROFILE 없으면 INSERT 후 lmsPrfId 반환 */

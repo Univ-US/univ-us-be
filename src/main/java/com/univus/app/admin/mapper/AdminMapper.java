@@ -34,4 +34,6 @@ public interface AdminMapper {
     int updateSupportStatus(AdminDto.SupportStatusDto dto);
 
     List<AdminDto.UniversityDto> selectUniversityList();
+
+    AdminDto.UniversityDto selectUniversityById(@Param("univId") Long univId);
 }

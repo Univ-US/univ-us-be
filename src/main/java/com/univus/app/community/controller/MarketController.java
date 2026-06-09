@@ -3,8 +3,12 @@ package com.univus.app.community.controller;
 import com.univus.app.community.dto.MarketDto;
 import com.univus.app.community.service.MarketService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +43,7 @@ public class MarketController {
     // GET /api/market/products/{productId}
     @GetMapping("/products/{productId}")
     public ResponseEntity<Map<String, Object>> getProductDetail(
-            @PathVariable Long productId) {
+            @PathVariable("productId") Long productId) {
 
         MarketDto.ProductDto product = marketService.getProductDetail(productId);
 
@@ -58,8 +62,10 @@ public class MarketController {
     // POST /api/market/products
     @PostMapping("/products")
     public ResponseEntity<Map<String, Object>> createProduct(
+            @AuthenticationPrincipal Long memberId,
             @RequestBody MarketDto.ProductCreateDto createDto) {
 
+        createDto.setMemberId(requireMemberId(memberId));
         int rows = marketService.createProduct(createDto);
 
         Map<String, Object> result = new HashMap<>();
@@ -72,9 +78,12 @@ public class MarketController {
     // PUT /api/market/products/{productId}
     @PutMapping("/products/{productId}")
     public ResponseEntity<Map<String, Object>> updateProduct(
-            @PathVariable Long productId,
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
             @RequestBody MarketDto.ProductUpdateDto updateDto) {
 
+        assertCanManageProduct(productId, requireMemberId(memberId), authentication);
         updateDto.setProductId(productId);
         int rows = marketService.updateProduct(updateDto);
 
@@ -88,8 +97,11 @@ public class MarketController {
     // DELETE /api/market/products/{productId}
     @DeleteMapping("/products/{productId}")
     public ResponseEntity<Map<String, Object>> deleteProduct(
-            @PathVariable Long productId) {
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication) {
 
+        assertCanManageProduct(productId, requireMemberId(memberId), authentication);
         int rows = marketService.deleteProduct(productId);
 
         Map<String, Object> result = new HashMap<>();
@@ -104,7 +116,7 @@ public class MarketController {
     // GET /api/market/products/{productId}/comments
     @GetMapping("/products/{productId}/comments")
     public ResponseEntity<Map<String, Object>> getCommentList(
-            @PathVariable Long productId) {
+            @PathVariable("productId") Long productId) {
 
         List<MarketDto.ProductCommentDto> comments =
                 marketService.getProductCommentList(productId);
@@ -119,10 +131,12 @@ public class MarketController {
     // POST /api/market/products/{productId}/comments
     @PostMapping("/products/{productId}/comments")
     public ResponseEntity<Map<String, Object>> createComment(
-            @PathVariable Long productId,
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
             @RequestBody MarketDto.ProductCommentCreateDto createDto) {
 
         createDto.setProductId(productId);
+        createDto.setMemberId(requireMemberId(memberId));
         int rows = marketService.createProductComment(createDto);
 
         Map<String, Object> result = new HashMap<>();
@@ -135,7 +149,7 @@ public class MarketController {
     // DELETE /api/market/comments/{commentId}
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<Map<String, Object>> deleteComment(
-            @PathVariable Long commentId) {
+            @PathVariable("commentId") Long commentId) {
 
         int rows = marketService.deleteProductComment(commentId);
 
@@ -151,10 +165,12 @@ public class MarketController {
     // POST /api/market/products/{productId}/like
     @PostMapping("/products/{productId}/like")
     public ResponseEntity<Map<String, Object>> toggleLike(
-            @PathVariable Long productId,
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
             @RequestBody MarketDto.ProductLikeDto likeDto) {
 
         likeDto.setProductId(productId);
+        likeDto.setMemberId(requireMemberId(memberId));
         boolean liked = marketService.toggleProductLike(likeDto);
 
         Map<String, Object> result = new HashMap<>();
@@ -168,7 +184,7 @@ public class MarketController {
     // GET /api/market/likes?memberId=1
     @GetMapping("/likes")
     public ResponseEntity<Map<String, Object>> getMyLikeList(
-            @RequestParam Long memberId) {
+            @RequestParam("memberId") Long memberId) {
 
         List<MarketDto.ProductDto> list = marketService.getMyLikeList(memberId);
 
@@ -176,5 +192,47 @@ public class MarketController {
         result.put("success", true);
         result.put("list", list);
         return ResponseEntity.ok(result);
+    }
+
+    // GET /api/market/payments/config
+    @GetMapping("/payments/config")
+    public ResponseEntity<MarketDto.PaymentConfigDto> getPaymentConfig() {
+        return ResponseEntity.ok(marketService.getPaymentConfig());
+    }
+
+    // POST /api/market/payments/complete
+    @PostMapping("/payments/complete")
+    public ResponseEntity<Map<String, Object>> completePayment(
+            @RequestBody MarketDto.PaymentCompleteDto completeDto) {
+        MarketDto.PaymentResultDto paymentResult = marketService.completePayment(completeDto);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("payment", paymentResult);
+        return ResponseEntity.ok(result);
+    }
+
+    private Long requireMemberId(Long memberId) {
+        if (memberId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        return memberId;
+    }
+
+    private void assertCanManageProduct(Long productId, Long memberId, Authentication authentication) {
+        MarketDto.ProductDto product = marketService.findProductById(productId);
+        if (product == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다.");
+        }
+        if (!product.getMemberId().equals(memberId) && !isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "상품 수정/삭제 권한이 없습니다.");
+        }
+    }
+
+    private boolean isAdmin(Authentication authentication) {
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority ->
+                        "ROLE_SUA".equals(authority.getAuthority())
+                                || "ROLE_ADM".equals(authority.getAuthority()));
     }
 }

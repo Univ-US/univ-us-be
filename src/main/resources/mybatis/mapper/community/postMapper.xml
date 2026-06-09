@@ -185,6 +185,22 @@
 	    WHERE POST_ID   = #{param1}
 	      AND MEMBER_ID = #{param2}
 	</delete>
+
+	<!-- ── 신고 ────────────────────────────────────────────────── -->
+
+	<!-- 신고 여부 확인 -->
+	<select id="selectReportCount" resultType="int">
+	    SELECT COUNT(*)
+	    FROM POST_REPORT
+	    WHERE POST_ID   = #{param1}
+	      AND MEMBER_ID = #{param2}
+	</select>
+
+	<!-- 신고 등록 -->
+	<insert id="insertReport" parameterType="com.univus.app.community.dto.PostDto">
+	    INSERT INTO POST_REPORT (REPORT_ID, MEMBER_ID, POST_ID, REASON, DETAIL, PRESSED_AT)
+	    VALUES (SEQ_POST_REPORT.NEXTVAL, #{memberId}, #{postId}, #{reason}, #{detail}, SYSTIMESTAMP)
+	</insert>
 	
 	<!-- ── 댓글 ─────────────────────────────────────────── -->
 
@@ -263,4 +279,33 @@
 	    WHERE COMMENT_ID = #{commentId}
 	</update>
 	
+    <select id="selectPostImageList" parameterType="long"
+            resultType="com.univus.app.community.dto.PostImageDto">
+        SELECT
+            IMAGE_ID   AS imageId,
+            POST_ID    AS postId,
+            IMAGE_URL  AS imageUrl,
+            IMAGE_SORT AS imageSort,
+            CREATED_AT AS createdAt
+        FROM POST_IMAGE
+        WHERE POST_ID = #{postId}
+        ORDER BY IMAGE_SORT ASC
+    </select>
+
+    <insert id="insertPostImage" parameterType="com.univus.app.community.dto.PostImageDto">
+        INSERT INTO POST_IMAGE (
+            IMAGE_ID,
+            POST_ID,
+            IMAGE_URL,
+            IMAGE_SORT,
+            CREATED_AT
+        ) VALUES (
+            SEQ_POST_IMAGE.NEXTVAL,
+            #{postId},
+            #{imageUrl},
+            #{imageSort},
+            SYSTIMESTAMP
+        )
+    </insert>
+
 </mapper>

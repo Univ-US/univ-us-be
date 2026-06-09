@@ -1,18 +1,38 @@
 package com.univus.app.community.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.univus.app.community.dto.MarketDto;
 import com.univus.app.community.mapper.MarketMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class MarketService {
 
     private final MarketMapper marketMapper;
+    private final RestTemplate restTemplate;
+
+    @Value("${portone.imp.code:}")
+    private String portoneImpCode;
+
+    @Value("${portone.api.key:}")
+    private String portoneApiKey;
+
+    @Value("${portone.api.secret:}")
+    private String portoneApiSecret;
 
     // ── 상품 ──────────────────────────────────────────────────
 
@@ -35,6 +55,10 @@ public class MarketService {
             product.setImages(marketMapper.selectProductImageList(productId));
         }
         return product;
+    }
+
+    public MarketDto.ProductDto findProductById(Long productId) {
+        return marketMapper.selectProductDetail(productId);
     }
 
     // 상품 등록
@@ -114,5 +138,119 @@ public class MarketService {
     // 내 찜 목록
     public List<MarketDto.ProductDto> getMyLikeList(Long memberId) {
         return marketMapper.selectMyLikeList(memberId);
+    }
+
+    public MarketDto.PaymentConfigDto getPaymentConfig() {
+        MarketDto.PaymentConfigDto configDto = new MarketDto.PaymentConfigDto();
+        configDto.setImpCode(portoneImpCode);
+        return configDto;
+    }
+
+    @Transactional
+    public MarketDto.PaymentResultDto completePayment(MarketDto.PaymentCompleteDto completeDto) {
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(completeDto.getProductId());
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        if (!"SALE".equals(product.getProductStatus())) {
+            throw new IllegalStateException("Product is not available for payment.");
+        }
+
+        Long buyerId = completeDto.getBuyerId() != null ? completeDto.getBuyerId() : 1L;
+        if (product.getMemberId().equals(buyerId)) {
+            throw new IllegalStateException("Seller cannot buy own product.");
+        }
+
+        verifyPortOnePayment(completeDto, product);
+
+        MarketDto.TradeDto tradeDto = MarketDto.TradeDto.builder()
+                .productId(product.getProductId())
+                .sellerId(product.getMemberId())
+                .buyerId(buyerId)
+                .tradeStatus("DONE")
+                .price(product.getPrice())
+                .build();
+        marketMapper.insertTrade(tradeDto);
+
+        MarketDto.PaymentDto paymentDto = MarketDto.PaymentDto.builder()
+                .tradeId(tradeDto.getTradeId())
+                .impUid(completeDto.getImpUid())
+                .merchantUid(completeDto.getMerchantUid())
+                .amount(product.getPrice())
+                .status("PAID")
+                .build();
+        marketMapper.insertPayment(paymentDto);
+        marketMapper.updateProductStatus(product.getProductId(), "DONE");
+
+        return MarketDto.PaymentResultDto.builder()
+                .tradeId(tradeDto.getTradeId())
+                .paymentId(paymentDto.getPaymentId())
+                .productStatus("DONE")
+                .paymentStatus("PAID")
+                .build();
+    }
+
+    private void verifyPortOnePayment(MarketDto.PaymentCompleteDto completeDto, MarketDto.ProductDto product) {
+        if (isBlank(portoneApiKey) || isBlank(portoneApiSecret)) {
+            throw new IllegalStateException("PortOne API credentials are missing.");
+        }
+
+        String accessToken = requestPortOneAccessToken();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        ResponseEntity<JsonNode> response = restTemplate.exchange(
+                "https://api.iamport.kr/payments/" + completeDto.getImpUid(),
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                JsonNode.class
+        );
+
+        JsonNode payment = response.getBody() == null ? null : response.getBody().path("response");
+        if (payment == null || payment.isMissingNode() || payment.isNull()) {
+            throw new IllegalStateException("Payment information not found.");
+        }
+
+        String merchantUid = payment.path("merchant_uid").asText();
+        String status = payment.path("status").asText();
+        long amount = payment.path("amount").asLong();
+
+        if (!completeDto.getMerchantUid().equals(merchantUid)) {
+            throw new IllegalStateException("Merchant uid does not match.");
+        }
+        if (!"paid".equals(status)) {
+            throw new IllegalStateException("Payment is not paid.");
+        }
+        if (amount != product.getPrice()) {
+            throw new IllegalStateException("Payment amount does not match.");
+        }
+    }
+
+    private String requestPortOneAccessToken() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, String> body = new HashMap<>();
+        body.put("imp_key", portoneApiKey);
+        body.put("imp_secret", portoneApiSecret);
+
+        ResponseEntity<JsonNode> response = restTemplate.postForEntity(
+                "https://api.iamport.kr/users/getToken",
+                new HttpEntity<>(body, headers),
+                JsonNode.class
+        );
+
+        String accessToken = response.getBody()
+                .path("response")
+                .path("access_token")
+                .asText();
+        if (isBlank(accessToken)) {
+            throw new IllegalStateException("Failed to issue PortOne access token.");
+        }
+        return accessToken;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

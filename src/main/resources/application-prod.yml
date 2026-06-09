@@ -75,11 +75,18 @@ univus:
     groq-api-key: ${GROQ_API_KEY:}
 
 portone:
+  # v1(아임포트) — 중고거래 MarketService가 아직 사용. @Value 기본값(:)이 있어 빈값이어도 부팅 OK.
   api:
     key: ${PORTONE_API_KEY:}
     secret: ${PORTONE_API_SECRET:}
   imp:
     code: ${PORTONE_IMP_CODE:}
+  # v2(PortOne) 구독결제 — PortOnePaymentClient가 ${portone.subscription.api-secret}를 '기본값 없이' 읽음.
+  # ⚠️ 이 키가 없으면 prod에서 'Could not resolve placeholder' → 컨텍스트 로드 실패 → CrashLoop.
+  #    실제 시크릿은 K8s Secret(univ-us-be-secret)의 PORTONE_SUBSCRIPTION_API_SECRET가 주입.
+  #    ${}는 반드시 block 스타일(인라인 {} 금지 — snakeyaml flow-map 충돌, PR#43 CrashLoop 이력).
+  subscription:
+    api-secret: ${PORTONE_SUBSCRIPTION_API_SECRET:}
 
 jwt:
   secret: ${JWT_SECRET:dev-only-change-me-min-32-bytes-0000000000}
