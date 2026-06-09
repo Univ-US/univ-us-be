@@ -11,6 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -47,6 +48,7 @@ public class SpringSecurityConfig {
 			// 인증 없이 접근 가능한 공개 API를 지정하고,
 			// 그 외 요청은 인증된 사용자만 접근하도록 설정한다.
             .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(HttpMethod.POST, "/api/admin/support").permitAll()
             	    .requestMatchers(
 											"/",
 //            	       "/api/test/**",
@@ -64,8 +66,7 @@ public class SpringSecurityConfig {
 						//ai챗봇
 						"/api/ai/**",
 
-						// 관리자 문의, 대학 목록 (비로그인 가능)
-						"/api/admin/support",
+						// 대학 목록 (비로그인 가능)
 						"/api/admin/universities",
 
             	        // 커뮤니티 게시판

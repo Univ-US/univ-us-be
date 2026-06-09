@@ -26,11 +26,21 @@ public class AdminController {
         adminService.createSupport(support);
     }
 
-    // 문의 목록 조회
+    // 문의 목록 조회 (ADM: univId 필수, SUA: univId 없으면 전체)
     @GetMapping("/support")
-    public ResponseEntity<List<AdminDto.SupportListDto>> getSupportList(Authentication authentication) {
+    public ResponseEntity<List<AdminDto.SupportListDto>> getSupportList(
+            @RequestParam(required = false) Long univId,
+            Authentication authentication) {
         Long memberId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(adminService.getSupportList(memberId));
+        return ResponseEntity.ok(adminService.getSupportList(memberId, univId));
+    }
+
+    // 문의 상태 변경 (ADM, SUA)
+    @PatchMapping("/support/{supportId}/status")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateSupportStatus(@PathVariable Long supportId,
+                                    @RequestBody AdminDto.SupportStatusDto dto) {
+        adminService.updateSupportStatus(supportId, dto.getStatus());
     }
 
     // 대학 목록 조회 (비로그인 가능)
@@ -42,8 +52,10 @@ public class AdminController {
     // 회원 목록 조회 (필터 + 페이징)
     @GetMapping("/members")
     public ResponseEntity<Map<String, Object>> getMemberList(
-            @ModelAttribute AdminDto.MemberSearchDto search) {
-        return ResponseEntity.ok(adminService.getMemberList(search));
+            @ModelAttribute AdminDto.MemberSearchDto search,
+            Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.getMemberList(search, memberId));
     }
 
     // 회원 일괄 등록
@@ -64,15 +76,17 @@ public class AdminController {
 
     // 공지 목록 조회
     @GetMapping("/notices")
-    public ResponseEntity<List<AdminDto.NoticeListDto>> getNoticeList() {
-        return ResponseEntity.ok(adminService.getNoticeList());
+    public ResponseEntity<List<AdminDto.NoticeListDto>> getNoticeList(Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.getNoticeList(memberId));
     }
 
     // 공지 등록
     @PostMapping("/notices")
     @ResponseStatus(HttpStatus.CREATED)
-    public void createNotice(@RequestBody AdminDto.NoticeDto notice) {
-        adminService.createNotice(notice);
+    public void createNotice(@RequestBody AdminDto.NoticeDto notice, Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        adminService.createNotice(notice, memberId);
     }
 
     // 공지 수정

@@ -25,11 +25,13 @@ public interface AdminMapper {
 
     int deleteNotice(@Param("noticeId") Long noticeId);
 
-    List<AdminDto.NoticeListDto> selectNoticeList();
+    List<AdminDto.NoticeListDto> selectNoticeList(@Param("univId") Long univId);
 
     int insertSupport(AdminDto.SupportRequestDto support);
 
     List<AdminDto.SupportListDto> selectSupportList(@Param("univId") Long univId);
+
+    int updateSupportStatus(AdminDto.SupportStatusDto dto);
 
     List<AdminDto.UniversityDto> selectUniversityList();
 }
