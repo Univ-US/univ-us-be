@@ -47,6 +47,44 @@
         <result property="createdAt"     column="CREATED_AT"/>
     </resultMap>
 
+    <resultMap id="RoomAvailabilityResultMap"
+               type="com.univus.app.reservation.dto.ReservationDto$RoomAvailabilityDto">
+        <id     property="roomId"      column="ROOM_ID"/>
+        <result property="roomName"    column="ROOM_NAME"/>
+        <result property="roomType"    column="ROOM_TYPE"/>
+        <result property="floorName"   column="FLOOR_NAME"/>
+        <result property="location"    column="LOCATION"/>
+        <result property="capacity"    column="CAPACITY"/>
+        <result property="description" column="DESCRIPTION"/>
+        <result property="isActive"    column="IS_ACTIVE"/>
+        <result property="createdAt"   column="CREATED_AT"/>
+    </resultMap>
+
+    <resultMap id="RoomReservationSlotResultMap"
+               type="com.univus.app.reservation.dto.ReservationDto$RoomReservationSlotDto">
+        <id     property="reservationId"    column="RESERVATION_ID"/>
+        <result property="roomId"           column="ROOM_ID"/>
+        <result property="reservedMemberId" column="MEMBER_ID"/>
+        <result property="startTime"        column="START_TIME"/>
+        <result property="endTime"          column="END_TIME"/>
+        <result property="status"           column="STATUS"/>
+    </resultMap>
+
+    <resultMap id="RoomReservationResultMap"
+               type="com.univus.app.reservation.dto.ReservationDto$RoomReservationDto">
+        <id     property="reservationId" column="RESERVATION_ID"/>
+        <result property="memberId"      column="MEMBER_ID"/>
+        <result property="roomId"        column="ROOM_ID"/>
+        <result property="roomName"      column="ROOM_NAME"/>
+        <result property="roomType"      column="ROOM_TYPE"/>
+        <result property="capacity"      column="CAPACITY"/>
+        <result property="purpose"       column="PURPOSE"/>
+        <result property="startTime"     column="START_TIME"/>
+        <result property="endTime"       column="END_TIME"/>
+        <result property="status"        column="STATUS"/>
+        <result property="createdAt"     column="CREATED_AT"/>
+    </resultMap>
+
     <select id="selectReadingRoomAvailability" resultMap="ReadingRoomAvailabilityResultMap">
         SELECT
             RR.READING_ROOM_ID,
@@ -206,6 +244,111 @@
 
     <update id="cancelReadingSeatReservation">
         UPDATE READING_SEAT_RESERVATIONS
+        SET STATUS = 'CANCELLED'
+        WHERE RESERVATION_ID = #{reservationId}
+          AND MEMBER_ID = #{memberId}
+          AND STATUS IN ('USING', 'RESERVED')
+    </update>
+
+    <select id="selectActiveReservationRooms" resultMap="RoomAvailabilityResultMap">
+        SELECT
+            ROOM_ID,
+            ROOM_NAME,
+            'MEETING_ROOM' AS ROOM_TYPE,
+            NULL AS FLOOR_NAME,
+            NULL AS LOCATION,
+            CAPACITY,
+            EQUIPMENT AS DESCRIPTION,
+            NVL(IS_AVAILABLE, 1) AS IS_ACTIVE,
+            CAST(NULL AS TIMESTAMP) AS CREATED_AT
+        FROM MEETING_ROOMS
+        WHERE NVL(IS_AVAILABLE, 1) = 1
+        ORDER BY ROOM_ID
+    </select>
+
+    <select id="selectRoomReservationsBetween" resultMap="RoomReservationSlotResultMap">
+        SELECT
+            RESERVATION_ID,
+            MEMBER_ID,
+            ROOM_ID,
+            START_TIME,
+            END_TIME,
+            STATUS
+        FROM MEETING_ROOM_RESERVATIONS
+        WHERE STATUS IN ('USING', 'RESERVED')
+          AND START_TIME <![CDATA[ < ]]> #{endTime}
+          AND END_TIME <![CDATA[ > ]]> #{startTime}
+    </select>
+
+    <select id="countUsableReservationRoom" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+        FROM MEETING_ROOMS
+        WHERE ROOM_ID = #{roomId}
+          AND NVL(IS_AVAILABLE, 1) = 1
+    </select>
+
+    <select id="countOverlappingRoomReservation" resultType="int">
+        SELECT COUNT(*)
+        FROM MEETING_ROOM_RESERVATIONS
+        WHERE ROOM_ID = #{roomId}
+          AND STATUS IN ('USING', 'RESERVED')
+          AND START_TIME <![CDATA[ < ]]> #{endTime}
+          AND END_TIME <![CDATA[ > ]]> #{startTime}
+    </select>
+
+    <insert id="insertRoomReservation"
+            parameterType="com.univus.app.reservation.dto.ReservationDto$RoomReservationDto">
+        <selectKey keyProperty="reservationId" resultType="long" order="BEFORE">
+            SELECT SEQ_MEETING_ROOM_RESERVATIONS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO MEETING_ROOM_RESERVATIONS (
+            RESERVATION_ID,
+            MEMBER_ID,
+            ROOM_ID,
+            START_TIME,
+            END_TIME,
+            PURPOSE,
+            STATUS,
+            CREATED_AT
+        ) VALUES (
+            #{reservationId},
+            #{memberId},
+            #{roomId},
+            #{startTime},
+            #{endTime},
+            #{purpose},
+            COALESCE(#{status}, 'RESERVED'),
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="selectMyRoomReservations" resultMap="RoomReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.ROOM_ID,
+            MR.ROOM_NAME,
+            'MEETING_ROOM' AS ROOM_TYPE,
+            MR.CAPACITY,
+            R.PURPOSE,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT
+        FROM MEETING_ROOM_RESERVATIONS R
+        JOIN MEETING_ROOMS MR
+          ON MR.ROOM_ID = R.ROOM_ID
+        WHERE R.MEMBER_ID = #{memberId}
+        ORDER BY
+            CASE
+                WHEN UPPER(TRIM(R.STATUS)) IN ('USING', 'RESERVED') THEN 0
+                ELSE 1
+            END,
+            R.START_TIME DESC
+    </select>
+
+    <update id="cancelRoomReservation">
+        UPDATE MEETING_ROOM_RESERVATIONS
         SET STATUS = 'CANCELLED'
         WHERE RESERVATION_ID = #{reservationId}
           AND MEMBER_ID = #{memberId}
