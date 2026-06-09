@@ -101,4 +101,66 @@ public class ReservationDto {
         private String status;
         private LocalDateTime createdAt;
     }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class RoomReservationRequestDto {
+        private Long roomId;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
+        private String purpose;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class RoomAvailabilityDto {
+        private Long roomId;
+        private String roomName;
+        private String roomType;
+        private String floorName;
+        private String location;
+        private Integer capacity;
+        private String description;
+        private Integer isActive;
+        private LocalDateTime createdAt;
+        private List<RoomReservationSlotDto> slots;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class RoomReservationSlotDto {
+        private Long roomId;
+        private Long reservationId;
+        private Long reservedMemberId;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
+        private String status;
+        private Boolean available;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class RoomReservationDto {
+        private Long reservationId;
+        private Long memberId;
+        private Long roomId;
+        private String roomName;
+        private String roomType;
+        private Integer capacity;
+        private String purpose;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
+        private String status;
+        private LocalDateTime createdAt;
+    }
 }

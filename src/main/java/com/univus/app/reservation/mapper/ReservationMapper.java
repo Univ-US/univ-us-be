@@ -40,4 +40,26 @@ public interface ReservationMapper {
     int cancelReadingSeatReservation(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
+
+    List<ReservationDto.RoomAvailabilityDto> selectActiveReservationRooms();
+
+    List<ReservationDto.RoomReservationSlotDto> selectRoomReservationsBetween(
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    int countUsableReservationRoom(@Param("roomId") Long roomId);
+
+    int countOverlappingRoomReservation(
+            @Param("roomId") Long roomId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    int insertRoomReservation(ReservationDto.RoomReservationDto reservation);
+
+    List<ReservationDto.RoomReservationDto> selectMyRoomReservations(
+            @Param("memberId") Long memberId);
+
+    int cancelRoomReservation(
+            @Param("reservationId") Long reservationId,
+            @Param("memberId") Long memberId);
 }
