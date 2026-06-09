@@ -84,6 +84,9 @@ public class SpringSecurityConfig {
             	        // 결제
             	        "/api/payments/**",
 
+						// 구독 플랜 조회
+						"/api/subscriptions/plans",
+
             	        // 레디스
             	        "/api/redis",
             	        "/api/redis/*",
