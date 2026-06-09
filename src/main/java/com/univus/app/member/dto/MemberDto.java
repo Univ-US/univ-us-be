@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Setter
 public class MemberDto {
   private Long memberId;
+  private String loginId;
   private Long univId;
   private Long deptId;
   private String password;
@@ -21,4 +22,5 @@ public class MemberDto {
   private LocalDateTime logtimeAt;
   private String birth;
   private String communityNickname;
+  private String univName;
 }
