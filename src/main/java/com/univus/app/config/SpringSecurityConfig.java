@@ -69,6 +69,9 @@ public class SpringSecurityConfig {
 						//ai챗봇
 						"/api/ai/**",
 
+						// 날씨
+						"/api/weather",
+
 						// 대학 목록 (비로그인 가능)
 						"/api/admin/universities",
 

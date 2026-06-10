@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.reservation.mapper.SeatChatMapper">
+
+    <resultMap id="ActiveSeatReservationResultMap"
+               type="com.univus.app.reservation.dto.SeatChatDto$ActiveSeatReservationDto">
+        <id     property="reservationId" column="RESERVATION_ID"/>
+        <result property="memberId"      column="MEMBER_ID"/>
+        <result property="seatId"        column="SEAT_ID"/>
+        <result property="readingRoomId" column="READING_ROOM_ID"/>
+        <result property="roomName"      column="ROOM_NAME"/>
+        <result property="seatNumber"    column="SEAT_NUMBER"/>
+        <result property="startTime"     column="START_TIME"/>
+        <result property="endTime"       column="END_TIME"/>
+        <result property="status"        column="STATUS"/>
+    </resultMap>
+
+    <resultMap id="SeatChatRoomResultMap"
+               type="com.univus.app.reservation.dto.SeatChatDto$SeatChatRoomDto">
+        <id     property="roomId"                 column="ROOM_ID"/>
+        <result property="myReservationId"        column="MY_RESERVATION_ID"/>
+        <result property="targetReservationId"    column="TARGET_RESERVATION_ID"/>
+        <result property="targetSeatId"           column="TARGET_SEAT_ID"/>
+        <result property="targetReadingRoomId"    column="TARGET_READING_ROOM_ID"/>
+        <result property="targetRoomName"         column="TARGET_ROOM_NAME"/>
+        <result property="targetSeatNumber"       column="TARGET_SEAT_NUMBER"/>
+        <result property="status"                 column="STATUS"/>
+        <result property="createdAt"              column="CREATED_AT"/>
+        <result property="lastMessageText"        column="LAST_MESSAGE_TEXT"/>
+        <result property="lastMessageAt"          column="LAST_MESSAGE_AT"/>
+    </resultMap>
+
+    <resultMap id="SeatChatMessageResultMap"
+               type="com.univus.app.reservation.dto.SeatChatDto$SeatChatMessageDto">
+        <id     property="messageId"           column="MESSAGE_ID"/>
+        <result property="roomId"              column="ROOM_ID"/>
+        <result property="senderReservationId" column="SENDER_RES_ID"/>
+        <result property="senderMemberId"      column="SENDER_MEMBER_ID"/>
+        <result property="messageText"         column="MESSAGE_TEXT"/>
+        <result property="isRead"              column="IS_READ"/>
+        <result property="createdAt"           column="CREATED_AT"/>
+    </resultMap>
+
+    <sql id="ActiveReservationColumns">
+        R.RESERVATION_ID,
+        R.MEMBER_ID,
+        R.SEAT_ID,
+        S.READING_ROOM_ID,
+        RR.ROOM_NAME,
+        S.SEAT_NUMBER,
+        R.START_TIME,
+        R.END_TIME,
+        R.STATUS
+    </sql>
+
+    <select id="selectCurrentActiveSeatReservationForMember"
+            resultMap="ActiveSeatReservationResultMap">
+        SELECT
+            <include refid="ActiveReservationColumns"/>
+        FROM READING_SEAT_RESERVATIONS R
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = R.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE R.MEMBER_ID = #{memberId}
+          AND R.STATUS IN ('USING', 'RESERVED')
+          AND R.START_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND R.END_TIME <![CDATA[ > ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+        ORDER BY R.START_TIME DESC
+        FETCH FIRST 1 ROW ONLY
+    </select>
+
+    <select id="selectCurrentActiveSeatReservationById"
+            resultMap="ActiveSeatReservationResultMap">
+        SELECT
+            <include refid="ActiveReservationColumns"/>
+        FROM READING_SEAT_RESERVATIONS R
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = R.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE R.RESERVATION_ID = #{reservationId}
+          AND R.STATUS IN ('USING', 'RESERVED')
+          AND R.START_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND R.END_TIME <![CDATA[ > ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+    </select>
+
+    <select id="selectSeatChatRoomByPair" resultMap="SeatChatRoomResultMap">
+        SELECT
+            ROOM_ID,
+            #{reservationId} AS MY_RESERVATION_ID,
+            CASE
+                WHEN INITIATOR_RES_ID = #{reservationId} THEN TARGET_RES_ID
+                ELSE INITIATOR_RES_ID
+            END AS TARGET_RESERVATION_ID,
+            STATUS,
+            CREATED_AT
+        FROM SEAT_CHAT_ROOMS
+        WHERE NVL(STATUS, 'ACTIVE') = 'ACTIVE'
+          AND (
+              (INITIATOR_RES_ID = #{reservationId}
+               AND TARGET_RES_ID = #{targetReservationId})
+              OR
+              (INITIATOR_RES_ID = #{targetReservationId}
+               AND TARGET_RES_ID = #{reservationId})
+          )
+        FETCH FIRST 1 ROW ONLY
+    </select>
+
+    <insert id="insertSeatChatRoom"
+            parameterType="com.univus.app.reservation.dto.SeatChatDto$SeatChatRoomDto">
+        <selectKey keyProperty="roomId" resultType="long" order="BEFORE">
+            SELECT SEQ_SEAT_CHAT_ROOMS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO SEAT_CHAT_ROOMS (
+            ROOM_ID,
+            INITIATOR_RES_ID,
+            TARGET_RES_ID,
+            STATUS,
+            CREATED_AT
+        ) VALUES (
+            #{roomId},
+            #{myReservationId},
+            #{targetReservationId},
+            COALESCE(#{status}, 'ACTIVE'),
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="selectSeatChatRoomForParticipant" resultMap="SeatChatRoomResultMap">
+        SELECT
+            CR.ROOM_ID,
+            #{reservationId} AS MY_RESERVATION_ID,
+            TR.RESERVATION_ID AS TARGET_RESERVATION_ID,
+            TR.SEAT_ID AS TARGET_SEAT_ID,
+            S.READING_ROOM_ID AS TARGET_READING_ROOM_ID,
+            RR.ROOM_NAME AS TARGET_ROOM_NAME,
+            S.SEAT_NUMBER AS TARGET_SEAT_NUMBER,
+            CR.STATUS,
+            CR.CREATED_AT,
+            LM.MESSAGE_TEXT AS LAST_MESSAGE_TEXT,
+            LM.CREATED_AT AS LAST_MESSAGE_AT
+        FROM SEAT_CHAT_ROOMS CR
+        JOIN READING_SEAT_RESERVATIONS TR
+          ON TR.RESERVATION_ID = CASE
+              WHEN CR.INITIATOR_RES_ID = #{reservationId} THEN CR.TARGET_RES_ID
+              ELSE CR.INITIATOR_RES_ID
+          END
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = TR.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        LEFT JOIN (
+            SELECT ROOM_ID, MESSAGE_TEXT, CREATED_AT
+            FROM (
+                SELECT
+                    ROOM_ID,
+                    MESSAGE_TEXT,
+                    CREATED_AT,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ROOM_ID
+                        ORDER BY CREATED_AT DESC, MESSAGE_ID DESC
+                    ) AS RN
+                FROM SEAT_CHAT_MESSAGES
+            )
+            WHERE RN = 1
+        ) LM ON LM.ROOM_ID = CR.ROOM_ID
+        WHERE CR.ROOM_ID = #{roomId}
+          AND NVL(CR.STATUS, 'ACTIVE') = 'ACTIVE'
+          AND TR.STATUS IN ('USING', 'RESERVED')
+          AND TR.START_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND TR.END_TIME <![CDATA[ > ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND (CR.INITIATOR_RES_ID = #{reservationId}
+               OR CR.TARGET_RES_ID = #{reservationId})
+    </select>
+
+    <select id="selectSeatChatRoomsForReservation" resultMap="SeatChatRoomResultMap">
+        SELECT
+            CR.ROOM_ID,
+            #{reservationId} AS MY_RESERVATION_ID,
+            TR.RESERVATION_ID AS TARGET_RESERVATION_ID,
+            TR.SEAT_ID AS TARGET_SEAT_ID,
+            S.READING_ROOM_ID AS TARGET_READING_ROOM_ID,
+            RR.ROOM_NAME AS TARGET_ROOM_NAME,
+            S.SEAT_NUMBER AS TARGET_SEAT_NUMBER,
+            CR.STATUS,
+            CR.CREATED_AT,
+            LM.MESSAGE_TEXT AS LAST_MESSAGE_TEXT,
+            LM.CREATED_AT AS LAST_MESSAGE_AT
+        FROM SEAT_CHAT_ROOMS CR
+        JOIN READING_SEAT_RESERVATIONS TR
+          ON TR.RESERVATION_ID = CASE
+              WHEN CR.INITIATOR_RES_ID = #{reservationId} THEN CR.TARGET_RES_ID
+              ELSE CR.INITIATOR_RES_ID
+          END
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = TR.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        LEFT JOIN (
+            SELECT ROOM_ID, MESSAGE_TEXT, CREATED_AT
+            FROM (
+                SELECT
+                    ROOM_ID,
+                    MESSAGE_TEXT,
+                    CREATED_AT,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY ROOM_ID
+                        ORDER BY CREATED_AT DESC, MESSAGE_ID DESC
+                    ) AS RN
+                FROM SEAT_CHAT_MESSAGES
+            )
+            WHERE RN = 1
+        ) LM ON LM.ROOM_ID = CR.ROOM_ID
+        WHERE NVL(CR.STATUS, 'ACTIVE') = 'ACTIVE'
+          AND TR.STATUS IN ('USING', 'RESERVED')
+          AND TR.START_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND TR.END_TIME <![CDATA[ > ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND (CR.INITIATOR_RES_ID = #{reservationId}
+               OR CR.TARGET_RES_ID = #{reservationId})
+        ORDER BY NVL(LM.CREATED_AT, CR.CREATED_AT) DESC
+    </select>
+
+    <select id="selectSeatChatMessages" resultMap="SeatChatMessageResultMap">
+        SELECT
+            MESSAGE_ID,
+            ROOM_ID,
+            SENDER_RES_ID,
+            SENDER_MEMBER_ID,
+            MESSAGE_TEXT,
+            IS_READ,
+            CREATED_AT
+        FROM SEAT_CHAT_MESSAGES
+        WHERE ROOM_ID = #{roomId}
+        ORDER BY CREATED_AT ASC, MESSAGE_ID ASC
+    </select>
+
+    <insert id="insertSeatChatMessage"
+            parameterType="com.univus.app.reservation.dto.SeatChatDto$SeatChatMessageDto">
+        <selectKey keyProperty="messageId" resultType="long" order="BEFORE">
+            SELECT SEQ_SEAT_CHAT_MESSAGES.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO SEAT_CHAT_MESSAGES (
+            MESSAGE_ID,
+            ROOM_ID,
+            SENDER_RES_ID,
+            SENDER_MEMBER_ID,
+            MESSAGE_TEXT,
+            IS_READ,
+            CREATED_AT
+        ) VALUES (
+            #{messageId},
+            #{roomId},
+            #{senderReservationId},
+            #{senderMemberId},
+            #{messageText},
+            COALESCE(#{isRead}, 0),
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="selectSeatChatMessage" resultMap="SeatChatMessageResultMap">
+        SELECT
+            MESSAGE_ID,
+            ROOM_ID,
+            SENDER_RES_ID,
+            SENDER_MEMBER_ID,
+            MESSAGE_TEXT,
+            IS_READ,
+            CREATED_AT
+        FROM SEAT_CHAT_MESSAGES
+        WHERE MESSAGE_ID = #{messageId}
+    </select>
+</mapper>
