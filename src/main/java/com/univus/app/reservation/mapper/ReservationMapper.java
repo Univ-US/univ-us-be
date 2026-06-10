@@ -63,6 +63,10 @@ public interface ReservationMapper {
     List<ReservationDto.RoomReservationDto> selectMyRoomReservations(
             @Param("memberId") Long memberId);
 
+    ReservationDto.RoomReservationDto selectRoomReservationForMember(
+            @Param("reservationId") Long reservationId,
+            @Param("memberId") Long memberId);
+
     int cancelRoomReservation(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
