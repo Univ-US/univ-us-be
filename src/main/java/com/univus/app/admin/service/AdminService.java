@@ -65,8 +65,9 @@ public class AdminService {
 
     public List<AdminDto.NoticeListDto> getNoticeList(Long requesterId) {
         MemberDto requester = memberMapper.findByMemberId(requesterId);
-        Long univId = "SUA".equals(requester.getRole()) ? null : requester.getUnivId();
-        return adminMapper.selectNoticeList(univId);
+        String role = requester.getRole();
+        String filterRole = "ADM".equals(role) ? null : role;
+        return adminMapper.selectNoticeList(requester.getUnivId(), filterRole);
     }
 
     public void createSupport(AdminDto.SupportRequestDto support) {

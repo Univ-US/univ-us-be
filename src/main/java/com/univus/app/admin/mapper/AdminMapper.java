@@ -25,7 +25,7 @@ public interface AdminMapper {
 
     int deleteNotice(@Param("noticeId") Long noticeId);
 
-    List<AdminDto.NoticeListDto> selectNoticeList(@Param("univId") Long univId);
+    List<AdminDto.NoticeListDto> selectNoticeList(@Param("univId") Long univId, @Param("role") String role);
 
     int insertSupport(AdminDto.SupportRequestDto support);
 

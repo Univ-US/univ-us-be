@@ -65,6 +65,7 @@ public class AdminDto {
         private Long univId;
         private String title;
         private String content;
+        private String target;
     }
 
     @Data
@@ -75,6 +76,7 @@ public class AdminDto {
         private String title;
         private String content;
         private String memberName;
+        private String target;
         private LocalDateTime postedAt;
         private LocalDateTime updatedAt;
     }
