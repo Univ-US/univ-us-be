@@ -1,6 +1,5 @@
 package com.univus.app.community.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.univus.app.common.StorageService;
 import com.univus.app.community.dto.MarketDto;
 import com.univus.app.community.mapper.MarketMapper;
@@ -87,12 +86,18 @@ public class MarketService {
     // 상품 등록
     @Transactional
     public int createProduct(MarketDto.ProductCreateDto createDto) {
+        createDto.setProductStatus("SALE");
         return marketMapper.insertProduct(createDto);
     }
 
     // 상품 수정
     @Transactional
     public int updateProduct(MarketDto.ProductUpdateDto updateDto) {
+        validateEditableProductStatus(updateDto.getProductStatus());
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(updateDto.getProductId());
+        if (product != null && "DONE".equals(product.getProductStatus())) {
+            throw new IllegalStateException("Completed product cannot be edited.");
+        }
         return marketMapper.updateProduct(updateDto);
     }
 
@@ -287,13 +292,13 @@ public class MarketService {
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "PortOne " + portoneTradeApiSecret);
 
-        ResponseEntity<JsonNode> response;
+        ResponseEntity<PortOneTradePaymentResponse> response;
         try {
             response = restTemplate.exchange(
                     "https://api.portone.io/payments/" + completeDto.getPaymentId(),
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
-                    JsonNode.class
+                    PortOneTradePaymentResponse.class
             );
         } catch (RestClientResponseException ex) {
             throw new IllegalStateException(
@@ -303,15 +308,15 @@ public class MarketService {
             throw new IllegalStateException("PortOne payment lookup failed.");
         }
 
-        JsonNode payment = response.getBody();
-        if (payment == null || payment.isMissingNode() || payment.isNull()) {
+        PortOneTradePaymentResponse payment = response.getBody();
+        if (payment == null) {
             throw new IllegalStateException("Payment information not found.");
         }
 
-        String paymentId = payment.path("id").asText();
-        String status = payment.path("status").asText();
-        long amount = payment.path("amount").path("total").asLong();
-        String channelKey = payment.path("channel").path("key").asText();
+        String paymentId = payment.id;
+        String status = payment.status;
+        Long amount = payment.amount == null ? null : payment.amount.total;
+        String channelKey = payment.channel == null ? null : payment.channel.key;
 
         if (!completeDto.getPaymentId().equals(paymentId)) {
             throw new IllegalStateException("Payment id does not match.");
@@ -319,7 +324,7 @@ public class MarketService {
         if (!"PAID".equals(status)) {
             throw new IllegalStateException("Payment is not paid.");
         }
-        if (amount != product.getPrice()) {
+        if (amount == null || !amount.equals(product.getPrice())) {
             throw new IllegalStateException("Payment amount does not match.");
         }
         if (!isAllowedTradeChannelKey(channelKey)) {
@@ -349,6 +354,12 @@ public class MarketService {
         }
     }
 
+    private void validateEditableProductStatus(String productStatus) {
+        if (!"SALE".equals(productStatus) && !"RESERVE".equals(productStatus)) {
+            throw new IllegalArgumentException("Product status can only be changed to SALE or RESERVE.");
+        }
+    }
+
     private void validateProductImage(MultipartFile image) {
         String contentType = image.getContentType();
         if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
@@ -357,5 +368,20 @@ public class MarketService {
         if (image.getSize() > MAX_IMAGE_SIZE) {
             throw new IllegalArgumentException("Image size must be 30MB or less.");
         }
+    }
+
+    public static class PortOneTradePaymentResponse {
+        public String id;
+        public String status;
+        public PortOneTradePaymentAmount amount;
+        public PortOneTradePaymentChannel channel;
+    }
+
+    public static class PortOneTradePaymentAmount {
+        public Long total;
+    }
+
+    public static class PortOneTradePaymentChannel {
+        public String key;
     }
 }

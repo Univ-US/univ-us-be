@@ -71,6 +71,9 @@
         <if test="productStatus != null and productStatus != ''">
             AND P.PRODUCT_STATUS = #{productStatus}
         </if>
+        <if test="productStatus == null or productStatus == ''">
+            AND P.PRODUCT_STATUS != 'DONE'
+        </if>
         ORDER BY P.CREATED_AT DESC
         OFFSET #{page} * #{size} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
@@ -90,6 +93,9 @@
         </if>
         <if test="productStatus != null and productStatus != ''">
             AND P.PRODUCT_STATUS = #{productStatus}
+        </if>
+        <if test="productStatus == null or productStatus == ''">
+            AND P.PRODUCT_STATUS != 'DONE'
         </if>
     </select>
 
