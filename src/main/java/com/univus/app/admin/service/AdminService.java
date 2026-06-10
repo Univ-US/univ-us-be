@@ -49,6 +49,7 @@ public class AdminService {
     @Transactional
     public void createNotice(AdminDto.NoticeDto notice, Long requesterId) {
         MemberDto requester = memberMapper.findByMemberId(requesterId);
+        notice.setMemberId(requesterId);
         notice.setUnivId(requester.getUnivId());
         adminMapper.insertNotice(notice);
     }

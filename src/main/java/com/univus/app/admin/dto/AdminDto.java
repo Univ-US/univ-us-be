@@ -73,6 +73,8 @@ public class AdminDto {
         private Long memberId;
         private Long univId;
         private String title;
+        private String content;
+        private String memberName;
         private LocalDateTime postedAt;
         private LocalDateTime updatedAt;
     }
