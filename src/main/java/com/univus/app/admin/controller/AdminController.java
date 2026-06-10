@@ -51,7 +51,7 @@ public class AdminController {
 
     // 대학 단건 조회 (ADM, SUA)
     @GetMapping("/universities/{univId}")
-    public ResponseEntity<AdminDto.UniversityDto> getUniversity(@PathVariable Long univId) {
+    public ResponseEntity<AdminDto.UniversityDto> getUniversity(@PathVariable("univId") Long univId) {
         return ResponseEntity.ok(adminService.getUniversity(univId));
     }
 
