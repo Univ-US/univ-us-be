@@ -178,4 +178,18 @@ public class ReservationDto {
         private String status;
         private LocalDateTime createdAt;
     }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class RoomReservationRealtimeEventDto {
+        private String action;
+        private Long reservationId;
+        private Long memberId;
+        private Long roomId;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
+    }
 }

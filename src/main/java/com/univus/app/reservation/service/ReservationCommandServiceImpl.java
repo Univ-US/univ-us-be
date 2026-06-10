@@ -1,0 +1,192 @@
+package com.univus.app.reservation.service;
+
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.mapper.ReservationMapper;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class ReservationCommandServiceImpl implements ReservationCommandService {
+
+    private static final String DEFAULT_SEAT_STATUS = "RESERVED";
+    private static final String DEFAULT_ROOM_STATUS = "RESERVED";
+    private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
+    private static final String ROOM_REALTIME_TOPIC = "/sub/reservations/rooms";
+    private static final String REALTIME_ACTION_RESERVED = "RESERVED";
+    private static final String REALTIME_ACTION_CANCELLED = "CANCELLED";
+
+    private final ReservationMapper reservationMapper;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @Transactional
+    @Override
+    public ReservationDto.ReadingSeatReservationDto reserveReadingSeat(
+            Long memberId,
+            ReservationDto.ReadingSeatReservationRequestDto request) {
+        int usableSeatCount = reservationMapper.countUsableReadingSeat(request.getSeatId());
+        if (usableSeatCount == 0) {
+            throw new IllegalArgumentException("사용 가능한 좌석이 아닙니다.");
+        }
+
+        int memberOverlapCount = reservationMapper.countOverlappingMemberReadingSeatReservation(
+                memberId,
+                request.getStartTime(),
+                request.getEndTime());
+        if (memberOverlapCount > 0) {
+            throw new IllegalStateException("같은 시간대에 이미 예약한 좌석이 있습니다.");
+        }
+
+        int overlapCount = reservationMapper.countOverlappingReadingSeatReservation(
+                request.getSeatId(),
+                request.getStartTime(),
+                request.getEndTime());
+        if (overlapCount > 0) {
+            throw new IllegalStateException("이미 예약된 좌석입니다.");
+        }
+
+        ReservationDto.ReadingSeatReservationDto reservation =
+                ReservationDto.ReadingSeatReservationDto.builder()
+                        .memberId(memberId)
+                        .seatId(request.getSeatId())
+                        .startTime(request.getStartTime())
+                        .endTime(request.getEndTime())
+                        .status(DEFAULT_SEAT_STATUS)
+                        .build();
+
+        reservationMapper.insertReadingSeatReservation(reservation);
+        ReservationDto.ReadingSeatReservationDto savedReservation =
+                reservationMapper.selectReadingSeatReservationForMember(
+                        reservation.getReservationId(),
+                        memberId);
+        ReservationDto.ReadingSeatReservationDto response =
+                savedReservation == null ? reservation : savedReservation;
+        publishSeatRealtimeEventAfterCommit(REALTIME_ACTION_RESERVED, response);
+        return response;
+    }
+
+    @Transactional
+    @Override
+    public void cancelReadingSeatReservation(Long memberId, Long reservationId) {
+        ReservationDto.ReadingSeatReservationDto reservation =
+                reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
+        if (reservation == null) {
+            throw new IllegalArgumentException("취소할 수 있는 예약을 찾을 수 없습니다.");
+        }
+
+        int updated = reservationMapper.cancelReadingSeatReservation(reservationId, memberId);
+        if (updated == 0) {
+            throw new IllegalArgumentException("취소할 수 있는 예약을 찾을 수 없습니다.");
+        }
+        publishSeatRealtimeEventAfterCommit(REALTIME_ACTION_CANCELLED, reservation);
+    }
+
+    @Transactional
+    @Override
+    public ReservationDto.RoomReservationDto reserveRoom(
+            Long memberId,
+            ReservationDto.RoomReservationRequestDto request) {
+        int usableRoomCount = reservationMapper.countUsableReservationRoom(request.getRoomId());
+        if (usableRoomCount == 0) {
+            throw new IllegalArgumentException("사용 가능한 공간이 아닙니다.");
+        }
+
+        int overlapCount = reservationMapper.countOverlappingRoomReservation(
+                request.getRoomId(),
+                request.getStartTime(),
+                request.getEndTime());
+        if (overlapCount > 0) {
+            throw new IllegalStateException("이미 예약된 공간입니다.");
+        }
+
+        ReservationDto.RoomReservationDto reservation =
+                ReservationDto.RoomReservationDto.builder()
+                        .memberId(memberId)
+                        .roomId(request.getRoomId())
+                        .startTime(request.getStartTime())
+                        .endTime(request.getEndTime())
+                        .purpose(request.getPurpose())
+                        .status(DEFAULT_ROOM_STATUS)
+                        .build();
+
+        reservationMapper.insertRoomReservation(reservation);
+        publishRoomRealtimeEventAfterCommit(REALTIME_ACTION_RESERVED, reservation);
+        return reservation;
+    }
+
+    @Transactional
+    @Override
+    public void cancelRoomReservation(Long memberId, Long reservationId) {
+        ReservationDto.RoomReservationDto reservation =
+                reservationMapper.selectRoomReservationForMember(reservationId, memberId);
+        if (reservation == null) {
+            throw new IllegalArgumentException("취소할 수 있는 공간 예약을 찾을 수 없습니다.");
+        }
+
+        int updated = reservationMapper.cancelRoomReservation(reservationId, memberId);
+        if (updated == 0) {
+            throw new IllegalArgumentException("취소할 수 있는 공간 예약을 찾을 수 없습니다.");
+        }
+        publishRoomRealtimeEventAfterCommit(REALTIME_ACTION_CANCELLED, reservation);
+    }
+
+    private void publishSeatRealtimeEventAfterCommit(
+            String action,
+            ReservationDto.ReadingSeatReservationDto reservation) {
+        if (reservation == null) {
+            return;
+        }
+
+        ReservationDto.ReadingSeatRealtimeEventDto event =
+                ReservationDto.ReadingSeatRealtimeEventDto.builder()
+                        .action(action)
+                        .reservationId(reservation.getReservationId())
+                        .memberId(reservation.getMemberId())
+                        .seatId(reservation.getSeatId())
+                        .readingRoomId(reservation.getReadingRoomId())
+                        .startTime(reservation.getStartTime())
+                        .endTime(reservation.getEndTime())
+                        .build();
+        runAfterCommit(() -> messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event));
+    }
+
+    private void publishRoomRealtimeEventAfterCommit(
+            String action,
+            ReservationDto.RoomReservationDto reservation) {
+        if (reservation == null) {
+            return;
+        }
+
+        ReservationDto.RoomReservationRealtimeEventDto event =
+                ReservationDto.RoomReservationRealtimeEventDto.builder()
+                        .action(action)
+                        .reservationId(reservation.getReservationId())
+                        .memberId(reservation.getMemberId())
+                        .roomId(reservation.getRoomId())
+                        .startTime(reservation.getStartTime())
+                        .endTime(reservation.getEndTime())
+                        .build();
+        runAfterCommit(() -> messagingTemplate.convertAndSend(ROOM_REALTIME_TOPIC, event));
+    }
+
+    private void runAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
+    }
+}
