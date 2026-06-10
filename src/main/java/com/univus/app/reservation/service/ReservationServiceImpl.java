@@ -11,6 +11,7 @@ import java.util.stream.IntStream;
 
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -30,6 +31,9 @@ public class ReservationServiceImpl implements ReservationService {
     private static final String MEMBER_LOCK_KEY_PREFIX = "reservation:reading-seat:member:";
     private static final String SEAT_LOCK_KEY_PREFIX = "reservation:reading-seat:";
     private static final String ROOM_LOCK_KEY_PREFIX = "reservation:meeting-room:";
+    private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
+    private static final String REALTIME_ACTION_RESERVED = "RESERVED";
+    private static final String REALTIME_ACTION_CANCELLED = "CANCELLED";
     private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
     private static final List<String> DAY_OF_WEEK_LABELS =
             List.of("일", "월", "화", "수", "목", "금", "토");
@@ -42,6 +46,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     private final ReservationMapper reservationMapper;
     private final RedissonClient redissonClient;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     public ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days) {
@@ -152,7 +157,14 @@ public class ReservationServiceImpl implements ReservationService {
                             .build();
 
             reservationMapper.insertReadingSeatReservation(reservation);
-            return reservation;
+            ReservationDto.ReadingSeatReservationDto savedReservation =
+                    reservationMapper.selectReadingSeatReservationForMember(
+                            reservation.getReservationId(),
+                            memberId);
+            ReservationDto.ReadingSeatReservationDto response =
+                    savedReservation == null ? reservation : savedReservation;
+            publishSeatRealtimeEventAfterCommit(REALTIME_ACTION_RESERVED, response);
+            return response;
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
@@ -180,10 +192,13 @@ public class ReservationServiceImpl implements ReservationService {
             throw new IllegalArgumentException("예약 ID는 필수입니다.");
         }
 
+        ReservationDto.ReadingSeatReservationDto reservation =
+                reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
         int updated = reservationMapper.cancelReadingSeatReservation(reservationId, memberId);
         if (updated == 0) {
             throw new IllegalArgumentException("취소할 수 있는 예약을 찾을 수 없습니다.");
         }
+        publishSeatRealtimeEventAfterCommit(REALTIME_ACTION_CANCELLED, reservation);
     }
 
     @Override
@@ -301,6 +316,41 @@ public class ReservationServiceImpl implements ReservationService {
         if (lock.isHeldByCurrentThread()) {
             lock.unlock();
         }
+    }
+
+    private void publishSeatRealtimeEventAfterCommit(
+            String action,
+            ReservationDto.ReadingSeatReservationDto reservation) {
+        if (reservation == null) {
+            return;
+        }
+
+        ReservationDto.ReadingSeatRealtimeEventDto event =
+                ReservationDto.ReadingSeatRealtimeEventDto.builder()
+                        .action(action)
+                        .reservationId(reservation.getReservationId())
+                        .memberId(reservation.getMemberId())
+                        .seatId(reservation.getSeatId())
+                        .readingRoomId(reservation.getReadingRoomId())
+                        .startTime(reservation.getStartTime())
+                        .endTime(reservation.getEndTime())
+                        .build();
+        runAfterCommit(() -> messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event));
+    }
+
+    private void runAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 
     private List<ReservationDto.RoomReservationSlotDto> buildRoomSlots(
