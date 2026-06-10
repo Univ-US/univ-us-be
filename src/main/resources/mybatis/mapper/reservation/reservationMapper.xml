@@ -368,6 +368,26 @@
             R.START_TIME DESC
     </select>
 
+    <select id="selectRoomReservationForMember" resultMap="RoomReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.ROOM_ID,
+            MR.ROOM_NAME,
+            'MEETING_ROOM' AS ROOM_TYPE,
+            MR.CAPACITY,
+            R.PURPOSE,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT
+        FROM MEETING_ROOM_RESERVATIONS R
+        JOIN MEETING_ROOMS MR
+          ON MR.ROOM_ID = R.ROOM_ID
+        WHERE R.RESERVATION_ID = #{reservationId}
+          AND R.MEMBER_ID = #{memberId}
+    </select>
+
     <update id="cancelRoomReservation">
         UPDATE MEETING_ROOM_RESERVATIONS
         SET STATUS = 'CANCELLED'

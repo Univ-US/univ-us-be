@@ -194,11 +194,42 @@ public class ReservationServiceImpl implements ReservationService {
 
         ReservationDto.ReadingSeatReservationDto reservation =
                 reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
-        int updated = reservationMapper.cancelReadingSeatReservation(reservationId, memberId);
-        if (updated == 0) {
+        if (reservation == null) {
             throw new IllegalArgumentException("취소할 수 있는 예약을 찾을 수 없습니다.");
         }
-        publishSeatRealtimeEventAfterCommit(REALTIME_ACTION_CANCELLED, reservation);
+
+        RLock memberLock = redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId);
+        RLock seatLock = redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + reservation.getSeatId());
+        boolean memberLocked = false;
+        boolean seatLocked = false;
+
+        try {
+            memberLocked = memberLock.tryLock(5, TimeUnit.SECONDS);
+            if (!memberLocked) {
+                throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
+            }
+
+            seatLocked = seatLock.tryLock(5, TimeUnit.SECONDS);
+            if (!seatLocked) {
+                throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
+            }
+
+            int updated = reservationMapper.cancelReadingSeatReservation(reservationId, memberId);
+            if (updated == 0) {
+                throw new IllegalArgumentException("취소할 수 있는 예약을 찾을 수 없습니다.");
+            }
+            publishSeatRealtimeEventAfterCommit(REALTIME_ACTION_CANCELLED, reservation);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
+        } finally {
+            if (seatLocked) {
+                unlockAfterTransaction(seatLock);
+            }
+            if (memberLocked) {
+                unlockAfterTransaction(memberLock);
+            }
+        }
     }
 
     @Override
@@ -235,9 +266,32 @@ public class ReservationServiceImpl implements ReservationService {
             throw new IllegalArgumentException("예약 ID는 필수입니다.");
         }
 
-        int updated = reservationMapper.cancelRoomReservation(reservationId, memberId);
-        if (updated == 0) {
+        ReservationDto.RoomReservationDto reservation =
+                reservationMapper.selectRoomReservationForMember(reservationId, memberId);
+        if (reservation == null) {
             throw new IllegalArgumentException("취소할 수 있는 공간 예약을 찾을 수 없습니다.");
+        }
+
+        RLock roomLock = redissonClient.getLock(ROOM_LOCK_KEY_PREFIX + reservation.getRoomId());
+        boolean roomLocked = false;
+
+        try {
+            roomLocked = roomLock.tryLock(5, TimeUnit.SECONDS);
+            if (!roomLocked) {
+                throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
+            }
+
+            int updated = reservationMapper.cancelRoomReservation(reservationId, memberId);
+            if (updated == 0) {
+                throw new IllegalArgumentException("취소할 수 있는 공간 예약을 찾을 수 없습니다.");
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
+        } finally {
+            if (roomLocked) {
+                unlockAfterTransaction(roomLock);
+            }
         }
     }
 
