@@ -49,7 +49,7 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getUniversityList());
     }
 
-    // 대학 단건 조회 (비로그인 가능)
+    // 대학 단건 조회 (ADM, SUA)
     @GetMapping("/universities/{univId}")
     public ResponseEntity<AdminDto.UniversityDto> getUniversity(@PathVariable Long univId) {
         return ResponseEntity.ok(adminService.getUniversity(univId));

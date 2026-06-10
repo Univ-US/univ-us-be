@@ -34,6 +34,10 @@ public interface ReservationMapper {
 
     int insertReadingSeatReservation(ReservationDto.ReadingSeatReservationDto reservation);
 
+    ReservationDto.ReadingSeatReservationDto selectReadingSeatReservationForMember(
+            @Param("reservationId") Long reservationId,
+            @Param("memberId") Long memberId);
+
     List<ReservationDto.ReadingSeatReservationDto> selectMyReadingSeatReservations(
             @Param("memberId") Long memberId);
 
@@ -57,6 +61,10 @@ public interface ReservationMapper {
     int insertRoomReservation(ReservationDto.RoomReservationDto reservation);
 
     List<ReservationDto.RoomReservationDto> selectMyRoomReservations(
+            @Param("memberId") Long memberId);
+
+    ReservationDto.RoomReservationDto selectRoomReservationForMember(
+            @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
 
     int cancelRoomReservation(

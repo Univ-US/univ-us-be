@@ -105,6 +105,21 @@ public class ReservationDto {
     @Getter
     @Setter
     @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ReadingSeatRealtimeEventDto {
+        private String action;
+        private Long reservationId;
+        private Long memberId;
+        private Long seatId;
+        private Long readingRoomId;
+        private LocalDateTime startTime;
+        private LocalDateTime endTime;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
     public static class RoomReservationRequestDto {
         private Long roomId;
         private LocalDateTime startTime;
