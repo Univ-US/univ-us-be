@@ -48,6 +48,7 @@ public class SpringSecurityConfig {
 			// 인증 없이 접근 가능한 공개 API를 지정하고,
 			// 그 외 요청은 인증된 사용자만 접근하도록 설정한다.
             .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(HttpMethod.GET, "/api/admin/universities/*").hasAnyRole("ADM", "SUA")
                     .requestMatchers(HttpMethod.POST, "/api/admin/support").permitAll()
             	    .requestMatchers(
 											"/",
@@ -70,7 +71,6 @@ public class SpringSecurityConfig {
 
 						// 대학 목록 (비로그인 가능)
 						"/api/admin/universities",
-						"/api/admin/universities/*",
 
             	        // 커뮤니티 게시판
             	        "/api/posts/**",
