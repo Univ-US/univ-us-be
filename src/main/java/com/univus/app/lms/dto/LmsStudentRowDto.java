@@ -14,6 +14,7 @@ public class LmsStudentRowDto {
     private Long memberId;            // 학생 MEMBER_ID (상세 리포트 호출용)
     private String studentName;       // MEMBER.MEMBER_NAME
     private String studentNo;         // MEMBER.LOGIN_ID (학번)
+    private String imageUrl;          // 프로필 이미지 URL (LMS_PROFILE_IMAGE 최신 유효, 없으면 null)
     private int attendanceRate;       // 출석률(%) — service 계산
     private Integer submittedCount;   // 제출 과제 수
     private Integer totalAssignments; // 전체 과제 수 — service 세팅(강의 단위)

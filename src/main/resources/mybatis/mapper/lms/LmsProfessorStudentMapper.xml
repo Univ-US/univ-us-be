@@ -24,12 +24,15 @@
         ORDER BY SEM_YEAR DESC, SEM_TERM DESC
     </select>
 
-    <!-- 교수 담당 강의 목록 (드롭다운, 상태 무관 전체=폐강 포함, 학기 선택 optional — semId 없으면 전 학기) -->
+    <!-- 교수 담당 강의 목록 (드롭다운, 상태 무관 전체=폐강 포함, 학기 선택 optional — semId 없으면 전 학기)
+         '전체' 학기 시 같은 강의명이 학기별로 중복돼 보이므로 year·termCode 함께 반환(FE가 학기로 구분 표시) -->
     <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsLectureDto">
         SELECT l.LEC_ID AS lecId, lc.LEC_COD_NAME AS lecName, lc.LEC_CODE AS lecCode,
-               l.LEC_SECTION AS lecSection, l.SEM_ID AS semId
+               l.LEC_SECTION AS lecSection, l.SEM_ID AS semId,
+               s.SEM_YEAR AS year, s.SEM_TERM AS termCode
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
         WHERE l.LMS_PRF_ID = #{lmsPrfId}
           <if test="semId != null">AND l.SEM_ID = #{semId}</if>
         ORDER BY l.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
@@ -58,6 +61,9 @@
             m.MEMBER_ID      AS memberId,
             m.MEMBER_NAME    AS studentName,
             m.LOGIN_ID       AS studentNo,
+            (SELECT lpi.LMS_PRF_IMG_ORG_URL FROM LMS_PROFILE_IMAGE lpi
+              WHERE lpi.LMS_PRF_ID = e.LMS_PRF_ID AND lpi.LMS_PRF_IMG_VAL_STATUS = 1
+              ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC FETCH FIRST 1 ROWS ONLY) AS imageUrl,
             (SELECT COUNT(*) FROM STUDENT_ENROLLMENT_ATTENDANCE a
               WHERE a.LEC_STD_ENR_ID = e.LEC_STD_ENR_ID AND a.STD_ENR_ATD_STS_CODE = 'PRS') AS presentCount,
             (SELECT COUNT(*) FROM STUDENT_ENROLLMENT_ATTENDANCE a
@@ -91,6 +97,9 @@
             m.MEMBER_ID      AS memberId,
             m.MEMBER_NAME    AS studentName,
             m.LOGIN_ID       AS studentNo,
+            (SELECT lpi.LMS_PRF_IMG_ORG_URL FROM LMS_PROFILE_IMAGE lpi
+              WHERE lpi.LMS_PRF_ID = e.LMS_PRF_ID AND lpi.LMS_PRF_IMG_VAL_STATUS = 1
+              ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC FETCH FIRST 1 ROWS ONLY) AS imageUrl,
             lc.LEC_COD_NAME  AS lectureName,
             e.LMS_PRF_ID     AS studentLmsPrfId,
             (SELECT COUNT(*) FROM STUDENT_ENROLLMENT_ATTENDANCE a

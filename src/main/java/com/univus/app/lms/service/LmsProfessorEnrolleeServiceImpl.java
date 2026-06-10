@@ -223,12 +223,20 @@ public class LmsProfessorEnrolleeServiceImpl implements LmsProfessorEnrolleeServ
         return true; // 알 수 없는 값은 필터 미적용
     }
 
-    /** 정렬: sort=attendance|score, order=asc|desc(기본 asc). 미채점 평균점수(null)는 방향과 무관하게 항상 뒤로 */
+    /** 정렬: sort=name|studentNo|attendance|score, order=asc|desc(기본 asc). 미채점 평균점수(null)는 방향 무관 항상 뒤 */
     private Comparator<LmsStudentRowDto> resolveComparator(String sort, String order) {
         if (sort == null) {
             return null; // 정렬 미지정 → 기본 이름순(매퍼 ORDER BY) 유지
         }
         boolean desc = "desc".equalsIgnoreCase(order);
+        if ("name".equalsIgnoreCase(sort)) {
+            Comparator<String> direction = desc ? Comparator.reverseOrder() : Comparator.naturalOrder();
+            return Comparator.comparing(LmsStudentRowDto::getStudentName, Comparator.nullsLast(direction));
+        }
+        if ("studentNo".equalsIgnoreCase(sort)) {
+            Comparator<String> direction = desc ? Comparator.reverseOrder() : Comparator.naturalOrder();
+            return Comparator.comparing(LmsStudentRowDto::getStudentNo, Comparator.nullsLast(direction));
+        }
         if ("attendance".equalsIgnoreCase(sort)) {
             Comparator<LmsStudentRowDto> base = Comparator.comparingInt(LmsStudentRowDto::getAttendanceRate);
             return desc ? base.reversed() : base;
