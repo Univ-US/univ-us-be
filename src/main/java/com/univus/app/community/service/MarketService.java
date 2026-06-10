@@ -1,6 +1,7 @@
 package com.univus.app.community.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.univus.app.common.StorageService;
 import com.univus.app.community.dto.MarketDto;
 import com.univus.app.community.mapper.MarketMapper;
 import lombok.RequiredArgsConstructor;
@@ -8,15 +9,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
+import java.io.File;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -24,21 +27,41 @@ public class MarketService {
 
     private final MarketMapper marketMapper;
     private final RestTemplate restTemplate;
+    private final StorageService storageService;
 
-    @Value("${portone.imp.code:}")
-    private String portoneImpCode;
+    @Value("${file.upload-root:${user.home}/univus/uploads}")
+    private String uploadRoot;
 
-    @Value("${portone.api.key:}")
-    private String portoneApiKey;
+    @Value("${portone.trade.store-id:}")
+    private String portoneTradeStoreId;
 
-    @Value("${portone.api.secret:}")
-    private String portoneApiSecret;
+    @Value("${portone.trade.kg-inicis-channel-key:}")
+    private String portoneKgInicisChannelKey;
+
+    @Value("${portone.trade.kakao-pay-channel-key:}")
+    private String portoneKakaoPayChannelKey;
+
+    @Value("${portone.trade.api-secret:}")
+    private String portoneTradeApiSecret;
+
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+    );
+    private static final long MAX_IMAGE_SIZE = 30L * 1024 * 1024;
+    private static final String PRODUCT_IMAGE_SUBDIR = "community" + File.separator + "market";
+    private static final String PRODUCT_IMAGE_URL_PREFIX = "/uploads/community/market/";
 
     // ── 상품 ──────────────────────────────────────────────────
 
     // 상품 목록 조회
     public List<MarketDto.ProductDto> getProductList(MarketDto.ProductSearchDto searchDto) {
-        return marketMapper.selectProductList(searchDto);
+        List<MarketDto.ProductDto> products = marketMapper.selectProductList(searchDto);
+        for (MarketDto.ProductDto product : products) {
+            product.setImages(marketMapper.selectProductImageList(product.getProductId()));
+        }
+        return products;
     }
 
     // 상품 전체 개수 (페이징용)
@@ -87,6 +110,41 @@ public class MarketService {
         return marketMapper.insertProductImage(imageDto);
     }
 
+    @Transactional
+    public List<MarketDto.ProductImageDto> uploadProductImages(Long productId, List<MultipartFile> images) {
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        if (images == null || images.isEmpty()) {
+            return marketMapper.selectProductImageList(productId);
+        }
+
+        int nextSort = marketMapper.selectProductImageList(productId).size() + 1;
+        String directoryPath = uploadRoot + File.separator + PRODUCT_IMAGE_SUBDIR + File.separator + productId;
+        String urlPrefix = PRODUCT_IMAGE_URL_PREFIX + productId + "/";
+
+        for (MultipartFile image : images) {
+            if (image == null || image.isEmpty()) {
+                continue;
+            }
+            validateProductImage(image);
+            String savedFilename = storageService.uploadFileToServer(image, directoryPath);
+            if (savedFilename == null) {
+                continue;
+            }
+
+            MarketDto.ProductImageDto imageDto = MarketDto.ProductImageDto.builder()
+                    .productId(productId)
+                    .imageUrl(urlPrefix + savedFilename)
+                    .imageSort(nextSort++)
+                    .build();
+            marketMapper.insertProductImage(imageDto);
+        }
+
+        return marketMapper.selectProductImageList(productId);
+    }
+
     // 이미지 전체 교체 (수정 시 기존 삭제 후 재등록)
     @Transactional
     public void replaceProductImages(Long productId, List<MarketDto.ProductImageDto> images) {
@@ -95,6 +153,20 @@ public class MarketService {
             image.setProductId(productId);
             marketMapper.insertProductImage(image);
         }
+    }
+
+    @Transactional
+    public List<MarketDto.ProductImageDto> replaceProductImagesWithFiles(Long productId, List<MultipartFile> images) {
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        marketMapper.deleteProductImageAll(productId);
+        return uploadProductImages(productId, images);
+    }
+
+    public List<MarketDto.ProductImageDto> getProductImageList(Long productId) {
+        return marketMapper.selectProductImageList(productId);
     }
 
     // ── 댓글 ──────────────────────────────────────────────────
@@ -135,19 +207,38 @@ public class MarketService {
         }
     }
 
+    public boolean isProductLiked(MarketDto.ProductLikeDto likeDto) {
+        return marketMapper.selectProductLikeCount(likeDto) > 0;
+    }
+
+    public int getProductLikeCount(Long productId) {
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        return product.getLikeCount() == null ? 0 : product.getLikeCount();
+    }
+
     // 내 찜 목록
     public List<MarketDto.ProductDto> getMyLikeList(Long memberId) {
-        return marketMapper.selectMyLikeList(memberId);
+        List<MarketDto.ProductDto> products = marketMapper.selectMyLikeList(memberId);
+        for (MarketDto.ProductDto product : products) {
+            product.setImages(marketMapper.selectProductImageList(product.getProductId()));
+        }
+        return products;
     }
 
     public MarketDto.PaymentConfigDto getPaymentConfig() {
         MarketDto.PaymentConfigDto configDto = new MarketDto.PaymentConfigDto();
-        configDto.setImpCode(portoneImpCode);
+        configDto.setStoreId(portoneTradeStoreId);
+        configDto.setKgInicisChannelKey(portoneKgInicisChannelKey);
+        configDto.setKakaoPayChannelKey(portoneKakaoPayChannelKey);
         return configDto;
     }
 
     @Transactional
-    public MarketDto.PaymentResultDto completePayment(MarketDto.PaymentCompleteDto completeDto) {
+    public MarketDto.PaymentResultDto completePayment(MarketDto.PaymentCompleteDto completeDto, Long buyerId) {
+        validatePaymentCompleteRequest(completeDto);
         MarketDto.ProductDto product = marketMapper.selectProductDetail(completeDto.getProductId());
         if (product == null || product.getIsDeleted() == 1) {
             throw new IllegalArgumentException("Product not found.");
@@ -155,8 +246,6 @@ public class MarketService {
         if (!"SALE".equals(product.getProductStatus())) {
             throw new IllegalStateException("Product is not available for payment.");
         }
-
-        Long buyerId = completeDto.getBuyerId() != null ? completeDto.getBuyerId() : 1L;
         if (product.getMemberId().equals(buyerId)) {
             throw new IllegalStateException("Seller cannot buy own product.");
         }
@@ -174,8 +263,8 @@ public class MarketService {
 
         MarketDto.PaymentDto paymentDto = MarketDto.PaymentDto.builder()
                 .tradeId(tradeDto.getTradeId())
-                .impUid(completeDto.getImpUid())
-                .merchantUid(completeDto.getMerchantUid())
+                .impUid(completeDto.getPaymentId())
+                .merchantUid(completeDto.getPaymentId())
                 .amount(product.getPrice())
                 .status("PAID")
                 .build();
@@ -191,66 +280,82 @@ public class MarketService {
     }
 
     private void verifyPortOnePayment(MarketDto.PaymentCompleteDto completeDto, MarketDto.ProductDto product) {
-        if (isBlank(portoneApiKey) || isBlank(portoneApiSecret)) {
+        if (isBlank(portoneTradeApiSecret)) {
             throw new IllegalStateException("PortOne API credentials are missing.");
         }
 
-        String accessToken = requestPortOneAccessToken();
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
+        headers.set("Authorization", "PortOne " + portoneTradeApiSecret);
 
-        ResponseEntity<JsonNode> response = restTemplate.exchange(
-                "https://api.iamport.kr/payments/" + completeDto.getImpUid(),
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                JsonNode.class
-        );
+        ResponseEntity<JsonNode> response;
+        try {
+            response = restTemplate.exchange(
+                    "https://api.portone.io/payments/" + completeDto.getPaymentId(),
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    JsonNode.class
+            );
+        } catch (RestClientResponseException ex) {
+            throw new IllegalStateException(
+                    "PortOne payment lookup failed. status=" + ex.getStatusCode().value()
+            );
+        } catch (RestClientException ex) {
+            throw new IllegalStateException("PortOne payment lookup failed.");
+        }
 
-        JsonNode payment = response.getBody() == null ? null : response.getBody().path("response");
+        JsonNode payment = response.getBody();
         if (payment == null || payment.isMissingNode() || payment.isNull()) {
             throw new IllegalStateException("Payment information not found.");
         }
 
-        String merchantUid = payment.path("merchant_uid").asText();
+        String paymentId = payment.path("id").asText();
         String status = payment.path("status").asText();
-        long amount = payment.path("amount").asLong();
+        long amount = payment.path("amount").path("total").asLong();
+        String channelKey = payment.path("channel").path("key").asText();
 
-        if (!completeDto.getMerchantUid().equals(merchantUid)) {
-            throw new IllegalStateException("Merchant uid does not match.");
+        if (!completeDto.getPaymentId().equals(paymentId)) {
+            throw new IllegalStateException("Payment id does not match.");
         }
-        if (!"paid".equals(status)) {
+        if (!"PAID".equals(status)) {
             throw new IllegalStateException("Payment is not paid.");
         }
         if (amount != product.getPrice()) {
             throw new IllegalStateException("Payment amount does not match.");
         }
-    }
-
-    private String requestPortOneAccessToken() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        Map<String, String> body = new HashMap<>();
-        body.put("imp_key", portoneApiKey);
-        body.put("imp_secret", portoneApiSecret);
-
-        ResponseEntity<JsonNode> response = restTemplate.postForEntity(
-                "https://api.iamport.kr/users/getToken",
-                new HttpEntity<>(body, headers),
-                JsonNode.class
-        );
-
-        String accessToken = response.getBody()
-                .path("response")
-                .path("access_token")
-                .asText();
-        if (isBlank(accessToken)) {
-            throw new IllegalStateException("Failed to issue PortOne access token.");
+        if (!isAllowedTradeChannelKey(channelKey)) {
+            throw new IllegalStateException("Payment channel does not match.");
         }
-        return accessToken;
     }
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private boolean isAllowedTradeChannelKey(String channelKey) {
+        return !isBlank(channelKey)
+                && (channelKey.equals(portoneKgInicisChannelKey)
+                || channelKey.equals(portoneKakaoPayChannelKey));
+    }
+
+    private void validatePaymentCompleteRequest(MarketDto.PaymentCompleteDto completeDto) {
+        if (completeDto == null) {
+            throw new IllegalArgumentException("Payment request body is required.");
+        }
+        if (completeDto.getProductId() == null) {
+            throw new IllegalArgumentException("Product id is required.");
+        }
+        if (isBlank(completeDto.getPaymentId())) {
+            throw new IllegalArgumentException("paymentId is required.");
+        }
+    }
+
+    private void validateProductImage(MultipartFile image) {
+        String contentType = image.getContentType();
+        if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Only JPG, PNG, and WEBP images can be uploaded.");
+        }
+        if (image.getSize() > MAX_IMAGE_SIZE) {
+            throw new IllegalArgumentException("Image size must be 30MB or less.");
+        }
     }
 }

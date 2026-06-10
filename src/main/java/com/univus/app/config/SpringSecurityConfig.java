@@ -80,6 +80,7 @@ public class SpringSecurityConfig {
             	        
             	        // 게시글 이미지
             	        "/uploads/community/post/**",
+            	        "/uploads/community/market/**",
 
             	        // 중고거래 상품
             	        "/api/market/**",

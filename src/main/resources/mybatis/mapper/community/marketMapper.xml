@@ -121,6 +121,9 @@
 
     <!-- ── 상품 등록 ──────────────────────────────────────── -->
     <insert id="insertProduct" parameterType="com.univus.app.community.dto.MarketDto$ProductCreateDto">
+        <selectKey keyProperty="productId" resultType="long" order="BEFORE">
+            SELECT SEQ_PRODUCT.NEXTVAL FROM DUAL
+        </selectKey>
         INSERT INTO PRODUCT (
             PRODUCT_ID,
             MEMBER_ID,
@@ -134,7 +137,7 @@
             IS_DELETED,
             CREATED_AT
         ) VALUES (
-            SEQ_PRODUCT.NEXTVAL,
+            #{productId},
             #{memberId},
             #{productName},
             #{price},

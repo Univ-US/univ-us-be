@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -190,6 +191,59 @@ public class GlobalExceptionHandler {
         mav.addObject("title", "잘못된 요청입니다.");
         mav.addObject("message", message);
         mav.setStatus(HttpStatus.BAD_REQUEST);
+        return mav;
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public Object handleResponseStatusException(ResponseStatusException ex, HttpServletRequest request) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        String message = ex.getReason() == null || ex.getReason().isBlank()
+                ? status.getReasonPhrase()
+                : ex.getReason();
+
+        log.info("{} - {}", status, message);
+        if (isApiRequest(request)) {
+            return ResponseEntity.status(status)
+                    .body(Map.of("success", false, "message", message));
+        }
+
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", status.getReasonPhrase());
+        mav.addObject("message", message);
+        mav.setStatus(status);
+        return mav;
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Object handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
+        log.info("BAD_REQUEST - ", ex);
+        if (isApiRequest(request)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "잘못된 요청입니다.");
+        mav.addObject("message", ex.getMessage());
+        mav.setStatus(HttpStatus.BAD_REQUEST);
+        return mav;
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public Object handleIllegalStateException(IllegalStateException ex, HttpServletRequest request) {
+        log.info("CONFLICT - ", ex);
+        if (isApiRequest(request)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "요청을 처리할 수 없습니다.");
+        mav.addObject("message", ex.getMessage());
+        mav.setStatus(HttpStatus.CONFLICT);
         return mav;
     }
 

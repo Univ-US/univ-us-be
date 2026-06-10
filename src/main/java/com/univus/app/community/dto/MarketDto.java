@@ -59,6 +59,7 @@ public class MarketDto {
     @Getter @Setter
     @NoArgsConstructor
     public static class ProductCreateDto {
+        private Long productId;
         private Long memberId;
         private String productName;
         private Long price;
@@ -140,16 +141,16 @@ public class MarketDto {
     @Getter @Setter
     @NoArgsConstructor
     public static class PaymentConfigDto {
-        private String impCode;
+        private String storeId;
+        private String kgInicisChannelKey;
+        private String kakaoPayChannelKey;
     }
 
     @Getter @Setter
     @NoArgsConstructor
     public static class PaymentCompleteDto {
         private Long productId;
-        private Long buyerId;
-        private String impUid;
-        private String merchantUid;
+        private String paymentId;
     }
 
     @Getter @Setter
