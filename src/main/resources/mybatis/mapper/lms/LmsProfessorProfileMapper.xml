@@ -10,6 +10,7 @@
             m.MEMBER_NAME    AS lmsProfessorProfileName,
             m.ROLE           AS lmsProfessorProfileRole,
             u.UNIV_NAME      AS lmsProfessorProfileUniversityName,
+            m.LOGIN_ID       AS lmsProfessorProfileEmployeeNo,
             d.DEPT_NAME      AS lmsProfessorProfileDepartment,
             m.PHONE_NUMBER   AS lmsProfessorProfilePhoneNumber,
             lp.LMS_PRF_EMAIL AS lmsProfessorProfileEmail,
