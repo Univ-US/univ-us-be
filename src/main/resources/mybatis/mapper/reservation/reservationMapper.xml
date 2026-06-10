@@ -221,6 +221,27 @@
         )
     </insert>
 
+    <select id="selectReadingSeatReservationForMember" resultMap="ReadingSeatReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.SEAT_ID,
+            S.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            S.SEAT_NUMBER,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT
+        FROM READING_SEAT_RESERVATIONS R
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = R.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE R.RESERVATION_ID = #{reservationId}
+          AND R.MEMBER_ID = #{memberId}
+    </select>
+
     <select id="selectMyReadingSeatReservations" resultMap="ReadingSeatReservationResultMap">
         SELECT
             R.RESERVATION_ID,

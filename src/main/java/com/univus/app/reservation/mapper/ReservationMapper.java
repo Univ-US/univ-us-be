@@ -34,6 +34,10 @@ public interface ReservationMapper {
 
     int insertReadingSeatReservation(ReservationDto.ReadingSeatReservationDto reservation);
 
+    ReservationDto.ReadingSeatReservationDto selectReadingSeatReservationForMember(
+            @Param("reservationId") Long reservationId,
+            @Param("memberId") Long memberId);
+
     List<ReservationDto.ReadingSeatReservationDto> selectMyReadingSeatReservations(
             @Param("memberId") Long memberId);
 
