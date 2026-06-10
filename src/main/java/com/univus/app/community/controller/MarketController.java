@@ -4,10 +4,12 @@ import com.univus.app.community.dto.MarketDto;
 import com.univus.app.community.service.MarketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
@@ -70,6 +72,7 @@ public class MarketController {
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", rows > 0);
+        result.put("productId", createDto.getProductId());
         result.put("message", rows > 0 ? "상품이 등록되었습니다." : "등록에 실패했습니다.");
         return ResponseEntity.ok(result);
     }
@@ -113,6 +116,48 @@ public class MarketController {
     // ── 댓글 ──────────────────────────────────────────────────
 
     // 댓글 목록 조회
+    // 이미지
+    // POST /api/market/products/{productId}/images
+    @PostMapping(value = "/products/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> uploadProductImages(
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
+            @RequestParam("images") List<MultipartFile> images) {
+
+        assertCanManageProduct(productId, requireMemberId(memberId), authentication);
+        List<MarketDto.ProductImageDto> uploadedImages = marketService.uploadProductImages(productId, images);
+        return ResponseEntity.ok(Map.of(
+                "message", "Images uploaded successfully.",
+                "images", uploadedImages
+        ));
+    }
+
+    // PUT /api/market/products/{productId}/images
+    @PutMapping(value = "/products/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> replaceProductImages(
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
+            @RequestParam("images") List<MultipartFile> images) {
+
+        assertCanManageProduct(productId, requireMemberId(memberId), authentication);
+        List<MarketDto.ProductImageDto> uploadedImages =
+                marketService.replaceProductImagesWithFiles(productId, images);
+        return ResponseEntity.ok(Map.of(
+                "message", "Images replaced successfully.",
+                "images", uploadedImages
+        ));
+    }
+
+    // GET /api/market/products/{productId}/images
+    @GetMapping("/products/{productId}/images")
+    public ResponseEntity<List<MarketDto.ProductImageDto>> getProductImages(
+            @PathVariable("productId") Long productId) {
+        return ResponseEntity.ok(marketService.getProductImageList(productId));
+    }
+
+    // 댓글
     // GET /api/market/products/{productId}/comments
     @GetMapping("/products/{productId}/comments")
     public ResponseEntity<Map<String, Object>> getCommentList(
@@ -172,11 +217,32 @@ public class MarketController {
         likeDto.setProductId(productId);
         likeDto.setMemberId(requireMemberId(memberId));
         boolean liked = marketService.toggleProductLike(likeDto);
+        int likeCount = marketService.getProductLikeCount(productId);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("liked", liked);
+        result.put("likeCount", likeCount);
         result.put("message", liked ? "찜했습니다." : "찜을 취소했습니다.");
+        return ResponseEntity.ok(result);
+    }
+
+    // GET /api/market/products/{productId}/like
+    @GetMapping("/products/{productId}/like")
+    public ResponseEntity<Map<String, Object>> getLikeStatus(
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId) {
+
+        MarketDto.ProductLikeDto likeDto = new MarketDto.ProductLikeDto();
+        likeDto.setProductId(productId);
+        likeDto.setMemberId(requireMemberId(memberId));
+        boolean liked = marketService.isProductLiked(likeDto);
+        int likeCount = marketService.getProductLikeCount(productId);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("liked", liked);
+        result.put("likeCount", likeCount);
         return ResponseEntity.ok(result);
     }
 
@@ -203,8 +269,10 @@ public class MarketController {
     // POST /api/market/payments/complete
     @PostMapping("/payments/complete")
     public ResponseEntity<Map<String, Object>> completePayment(
+            @AuthenticationPrincipal Long memberId,
             @RequestBody MarketDto.PaymentCompleteDto completeDto) {
-        MarketDto.PaymentResultDto paymentResult = marketService.completePayment(completeDto);
+        MarketDto.PaymentResultDto paymentResult =
+                marketService.completePayment(completeDto, requireMemberId(memberId));
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
