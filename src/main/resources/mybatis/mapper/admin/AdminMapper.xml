@@ -93,8 +93,8 @@
 
     <!-- 공지 등록 -->
     <insert id="insertNotice" parameterType="com.univus.app.admin.dto.AdminDto$NoticeDto">
-        INSERT INTO NOTICE (NOTICE_ID, MEMBER_ID, UNIV_ID, TITLE, CONTENT, POSTED_AT, UPDATED_AT, IS_DELETED)
-        VALUES (SEQ_NOTICE.NEXTVAL, #{memberId}, #{univId}, #{title}, #{content}, SYSTIMESTAMP, SYSTIMESTAMP, 0)
+        INSERT INTO NOTICE (NOTICE_ID, MEMBER_ID, UNIV_ID, TITLE, CONTENT, TARGET, POSTED_AT, UPDATED_AT, IS_DELETED)
+        VALUES (SEQ_NOTICE.NEXTVAL, #{memberId}, #{univId}, #{title}, #{content}, #{target}, SYSTIMESTAMP, SYSTIMESTAMP, 0)
     </insert>
 
     <!-- 공지 수정 -->
@@ -102,6 +102,7 @@
         UPDATE NOTICE
         SET TITLE      = #{title},
             CONTENT    = #{content},
+            TARGET     = #{target},
             UPDATED_AT = SYSTIMESTAMP
         WHERE NOTICE_ID = #{noticeId}
           AND IS_DELETED = 0
@@ -121,6 +122,7 @@
                N.UNIV_ID,
                N.TITLE,
                N.CONTENT,
+               N.TARGET,
                M.MEMBER_NAME,
                N.POSTED_AT,
                N.UPDATED_AT
@@ -128,11 +130,14 @@
         JOIN MEMBER M ON N.MEMBER_ID = M.MEMBER_ID
         <where>
             N.IS_DELETED = 0
-            <if test="univId != null">
-                AND N.UNIV_ID = #{univId}
-            </if>
+            AND N.UNIV_ID = #{univId}
+            <choose>
+                <when test="role != null">
+                    AND (N.TARGET = 'ALL' OR N.TARGET = #{role})
+                </when>
+            </choose>
         </where>
-        ORDER BY POSTED_AT DESC
+        ORDER BY N.POSTED_AT DESC
     </select>
 
     <!-- 문의 등록 -->
