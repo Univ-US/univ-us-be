@@ -11,6 +11,10 @@ public interface LmsProfessorEnrolleeService {
 
     List<LmsSemesterResponseDto> getSemesters();
     List<LmsLectureDto> getLectures(Long professorMemberId, Long semId);
-    LmsLectureStudentsResponseDto getLectureStudents(Long professorMemberId, Long lecId, String search);
+    LmsLectureStudentsResponseDto getLectureStudents(Long professorMemberId, Long lecId,
+                                                     String search, String submission, String sort, String order,
+                                                     int page, int size);
+    byte[] exportLectureStudentsExcel(Long professorMemberId, Long lecId,
+                                      String search, String submission, String sort, String order);
     LmsStudentReportDto getStudentReport(Long professorMemberId, Long lecId, Long studentMemberId);
 }

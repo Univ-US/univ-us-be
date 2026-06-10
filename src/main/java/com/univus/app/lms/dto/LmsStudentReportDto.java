@@ -15,6 +15,7 @@ public class LmsStudentReportDto {
     private Long memberId;
     private String studentName;            // MEMBER.MEMBER_NAME
     private String studentNo;              // MEMBER.LOGIN_ID
+    private String imageUrl;               // 프로필 이미지 URL (LMS_PROFILE_IMAGE 최신 유효, 없으면 null)
     private String lectureName;            // LECTURE.LEC_NAME
 
     // 상단 요약 카드 3개 (출석률 / 과제 제출 / 평균 점수)
