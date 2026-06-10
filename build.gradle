@@ -42,6 +42,7 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.redisson:redisson:3.27.0'
+	implementation 'org.apache.poi:poi-ooxml:5.3.0' // PLM-003 수강생 명단 Excel(.xlsx) 내보내기
 }
 
 tasks.named('test') {

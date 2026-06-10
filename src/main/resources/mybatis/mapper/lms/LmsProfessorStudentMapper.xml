@@ -4,7 +4,7 @@
 <!--
   PLM-003 / PLM-003-01 교수 수강생 현황 (2026-06 더미데이터 스키마 반영)
   · 강의명: LECTURE 에는 이름이 없고 LECTURE_CODE(LEC_CODE_ID FK)의 LEC_COD_NAME 사용 → JOIN
-  · 강의 유효상태(LEC_VAL_STATUS): CNCL(폐강)/CLSD(종료)/PROG(진행중)/OPEN(수강신청중) → 드롭다운은 폐강만 제외
+  · 강의 유효상태(LEC_VAL_STATUS): CNCL(폐강)/CLSD(종료)/PROG(진행중)/OPEN(수강신청중) → 드롭다운은 상태 무관 전체 반환(폐강 포함, 교수가 담당했던 모든 강의)
   · 과제 유효상태(LEC_ASN_VAL_STATUS): CLS/AVL 등(AsnSbmAvailCode) → 전체 과제 카운트(필터 없음)
   · 출석(STD_ENR_ATD_STS_CODE): PRS/LAT/ABS · 제출(LEC_ASN_SBM_STATUS): NSB/SBM/GRD · 수강(LEC_STD_ENR_STATUS): ENR/CMP/DRP
   ⚠️ ASSIGNMENT_SUBMISSION_EVALUATION (채점 점수) 컬럼 미확인 → 가정: FK=LEC_ASN_SBM_ID, 점수=ASN_SBM_EVL_SCORE
@@ -24,16 +24,15 @@
         ORDER BY SEM_YEAR DESC, SEM_TERM DESC
     </select>
 
-    <!-- 교수 담당 강의 목록 (드롭다운, 폐강 제외, 학기 선택 optional) -->
+    <!-- 교수 담당 강의 목록 (드롭다운, 상태 무관 전체=폐강 포함, 학기 선택 optional — semId 없으면 전 학기) -->
     <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsLectureDto">
         SELECT l.LEC_ID AS lecId, lc.LEC_COD_NAME AS lecName, lc.LEC_CODE AS lecCode,
                l.LEC_SECTION AS lecSection, l.SEM_ID AS semId
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
         WHERE l.LMS_PRF_ID = #{lmsPrfId}
-          AND l.LEC_VAL_STATUS != 'CNCL'
           <if test="semId != null">AND l.SEM_ID = #{semId}</if>
-        ORDER BY l.SEM_ID DESC, lc.LEC_COD_NAME
+        ORDER BY l.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
     </select>
 
     <!-- 강의 헤더(+소유권 검증). 본인 강의 아니면 결과 없음 -->
@@ -83,7 +82,7 @@
           <if test="search != null and search != ''">
             AND (m.MEMBER_NAME LIKE '%' || #{search} || '%' OR m.LOGIN_ID LIKE '%' || #{search} || '%')
           </if>
-        ORDER BY m.MEMBER_NAME
+        ORDER BY m.MEMBER_NAME, m.MEMBER_ID
     </select>
 
     <!-- PLM-003-01 상세 리포트 헤더 -->
