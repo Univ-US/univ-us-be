@@ -20,9 +20,12 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     private static final String SUBSCRIPTION_STATUS_PENDING = "PENDING";
     private static final String SUBSCRIPTION_STATUS_ACTIVE = "ACTIVE";
-
+    private static final String SUBSCRIPTION_STATUS_CANCELED = "CANCELED";
     private static final String PAYMENT_STATUS_READY = "READY";
     private static final String PAYMENT_STATUS_PAID = "PAID";
+    private static final String PAYMENT_STATUS_CANCELED = "CANCELED";
+    private static final String PAYMENT_STATUS_FAILED = "FAILED";
+
 
     private static final String MEMBER_ROLE_ADMIN = "ADM";
 
@@ -270,6 +273,80 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .accessToken(accessToken)
                 .tokenType(jwtTokenProvider.getTokenType())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void cancelPreparedSubscriptionPayment(
+            Long memberId,
+            SubscriptionPaymentCancelRequestDto request
+    ) {
+        validateCancelRequest(memberId, request);
+
+        SubscriptionPaymentVerifyTargetDto target =
+                subscriptionMapper.findPaymentVerifyTargetByMerchantUid(request.getMerchantUid());
+
+        if (target == null) {
+            throw new IllegalArgumentException("결제 준비 이력을 찾을 수 없습니다.");
+        }
+
+        if (!memberId.equals(target.getMemberId())) {
+            throw new IllegalArgumentException("결제 요청 회원이 일치하지 않습니다.");
+        }
+
+
+        if (!SUBSCRIPTION_STATUS_PENDING.equals(target.getSubscriptionStatus())) {
+            throw new IllegalStateException("취소할 수 없는 구독 상태입니다.");
+        }
+
+        String reason = request.getReason() == null || request.getReason().trim().isEmpty()
+                ? "USER_CANCELLED"
+                : request.getReason().trim();
+
+        if (PAYMENT_STATUS_READY.equals(target.getPaymentStatus())) {
+            requireSingleRow(
+                    subscriptionMapper.markPaymentHistoryCanceled(
+                            target.getPaymentHistoryId(),
+                            reason
+                    ),
+                    "결제 이력 취소 처리에 실패했습니다."
+            );
+
+            requireSingleRow(
+                    subscriptionMapper.cancelSubscription(target.getSubscriptionId()),
+                    "구독 취소 처리에 실패했습니다."
+            );
+
+            return;
+        }
+
+        if (PAYMENT_STATUS_FAILED.equals(target.getPaymentStatus())) {
+            requireSingleRow(
+                    subscriptionMapper.cancelSubscription(target.getSubscriptionId()),
+                    "구독 취소 처리에 실패했습니다."
+            );
+
+            return;
+        }
+
+        throw new IllegalStateException("취소할 수 없는 결제 상태입니다.");
+    }
+
+    private void validateCancelRequest(
+            Long memberId,
+            SubscriptionPaymentCancelRequestDto request
+    ) {
+        if (memberId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        if (request == null) {
+            throw new IllegalArgumentException("요청 본문이 필요합니다.");
+        }
+
+        if (request.getMerchantUid() == null || request.getMerchantUid().trim().isEmpty()) {
+            throw new IllegalArgumentException("merchantUid가 필요합니다.");
+        }
     }
 
     private void validateVerifyRequest(

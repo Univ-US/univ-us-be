@@ -84,4 +84,29 @@ public class SubscriptionController {
                     .body(Map.of("success", false, "message", ex.getMessage()));
         }
     }
+
+    // PortOne 결제창에서 사용자가 결제를 취소하거나 결제 진행에 실패했을 때 호출하는 API입니다.
+// prepare 단계에서 생성된 READY 결제 이력과 PENDING 구독을 CANCELED 상태로 닫습니다.
+// 이렇게 해야 같은 사용자가 다시 구독 신청을 시도할 수 있습니다.
+// POST /api/subscriptions/payments/cancel
+    @PostMapping("/payments/cancel")
+    public ResponseEntity<?> cancelSubscriptionPayment(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody SubscriptionPaymentCancelRequestDto request
+    ) {
+        try {
+            subscriptionService.cancelPreparedSubscriptionPayment(memberId, request);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "결제 요청이 취소되었습니다."
+            ));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
 }
