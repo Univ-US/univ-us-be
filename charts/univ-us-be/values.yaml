@@ -28,10 +28,12 @@ ingress:
   # 이 BE 가 받을 경로 목록. 단수 문자열이 아니라 '리스트'라서 여러 경로를 한 번에 라우팅.
   #   /api       = REST API
   #   /ws-univus = WebSocket(STOMP/SockJS) 핸드셰이크
-  # 둘 다 같은 BE 파드(9090)로. (templates/ingressroute.yaml 이 이 리스트를 range 로 순회)
+  #   /uploads   = 업로드 정적 파일(LMS 프로필 이미지 등) — <img> 가 직접 GET (FE 아닌 BE 가 서빙)
+  # 모두 같은 BE 파드(9090)로. (templates/ingressroute.yaml 이 이 리스트를 range 로 순회)
   pathPrefixes:
     - /api
     - /ws-univus
+    - /uploads
 
 # 앱 설정·비밀 주입 — 미리 만들어 둔 ConfigMap/Secret 이름(deployment 가 envFrom 으로 주입)
 config:
