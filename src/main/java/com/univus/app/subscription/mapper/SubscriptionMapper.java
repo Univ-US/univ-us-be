@@ -66,6 +66,19 @@ public interface SubscriptionMapper {
             @Param("nextBillingAt") java.time.LocalDateTime nextBillingAt
     );
 
+    // 결제창 취소 또는 결제 진행 실패 시 결제 이력을 CANCELED 상태로 변경합니다.
+    // prepare 단계에서 READY로 생성된 결제 이력을 닫아 재시도 가능 상태로 만들기 위해 사용합니다.
+    int markPaymentHistoryCanceled(
+            @Param("historyId") Long historyId,
+            @Param("failReason") String failReason
+    );
+
+    // 결제창 취소 또는 결제 진행 실패 시 PENDING 상태의 구독을 CANCELED 상태로 변경합니다.
+    // 결제되지 않은 구독 신청 데이터를 닫아 같은 사용자가 다시 구독 신청을 할 수 있게 합니다.
+    int cancelSubscription(
+            @Param("subscriptionId") Long subscriptionId
+    );
+
     // 구독 결제 성공 후 결제한 회원을 해당 학교 관리자(ADM)로 변경합니다.
     // MEMBER.UNIV_ID에는 새로 생성된 학교 ID를 연결하고,
     // MEMBER.ROLE은 관리자 역할인 ADM으로 변경합니다.

@@ -22,4 +22,11 @@ public interface SubscriptionService {
             Long memberId,
             SubscriptionPaymentVerifyRequestDto request
     );
+    // PortOne 결제창에서 사용자가 결제를 취소하거나 결제 진행에 실패했을 때 호출합니다.
+    // prepare 단계에서 미리 생성된 READY 결제 이력과 PENDING 구독을
+    // CANCELED 상태로 닫아, 같은 사용자가 다시 구독 신청을 시도할 수 있게 합니다.
+    void cancelPreparedSubscriptionPayment(
+            Long memberId,
+            SubscriptionPaymentCancelRequestDto request
+    );
 }

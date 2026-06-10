@@ -19,4 +19,5 @@ public class SubscriptionPlanResponseDto {
     private Long price;
     private String description;
     private String billingCycle;
+    private Long maxMemberCount;
 }

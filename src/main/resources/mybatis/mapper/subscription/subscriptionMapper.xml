@@ -11,7 +11,8 @@
             PLAN_NAME AS planName,
             PRICE AS price,
             DESCRIPTION AS description,
-            BILLING_CYCLE AS billingCycle
+            BILLING_CYCLE AS billingCycle,
+            MAX_MEMBER_COUNT AS maxMemberCount
         FROM SUBSCRIPTION_PLANS
         WHERE DELETED_AT IS NULL
         ORDER BY PRICE ASC
@@ -24,7 +25,8 @@
             PLAN_NAME AS planName,
             PRICE AS price,
             DESCRIPTION AS description,
-            BILLING_CYCLE AS billingCycle
+            BILLING_CYCLE AS billingCycle,
+            MAX_MEMBER_COUNT AS maxMemberCount
         FROM SUBSCRIPTION_PLANS
         WHERE PLAN_ID = #{planId}
           AND DELETED_AT IS NULL
@@ -191,6 +193,24 @@
         SET
             STATUS = 'ACTIVE',
             NEXT_BILLING_AT = #{nextBillingAt}
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'PENDING'
+    </update>
+
+    <!-- 결제창 취소 또는 결제 진행 실패 시 결제 이력을 CANCELED 상태로 변경합니다. -->
+    <update id="markPaymentHistoryCanceled">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET STATUS = 'CANCELED',
+            FAIL_REASON = #{failReason}
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+
+    <!-- 결제창 취소 또는 결제 진행 실패 시 PENDING 구독을 CANCELED 상태로 변경합니다. -->
+    <update id="cancelSubscription">
+        UPDATE SUBSCRIPTIONS
+        SET STATUS = 'CANCELED',
+            ENDED_AT = CURRENT_TIMESTAMP
         WHERE SUBSCRIPTION_ID = #{subscriptionId}
           AND STATUS = 'PENDING'
     </update>
