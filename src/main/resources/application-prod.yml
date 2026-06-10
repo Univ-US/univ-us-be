@@ -73,6 +73,7 @@ univus:
     kma-base-url: ${KMA_BASE_URL:}
     kma-mid-base-url: ${KMA_MID_BASE_URL:}
     groq-api-key: ${GROQ_API_KEY:}
+    openweather-api-key: ${OPENWEATHER_API_KEY:}   # OpenWeather. 코드 머지 시 K8s Secret에 OPENWEATHER_API_KEY 주입(현재 미주입=빈값, 안 깨짐)
 
 portone:
   # v1(아임포트) — 중고거래 MarketService가 아직 사용. @Value 기본값(:)이 있어 빈값이어도 부팅 OK.
@@ -87,6 +88,10 @@ portone:
   #    ${}는 반드시 block 스타일(인라인 {} 금지 — snakeyaml flow-map 충돌, PR#43 CrashLoop 이력).
   subscription:
     api-secret: ${PORTONE_SUBSCRIPTION_API_SECRET:}
+  # v2(PortOne) 중고거래 — v2 결제코드 머지 시 trade.api-secret 사용(현재 읽는 코드 없음=안전).
+  #   store-id·채널키(kg-inicis/kakao-pay)는 프론트 SDK용이라 BE 불필요 → api-secret만 주입.
+  trade:
+    api-secret: ${PORTONE_TRADE_API_SECRET:}
 
 jwt:
   secret: ${JWT_SECRET:dev-only-change-me-min-32-bytes-0000000000}
