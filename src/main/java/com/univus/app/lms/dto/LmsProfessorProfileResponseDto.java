@@ -9,6 +9,7 @@ import lombok.*;
 @Builder
 public class LmsProfessorProfileResponseDto {
     private String lmsProfessorProfileName;
+    private String lmsProfessorProfileEmployeeNo;      // 사번 (MEMBER.LOGIN_ID, 학생 학번과 동일 컬럼)
     private String lmsProfessorProfileDepartment;
     private String lmsProfessorProfilePhoneNumber;
     private String lmsProfessorProfileEmail;
