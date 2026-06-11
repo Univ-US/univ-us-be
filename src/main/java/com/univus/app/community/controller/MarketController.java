@@ -139,13 +139,14 @@ public class MarketController {
             @PathVariable("productId") Long productId,
             @AuthenticationPrincipal Long memberId,
             Authentication authentication,
-            @RequestParam("images") List<MultipartFile> images) {
+            @RequestParam(value = "images", required = false) List<MultipartFile> images,
+            @RequestParam(value = "keepImageIds", required = false) List<Long> keepImageIds) {
 
         assertCanManageProduct(productId, requireMemberId(memberId), authentication);
         List<MarketDto.ProductImageDto> uploadedImages =
-                marketService.replaceProductImagesWithFiles(productId, images);
+                marketService.updateProductImages(productId, keepImageIds, images);
         return ResponseEntity.ok(Map.of(
-                "message", "Images replaced successfully.",
+                "message", "Images updated successfully.",
                 "images", uploadedImages
         ));
     }
@@ -246,6 +247,28 @@ public class MarketController {
         return ResponseEntity.ok(result);
     }
 
+    // POST /api/market/products/{productId}/report
+    @PostMapping("/products/{productId}/report")
+    public ResponseEntity<Map<String, Object>> reportProduct(
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody MarketDto.ProductReportDto reportDto) {
+
+        reportDto.setProductId(productId);
+        reportDto.setMemberId(requireMemberId(memberId));
+        return ResponseEntity.ok(marketService.reportProduct(reportDto));
+    }
+
+    // GET /api/market/products/{productId}/report
+    @GetMapping("/products/{productId}/report")
+    public ResponseEntity<Map<String, Object>> getProductReportStatus(
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId) {
+
+        boolean reported = marketService.isProductReported(productId, requireMemberId(memberId));
+        return ResponseEntity.ok(Map.of("reported", reported));
+    }
+
     // 내 찜 목록
     // GET /api/market/likes?memberId=1
     @GetMapping("/likes")
@@ -273,6 +296,83 @@ public class MarketController {
             @RequestBody MarketDto.PaymentCompleteDto completeDto) {
         MarketDto.PaymentResultDto paymentResult =
                 marketService.completePayment(completeDto, requireMemberId(memberId));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("payment", paymentResult);
+        return ResponseEntity.ok(result);
+    }
+
+    // GET /api/market/chats
+    @GetMapping("/chats")
+    public ResponseEntity<List<MarketDto.TradeChatRoomDto>> getTradeChatRooms(
+            @AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(marketService.getTradeChatRooms(requireMemberId(memberId)));
+    }
+
+    // POST /api/market/chats
+    @PostMapping("/chats")
+    public ResponseEntity<MarketDto.TradeChatRoomDto> createOrGetTradeChatRoom(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody MarketDto.TradeChatRoomRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(marketService.createOrGetTradeChatRoom(requireMemberId(memberId), request));
+    }
+
+    // GET /api/market/chats/{roomId}/messages
+    @GetMapping("/chats/{roomId}/messages")
+    public ResponseEntity<List<MarketDto.TradeChatMessageDto>> getTradeChatMessages(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId) {
+        return ResponseEntity.ok(
+                marketService.getTradeChatMessages(requireMemberId(memberId), roomId));
+    }
+
+    // POST /api/market/chats/{roomId}/messages
+    @PostMapping("/chats/{roomId}/messages")
+    public ResponseEntity<MarketDto.TradeChatMessageDto> sendTradeChatMessage(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId,
+            @RequestBody MarketDto.TradeChatMessageRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(marketService.sendTradeChatMessage(requireMemberId(memberId), roomId, request));
+    }
+
+    // PATCH /api/market/chats/{roomId}/price
+    @PatchMapping("/chats/{roomId}/price")
+    public ResponseEntity<MarketDto.TradeChatRoomDto> updateTradeChatNegotiatedPrice(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId,
+            @RequestBody MarketDto.TradeChatPriceRequestDto request) {
+        return ResponseEntity.ok(marketService.updateTradeChatNegotiatedPrice(
+                requireMemberId(memberId),
+                roomId,
+                request));
+    }
+
+    // PATCH /api/market/chats/{roomId}/close
+    @PatchMapping("/chats/{roomId}/close")
+    public ResponseEntity<MarketDto.TradeChatRoomDto> closeTradeChatRoom(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId) {
+        return ResponseEntity.ok(marketService.closeTradeChatRoom(requireMemberId(memberId), roomId));
+    }
+
+    // DELETE /api/market/chats/{roomId}
+    @DeleteMapping("/chats/{roomId}")
+    public ResponseEntity<Map<String, Object>> deleteTradeChatRoom(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId) {
+        return ResponseEntity.ok(marketService.deleteTradeChatRoom(requireMemberId(memberId), roomId));
+    }
+
+    // POST /api/market/chats/payments/complete
+    @PostMapping("/chats/payments/complete")
+    public ResponseEntity<Map<String, Object>> completeChatPayment(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody MarketDto.ChatPaymentCompleteDto completeDto) {
+        MarketDto.PaymentResultDto paymentResult =
+                marketService.completeChatPayment(completeDto, requireMemberId(memberId));
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);

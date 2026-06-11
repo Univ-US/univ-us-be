@@ -37,6 +37,8 @@ public class MarketDto {
         // COUNT JOIN
         private Integer likeCount;
         private Integer chatCount;
+        private Integer reportCount;
+        private Integer isBlind;
 
         // PRODUCT_IMAGE JOIN
         private List<ProductImageDto> images;
@@ -128,6 +130,18 @@ public class MarketDto {
         private LocalDateTime pressedAt;
     }
 
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ProductReportDto {
+        private Long reportId;
+        private Long memberId;
+        private Long productId;
+        private String reason;
+        private String detail;
+        private LocalDateTime pressedAt;
+    }
+
     // ── 8. 목록 조회 파라미터 ─────────────────────────────────
     @Getter @Setter
     @NoArgsConstructor
@@ -150,6 +164,13 @@ public class MarketDto {
     @NoArgsConstructor
     public static class PaymentCompleteDto {
         private Long productId;
+        private String paymentId;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class ChatPaymentCompleteDto {
+        private Long roomId;
         private String paymentId;
     }
 
@@ -188,5 +209,57 @@ public class MarketDto {
         private Long paymentId;
         private String productStatus;
         private String paymentStatus;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class TradeChatRoomDto {
+        private Long roomId;
+        private Long productId;
+        private Long sellerId;
+        private Long buyerId;
+        private Long negotiatedPrice;
+        private String status;
+        private LocalDateTime createdAt;
+        private String productName;
+        private String productStatus;
+        private String sellerName;
+        private String buyerName;
+        private String lastMessage;
+        private LocalDateTime lastMessageAt;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class TradeChatRoomRequestDto {
+        private Long productId;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class TradeChatMessageDto {
+        private Long messageId;
+        private Long roomId;
+        private Long senderId;
+        private String content;
+        private Integer isRead;
+        private LocalDateTime sendAt;
+        private String senderName;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class TradeChatMessageRequestDto {
+        private String content;
+    }
+
+    @Getter @Setter
+    @NoArgsConstructor
+    public static class TradeChatPriceRequestDto {
+        private Long negotiatedPrice;
     }
 }

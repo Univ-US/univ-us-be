@@ -22,6 +22,8 @@
         <result property="sellerNickname" column="SELLER_NICKNAME"/>
         <result property="likeCount"     column="LIKE_COUNT"/>
         <result property="chatCount"     column="CHAT_COUNT"/>
+        <result property="reportCount"   column="REPORT_COUNT"/>
+        <result property="isBlind"       column="IS_BLIND"/>
     </resultMap>
 
     <resultMap id="ProductCommentResultMap" type="com.univus.app.community.dto.MarketDto$ProductCommentDto">
@@ -36,6 +38,32 @@
         <result property="authorName"     column="AUTHOR_NAME"/>
         <result property="authorNickname" column="AUTHOR_NICKNAME"/>
         <result property="likeCount"      column="LIKE_COUNT"/>
+    </resultMap>
+
+    <resultMap id="TradeChatRoomResultMap" type="com.univus.app.community.dto.MarketDto$TradeChatRoomDto">
+        <id     property="roomId"          column="ROOM_ID"/>
+        <result property="productId"       column="PRODUCT_ID"/>
+        <result property="sellerId"        column="SELLER_ID"/>
+        <result property="buyerId"         column="BUYER_ID"/>
+        <result property="negotiatedPrice" column="NEGOTIATED_PRICE"/>
+        <result property="status"          column="STATUS"/>
+        <result property="createdAt"       column="CREATED_AT"/>
+        <result property="productName"     column="PRODUCT_NAME"/>
+        <result property="productStatus"   column="PRODUCT_STATUS"/>
+        <result property="sellerName"      column="SELLER_NAME"/>
+        <result property="buyerName"       column="BUYER_NAME"/>
+        <result property="lastMessage"     column="LAST_MESSAGE"/>
+        <result property="lastMessageAt"   column="LAST_MESSAGE_AT"/>
+    </resultMap>
+
+    <resultMap id="TradeChatMessageResultMap" type="com.univus.app.community.dto.MarketDto$TradeChatMessageDto">
+        <id     property="messageId"  column="MESSAGE_ID"/>
+        <result property="roomId"     column="ROOM_ID"/>
+        <result property="senderId"   column="SENDER_ID"/>
+        <result property="content"    column="CONTENT"/>
+        <result property="isRead"     column="IS_READ"/>
+        <result property="sendAt"     column="SEND_AT"/>
+        <result property="senderName" column="SENDER_NAME"/>
     </resultMap>
 
     <!-- ── 상품 목록 조회 ─────────────────────────────────── -->
@@ -56,7 +84,12 @@
             M.MEMBER_NAME   AS SELLER_NAME,
             MD.COMMUNITY_NICKNAME AS SELLER_NICKNAME,
             (SELECT COUNT(*) FROM PRODUCT_LIKE PL WHERE PL.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
-            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT
+            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT,
+            (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS REPORT_COUNT,
+            CASE
+                WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
+                ELSE 0
+            END AS IS_BLIND
         FROM PRODUCT P
         JOIN MEMBER M ON P.MEMBER_ID = M.MEMBER_ID
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
@@ -74,6 +107,7 @@
         <if test="productStatus == null or productStatus == ''">
             AND P.PRODUCT_STATUS != 'DONE'
         </if>
+        AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
         ORDER BY P.CREATED_AT DESC
         OFFSET #{page} * #{size} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
@@ -97,6 +131,7 @@
         <if test="productStatus == null or productStatus == ''">
             AND P.PRODUCT_STATUS != 'DONE'
         </if>
+        AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
     </select>
 
     <!-- ── 상품 상세 조회 ─────────────────────────────────── -->
@@ -117,7 +152,12 @@
             M.MEMBER_NAME        AS SELLER_NAME,
             MD.COMMUNITY_NICKNAME AS SELLER_NICKNAME,
             (SELECT COUNT(*) FROM PRODUCT_LIKE PL WHERE PL.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
-            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT
+            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT,
+            (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS REPORT_COUNT,
+            CASE
+                WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
+                ELSE 0
+            END AS IS_BLIND
         FROM PRODUCT P
         JOIN MEMBER M ON P.MEMBER_ID = M.MEMBER_ID
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
@@ -222,6 +262,22 @@
     <delete id="deleteProductImageAll" parameterType="long">
         DELETE FROM PRODUCT_IMAGE
         WHERE PRODUCT_ID = #{productId}
+    </delete>
+
+    <delete id="deleteProductImagesExcept">
+        DELETE FROM PRODUCT_IMAGE
+        WHERE PRODUCT_ID = #{productId}
+        <choose>
+            <when test="keepImageIds != null and keepImageIds.size() > 0">
+                AND IMAGE_ID NOT IN
+                <foreach collection="keepImageIds" item="imageId" open="(" separator="," close=")">
+                    #{imageId}
+                </foreach>
+            </when>
+            <otherwise>
+                AND 1 = 1
+            </otherwise>
+        </choose>
     </delete>
 
     <!-- ── 댓글 목록 (부모 댓글만) ───────────────────────── -->
@@ -332,6 +388,51 @@
           AND PRODUCT_ID = #{productId}
     </select>
 
+    <select id="selectProductReportCount"
+            parameterType="com.univus.app.community.dto.MarketDto$ProductReportDto"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM PRODUCT_REPORT
+        WHERE MEMBER_ID = #{memberId}
+          AND PRODUCT_ID = #{productId}
+    </select>
+
+    <select id="selectProductTotalReportCount" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+        FROM PRODUCT_REPORT
+        WHERE PRODUCT_ID = #{productId}
+    </select>
+
+    <insert id="insertProductReport"
+            parameterType="com.univus.app.community.dto.MarketDto$ProductReportDto">
+        INSERT INTO PRODUCT_REPORT (
+            REPORT_ID,
+            MEMBER_ID,
+            PRODUCT_ID,
+            REASON,
+            DETAIL,
+            PRESSED_AT
+        ) VALUES (
+            SEQ_PRODUCT_REPORT.NEXTVAL,
+            #{memberId},
+            #{productId},
+            #{reason},
+            #{detail},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <update id="updateProductReportStatus" parameterType="long">
+        UPDATE PRODUCT
+        SET REPORT_COUNT = (
+                SELECT COUNT(*)
+                FROM PRODUCT_REPORT
+                WHERE PRODUCT_ID = #{productId}
+            )
+        WHERE PRODUCT_ID = #{productId}
+          AND IS_DELETED = 0
+    </update>
+
     <!-- ── 내 찜 목록 ─────────────────────────────────────── -->
     <select id="selectMyLikeList" parameterType="long" resultMap="ProductResultMap">
         SELECT
@@ -349,13 +450,19 @@
             M.MEMBER_NAME        AS SELLER_NAME,
             MD.COMMUNITY_NICKNAME AS SELLER_NICKNAME,
             (SELECT COUNT(*) FROM PRODUCT_LIKE PL2 WHERE PL2.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
-            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC  WHERE TC.PRODUCT_ID  = P.PRODUCT_ID) AS CHAT_COUNT
+            (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC  WHERE TC.PRODUCT_ID  = P.PRODUCT_ID) AS CHAT_COUNT,
+            (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS REPORT_COUNT,
+            CASE
+                WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
+                ELSE 0
+            END AS IS_BLIND
         FROM PRODUCT_LIKE PL
         JOIN PRODUCT P ON PL.PRODUCT_ID = P.PRODUCT_ID
         JOIN MEMBER  M ON P.MEMBER_ID   = M.MEMBER_ID
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
         WHERE PL.MEMBER_ID = #{memberId}
           AND P.IS_DELETED = 0
+          AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
         ORDER BY PL.PRESSED_AT DESC
     </select>
 
@@ -410,5 +517,220 @@
         WHERE PRODUCT_ID = #{productId}
           AND IS_DELETED = 0
     </update>
+
+    <select id="selectTradeChatRoomByBuyer" resultMap="TradeChatRoomResultMap">
+        SELECT
+            TCR.ROOM_ID,
+            TCR.PRODUCT_ID,
+            TCR.SELLER_ID,
+            TCR.BUYER_ID,
+            TCR.NEGOTIATED_PRICE,
+            TCR.STATUS,
+            TCR.CREATED_AT,
+            P.PRODUCT_NAME,
+            P.PRODUCT_STATUS,
+            SM.MEMBER_NAME AS SELLER_NAME,
+            BM.MEMBER_NAME AS BUYER_NAME,
+            (
+                SELECT M.CONTENT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE,
+            (
+                SELECT M.SEND_AT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE_AT
+        FROM TRADE_CHAT_ROOM TCR
+        JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
+        JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
+        JOIN MEMBER BM ON TCR.BUYER_ID = BM.MEMBER_ID
+        WHERE TCR.PRODUCT_ID = #{productId}
+          AND TCR.BUYER_ID = #{buyerId}
+    </select>
+
+    <insert id="insertTradeChatRoom" parameterType="com.univus.app.community.dto.MarketDto$TradeChatRoomDto">
+        <selectKey keyProperty="roomId" resultType="long" order="BEFORE">
+            SELECT SEQ_TRADE_CHAT_ROOM.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO TRADE_CHAT_ROOM (
+            ROOM_ID,
+            PRODUCT_ID,
+            SELLER_ID,
+            BUYER_ID,
+            NEGOTIATED_PRICE,
+            STATUS,
+            CREATED_AT
+        ) VALUES (
+            #{roomId},
+            #{productId},
+            #{sellerId},
+            #{buyerId},
+            #{negotiatedPrice},
+            #{status},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="selectTradeChatRoomForMember" resultMap="TradeChatRoomResultMap">
+        SELECT
+            TCR.ROOM_ID,
+            TCR.PRODUCT_ID,
+            TCR.SELLER_ID,
+            TCR.BUYER_ID,
+            TCR.NEGOTIATED_PRICE,
+            TCR.STATUS,
+            TCR.CREATED_AT,
+            P.PRODUCT_NAME,
+            P.PRODUCT_STATUS,
+            SM.MEMBER_NAME AS SELLER_NAME,
+            BM.MEMBER_NAME AS BUYER_NAME,
+            (
+                SELECT M.CONTENT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE,
+            (
+                SELECT M.SEND_AT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE_AT
+        FROM TRADE_CHAT_ROOM TCR
+        JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
+        JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
+        JOIN MEMBER BM ON TCR.BUYER_ID = BM.MEMBER_ID
+        WHERE TCR.ROOM_ID = #{roomId}
+          AND (TCR.SELLER_ID = #{memberId} OR TCR.BUYER_ID = #{memberId})
+    </select>
+
+    <select id="selectTradeChatRoomsForMember" resultMap="TradeChatRoomResultMap">
+        SELECT
+            TCR.ROOM_ID,
+            TCR.PRODUCT_ID,
+            TCR.SELLER_ID,
+            TCR.BUYER_ID,
+            TCR.NEGOTIATED_PRICE,
+            TCR.STATUS,
+            TCR.CREATED_AT,
+            P.PRODUCT_NAME,
+            P.PRODUCT_STATUS,
+            SM.MEMBER_NAME AS SELLER_NAME,
+            BM.MEMBER_NAME AS BUYER_NAME,
+            (
+                SELECT M.CONTENT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE,
+            (
+                SELECT M.SEND_AT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE_AT
+        FROM TRADE_CHAT_ROOM TCR
+        JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
+        JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
+        JOIN MEMBER BM ON TCR.BUYER_ID = BM.MEMBER_ID
+        WHERE TCR.SELLER_ID = #{memberId}
+           OR TCR.BUYER_ID = #{memberId}
+        ORDER BY COALESCE(
+            (
+                SELECT MAX(M.SEND_AT)
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+            ),
+            TCR.CREATED_AT
+        ) DESC
+    </select>
+
+    <select id="selectTradeChatMessages" resultMap="TradeChatMessageResultMap">
+        SELECT
+            TCM.MESSAGE_ID,
+            TCM.ROOM_ID,
+            TCM.SENDER_ID,
+            TCM.CONTENT,
+            TCM.IS_READ,
+            TCM.SEND_AT,
+            M.MEMBER_NAME AS SENDER_NAME
+        FROM TRADE_CHAT_MESSAGE TCM
+        JOIN MEMBER M ON TCM.SENDER_ID = M.MEMBER_ID
+        WHERE TCM.ROOM_ID = #{roomId}
+        ORDER BY TCM.SEND_AT ASC
+    </select>
+
+    <insert id="insertTradeChatMessage" parameterType="com.univus.app.community.dto.MarketDto$TradeChatMessageDto">
+        <selectKey keyProperty="messageId" resultType="long" order="BEFORE">
+            SELECT SEQ_TRADE_CHAT_MESSAGE.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO TRADE_CHAT_MESSAGE (
+            MESSAGE_ID,
+            ROOM_ID,
+            SENDER_ID,
+            CONTENT,
+            IS_READ,
+            SEND_AT
+        ) VALUES (
+            #{messageId},
+            #{roomId},
+            #{senderId},
+            #{content},
+            #{isRead},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="selectTradeChatMessage" resultMap="TradeChatMessageResultMap">
+        SELECT
+            TCM.MESSAGE_ID,
+            TCM.ROOM_ID,
+            TCM.SENDER_ID,
+            TCM.CONTENT,
+            TCM.IS_READ,
+            TCM.SEND_AT,
+            M.MEMBER_NAME AS SENDER_NAME
+        FROM TRADE_CHAT_MESSAGE TCM
+        JOIN MEMBER M ON TCM.SENDER_ID = M.MEMBER_ID
+        WHERE TCM.MESSAGE_ID = #{messageId}
+    </select>
+
+    <update id="updateTradeChatNegotiatedPrice">
+        UPDATE TRADE_CHAT_ROOM
+        SET NEGOTIATED_PRICE = #{negotiatedPrice}
+        WHERE ROOM_ID = #{roomId}
+    </update>
+
+    <update id="updateTradeChatStatus">
+        UPDATE TRADE_CHAT_ROOM
+        SET STATUS = #{status}
+        WHERE ROOM_ID = #{roomId}
+    </update>
+
+    <select id="selectActiveTradeChatRoomCountByProduct" resultType="int">
+        SELECT COUNT(*)
+        FROM TRADE_CHAT_ROOM
+        WHERE PRODUCT_ID = #{productId}
+          AND STATUS = 'ACTIVE'
+    </select>
+
+    <delete id="deleteTradeChatMessages">
+        DELETE FROM TRADE_CHAT_MESSAGE
+        WHERE ROOM_ID = #{roomId}
+    </delete>
+
+    <delete id="deleteTradeChatRoom">
+        DELETE FROM TRADE_CHAT_ROOM
+        WHERE ROOM_ID = #{roomId}
+    </delete>
 
 </mapper>

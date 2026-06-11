@@ -43,6 +43,8 @@ public interface MarketMapper {
     // 이미지 전체 삭제 (상품 수정 시 기존 이미지 교체용)
     int deleteProductImageAll(Long productId);
 
+    int deleteProductImagesExcept(@Param("productId") Long productId, @Param("keepImageIds") List<Long> keepImageIds);
+
     // ── 댓글 ──────────────────────────────────────────────────
 
     // 댓글 목록 조회 (부모 댓글만)
@@ -68,6 +70,14 @@ public interface MarketMapper {
     // 찜 여부 확인
     int selectProductLikeCount(MarketDto.ProductLikeDto likeDto);
 
+    int selectProductReportCount(MarketDto.ProductReportDto reportDto);
+
+    int selectProductTotalReportCount(Long productId);
+
+    int insertProductReport(MarketDto.ProductReportDto reportDto);
+
+    int updateProductReportStatus(Long productId);
+
     // 내 찜 목록
     List<MarketDto.ProductDto> selectMyLikeList(Long memberId);
 
@@ -76,4 +86,32 @@ public interface MarketMapper {
     int insertPayment(MarketDto.PaymentDto paymentDto);
 
     int updateProductStatus(@Param("productId") Long productId, @Param("productStatus") String productStatus);
+
+    MarketDto.TradeChatRoomDto selectTradeChatRoomByBuyer(
+            @Param("productId") Long productId,
+            @Param("buyerId") Long buyerId);
+
+    int insertTradeChatRoom(MarketDto.TradeChatRoomDto roomDto);
+
+    MarketDto.TradeChatRoomDto selectTradeChatRoomForMember(
+            @Param("roomId") Long roomId,
+            @Param("memberId") Long memberId);
+
+    List<MarketDto.TradeChatRoomDto> selectTradeChatRoomsForMember(@Param("memberId") Long memberId);
+
+    List<MarketDto.TradeChatMessageDto> selectTradeChatMessages(@Param("roomId") Long roomId);
+
+    int insertTradeChatMessage(MarketDto.TradeChatMessageDto messageDto);
+
+    MarketDto.TradeChatMessageDto selectTradeChatMessage(@Param("messageId") Long messageId);
+
+    int updateTradeChatNegotiatedPrice(@Param("roomId") Long roomId, @Param("negotiatedPrice") Long negotiatedPrice);
+
+    int updateTradeChatStatus(@Param("roomId") Long roomId, @Param("status") String status);
+
+    int selectActiveTradeChatRoomCountByProduct(@Param("productId") Long productId);
+
+    int deleteTradeChatMessages(@Param("roomId") Long roomId);
+
+    int deleteTradeChatRoom(@Param("roomId") Long roomId);
 }

@@ -49,6 +49,10 @@ public interface PostMapper {
 
     // 신고 등록
     int insertReport(PostDto postDto);
+
+    int selectTotalReportCount(Long postId);
+
+    int updatePostReportStatus(Long postId);
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	

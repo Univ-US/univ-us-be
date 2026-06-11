@@ -113,6 +113,7 @@ public class PostService {
     // ── 신고 ──────────────────────────────────────
 
     // 신고 (중복 신고 차단)
+    @Transactional
     public Map<String, Object> reportPost(PostDto postDto) {
         Map<String, Object> result = new HashMap<>();
         int exists = postMapper.selectReportCount(postDto.getPostId(), postDto.getMemberId());
@@ -122,7 +123,11 @@ public class PostService {
             return result;
         }
         postMapper.insertReport(postDto);
+        postMapper.updatePostReportStatus(postDto.getPostId());
+        int reportCount = postMapper.selectTotalReportCount(postDto.getPostId());
         result.put("success", true);
+        result.put("reportCount", reportCount);
+        result.put("blind", reportCount >= 5);
         result.put("message", "신고가 접수되었습니다.");
         return result;
     }
