@@ -84,6 +84,47 @@
         )
     </insert>
 
+    <insert id="insertSubscriptionApplication"
+            parameterType="com.univus.app.subscription.dto.SubscriptionApplicationDto">
+        <selectKey keyProperty="applicationId" resultType="long" order="BEFORE">
+            SELECT SEQ_SUBSCRIPTION_APPLICATIONS.NEXTVAL FROM DUAL
+        </selectKey>
+
+        INSERT INTO SUBSCRIPTION_APPLICATIONS (
+        APPLICATION_ID,
+        MEMBER_ID,
+        SUBSCRIPTION_ID,
+        PLAN_ID,
+        UNIV_NAME,
+        SIDO,
+        ADDRESS,
+        SCHOOL_PHONE,
+        HOMEPAGE,
+        STATUS,
+        CREATED_AT,
+        COMPLETED_AT,
+        CANCELED_AT,
+        FAILED_AT,
+        FAIL_REASON
+        ) VALUES (
+        #{applicationId},
+        #{memberId},
+        #{subscriptionId},
+        #{planId},
+        #{univName},
+        #{sido},
+        #{address},
+        #{schoolPhone},
+        #{homepage},
+        #{status},
+        CURRENT_TIMESTAMP,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+        )
+    </insert>
+
     <insert id="insertPaymentHistory"
             parameterType="com.univus.app.subscription.dto.SubscriptionPaymentHistoryInsertDto">
         <selectKey keyProperty="historyId" resultType="long" order="BEFORE">
@@ -135,6 +176,13 @@
           AND S.ENDED_AT IS NULL
     </select>
 
+    <select id="countPendingSubscriptionApplicationByUnivName" resultType="int">
+        SELECT COUNT(*)
+        FROM SUBSCRIPTION_APPLICATIONS
+        WHERE UNIV_NAME = #{univName}
+          AND STATUS = 'PENDING'
+    </select>
+
     <!--
     merchantUid로 결제 검증 대상 데이터를 조회합니다.
     -->
@@ -144,15 +192,26 @@
             H.HISTORY_ID AS paymentHistoryId,
             H.SUBSCRIPTION_ID AS subscriptionId,
             H.MEMBER_ID AS memberId,
+            A.APPLICATION_ID AS applicationId,
+            A.MEMBER_ID AS applicationMemberId,
+            A.PLAN_ID AS applicationPlanId,
             H.UNIV_ID AS univId,
             S.PLAN_ID AS planId,
             H.MERCHANT_UID AS merchantUid,
             H.AMOUNT AS amount,
             H.STATUS AS paymentStatus,
-            S.STATUS AS subscriptionStatus
+            S.STATUS AS subscriptionStatus,
+            A.STATUS AS applicationStatus,
+            A.UNIV_NAME AS univName,
+            A.SIDO AS sido,
+            A.ADDRESS AS address,
+            A.SCHOOL_PHONE AS schoolPhone,
+            A.HOMEPAGE AS homepage
         FROM SUBSCRIPTION_PAYMENT_HISTORIES H
                  JOIN SUBSCRIPTIONS S
                       ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+                 LEFT JOIN SUBSCRIPTION_APPLICATIONS A
+                      ON A.SUBSCRIPTION_ID = S.SUBSCRIPTION_ID
         WHERE H.MERCHANT_UID = #{merchantUid}
     </select>
 
@@ -166,6 +225,7 @@
             STATUS = 'PAID',
             PORTONE_PAYMENT_ID = #{portonePaymentId},
             PAID_AT =  #{paidAt},
+            UNIV_ID = #{univId},
             FAIL_REASON = NULL
         WHERE HISTORY_ID = #{historyId}
           AND STATUS = 'READY'
@@ -192,8 +252,36 @@
         UPDATE SUBSCRIPTIONS
         SET
             STATUS = 'ACTIVE',
+            UNIV_ID = #{univId},
             NEXT_BILLING_AT = #{nextBillingAt}
         WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'PENDING'
+    </update>
+
+    <update id="completeSubscriptionApplication">
+        UPDATE SUBSCRIPTION_APPLICATIONS
+        SET STATUS = 'COMPLETED',
+            COMPLETED_AT = CURRENT_TIMESTAMP,
+            FAIL_REASON = NULL
+        WHERE APPLICATION_ID = #{applicationId}
+          AND STATUS = 'PENDING'
+    </update>
+
+    <update id="cancelSubscriptionApplication">
+        UPDATE SUBSCRIPTION_APPLICATIONS
+        SET STATUS = 'CANCELED',
+            CANCELED_AT = CURRENT_TIMESTAMP,
+            FAIL_REASON = #{failReason}
+        WHERE APPLICATION_ID = #{applicationId}
+          AND STATUS = 'PENDING'
+    </update>
+
+    <update id="failSubscriptionApplication">
+        UPDATE SUBSCRIPTION_APPLICATIONS
+        SET STATUS = 'FAILED',
+            FAILED_AT = CURRENT_TIMESTAMP,
+            FAIL_REASON = #{failReason}
+        WHERE APPLICATION_ID = #{applicationId}
           AND STATUS = 'PENDING'
     </update>
 
