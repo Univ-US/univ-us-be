@@ -16,6 +16,8 @@ public interface PostMapper {
     // 게시글 전체 개수 (페이징 계산용)
     int selectPostCount(PostDto postDto);
 
+    int selectTodayPostCount(PostDto postDto);
+
     // 게시글 단건 조회
     PostDto selectPostById(Long postId);
 
@@ -58,6 +60,8 @@ public interface PostMapper {
 	
 	 // 댓글 목록 조회 (postId 기준)
 	 List<PostCommentDto> selectCommentList(Long postId);
+
+     PostCommentDto selectCommentById(Long commentId);
 	
 	 // 댓글 등록
 	 int insertComment(PostCommentDto commentDto);
