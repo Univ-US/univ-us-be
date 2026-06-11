@@ -4,6 +4,7 @@ import com.univus.app.security.JwtTokenProvider;
 import com.univus.app.subscription.dto.*;
 import com.univus.app.subscription.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
@@ -36,10 +37,24 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final PortOnePaymentClient portOnePaymentClient;
     private final SubscriptionPaymentFailureRecorder failureRecorder;
 
+    @Value("${portone.subscription.store-id:}")
+    private String portOneStoreId;
+
+    @Value("${portone.subscription.channel-key:}")
+    private String portOneChannelKey;
+
     @Override
     @Transactional(readOnly = true)
     public List<SubscriptionPlanResponseDto> getActivePlans() {
         return subscriptionMapper.findActivePlans();
+    }
+
+    @Override
+    public SubscriptionPaymentConfigResponseDto getPaymentConfig() {
+        return SubscriptionPaymentConfigResponseDto.builder()
+                .storeId(portOneStoreId)
+                .channelKey(portOneChannelKey)
+                .build();
     }
 
     @Override

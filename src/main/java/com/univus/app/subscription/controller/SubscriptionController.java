@@ -30,6 +30,13 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.getActivePlans());
     }
 
+    // PortOne 결제창 호출에 필요한 공개 식별값만 반환합니다.
+    // API secret은 서버 내부에서만 사용하며 응답에 포함하지 않습니다.
+    @GetMapping("/payments/config")
+    public ResponseEntity<SubscriptionPaymentConfigResponseDto> getPaymentConfig() {
+        return ResponseEntity.ok(subscriptionService.getPaymentConfig());
+    }
+
     // 구독 결제 준비 API입니다.
     // 로그인한 사용자의 memberId를 JWT 인증 결과에서 받아옵니다.
     // 이 API는 실제 결제를 완료하는 API가 아닙니다.
