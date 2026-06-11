@@ -9,15 +9,20 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -27,6 +32,7 @@ public class MarketService {
     private final MarketMapper marketMapper;
     private final RestTemplate restTemplate;
     private final StorageService storageService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
@@ -51,6 +57,11 @@ public class MarketService {
     private static final long MAX_IMAGE_SIZE = 30L * 1024 * 1024;
     private static final String PRODUCT_IMAGE_SUBDIR = "community" + File.separator + "market";
     private static final String PRODUCT_IMAGE_URL_PREFIX = "/uploads/community/market/";
+    private static final String DEFAULT_TRADE_CHAT_STATUS = "ACTIVE";
+    private static final String DONE_TRADE_CHAT_STATUS = "DONE";
+    private static final String CLOSED_TRADE_CHAT_STATUS = "CLOSED";
+    private static final String MARKET_CHAT_TOPIC_PREFIX = "/sub/market-chats/";
+    private static final int MAX_CHAT_MESSAGE_LENGTH = 2000;
 
     // ── 상품 ──────────────────────────────────────────────────
 
@@ -170,6 +181,16 @@ public class MarketService {
         return uploadProductImages(productId, images);
     }
 
+    @Transactional
+    public List<MarketDto.ProductImageDto> updateProductImages(Long productId, List<Long> keepImageIds, List<MultipartFile> images) {
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        marketMapper.deleteProductImagesExcept(productId, keepImageIds == null ? List.of() : keepImageIds);
+        return uploadProductImages(productId, images);
+    }
+
     public List<MarketDto.ProductImageDto> getProductImageList(Long productId) {
         return marketMapper.selectProductImageList(productId);
     }
@@ -222,6 +243,188 @@ public class MarketService {
             throw new IllegalArgumentException("Product not found.");
         }
         return product.getLikeCount() == null ? 0 : product.getLikeCount();
+    }
+
+    @Transactional
+    public Map<String, Object> reportProduct(MarketDto.ProductReportDto reportDto) {
+        Map<String, Object> result = new HashMap<>();
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(reportDto.getProductId());
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        if (product.getMemberId().equals(reportDto.getMemberId())) {
+            throw new IllegalStateException("Seller cannot report own product.");
+        }
+        int exists = marketMapper.selectProductReportCount(reportDto);
+        if (exists > 0) {
+            result.put("success", false);
+            result.put("message", "이미 신고한 상품입니다.");
+            return result;
+        }
+
+        marketMapper.insertProductReport(reportDto);
+        marketMapper.updateProductReportStatus(reportDto.getProductId());
+        int reportCount = marketMapper.selectProductTotalReportCount(reportDto.getProductId());
+        result.put("success", true);
+        result.put("reportCount", reportCount);
+        result.put("blind", reportCount >= 5);
+        result.put("message", "신고가 접수되었습니다.");
+        return result;
+    }
+
+    public boolean isProductReported(Long productId, Long memberId) {
+        MarketDto.ProductReportDto reportDto = new MarketDto.ProductReportDto();
+        reportDto.setProductId(productId);
+        reportDto.setMemberId(memberId);
+        return marketMapper.selectProductReportCount(reportDto) > 0;
+    }
+
+    public List<MarketDto.TradeChatRoomDto> getTradeChatRooms(Long memberId) {
+        validateMember(memberId);
+        return marketMapper.selectTradeChatRoomsForMember(memberId);
+    }
+
+    @Transactional
+    public MarketDto.TradeChatRoomDto createOrGetTradeChatRoom(
+            Long memberId,
+            MarketDto.TradeChatRoomRequestDto request) {
+        validateMember(memberId);
+        if (request == null || request.getProductId() == null) {
+            throw new IllegalArgumentException("Product id is required.");
+        }
+
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(request.getProductId());
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        if (product.getMemberId().equals(memberId)) {
+            throw new IllegalStateException("Seller cannot create a buyer chat for own product.");
+        }
+        if ("DONE".equals(product.getProductStatus())) {
+            throw new IllegalStateException("Completed product cannot start a chat.");
+        }
+
+        MarketDto.TradeChatRoomDto existingRoom =
+                marketMapper.selectTradeChatRoomByBuyer(product.getProductId(), memberId);
+        if (existingRoom != null) {
+            return existingRoom;
+        }
+
+        MarketDto.TradeChatRoomDto roomDto = MarketDto.TradeChatRoomDto.builder()
+                .productId(product.getProductId())
+                .sellerId(product.getMemberId())
+                .buyerId(memberId)
+                .negotiatedPrice(product.getPrice())
+                .status(DEFAULT_TRADE_CHAT_STATUS)
+                .build();
+        marketMapper.insertTradeChatRoom(roomDto);
+
+        if ("SALE".equals(product.getProductStatus())) {
+            marketMapper.updateProductStatus(product.getProductId(), "RESERVE");
+        }
+
+        return marketMapper.selectTradeChatRoomForMember(roomDto.getRoomId(), memberId);
+    }
+
+    public List<MarketDto.TradeChatMessageDto> getTradeChatMessages(Long memberId, Long roomId) {
+        requireTradeChatRoom(roomId, memberId);
+        return marketMapper.selectTradeChatMessages(roomId);
+    }
+
+    @Transactional
+    public MarketDto.TradeChatMessageDto sendTradeChatMessage(
+            Long memberId,
+            Long roomId,
+            MarketDto.TradeChatMessageRequestDto request) {
+        validateChatMessageRequest(request);
+        MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
+        if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || "DONE".equals(room.getProductStatus())) {
+            throw new IllegalStateException("Closed trade chat cannot send messages.");
+        }
+
+        MarketDto.TradeChatMessageDto messageDto = MarketDto.TradeChatMessageDto.builder()
+                .roomId(roomId)
+                .senderId(memberId)
+                .content(request.getContent().trim())
+                .isRead(0)
+                .build();
+        marketMapper.insertTradeChatMessage(messageDto);
+        MarketDto.TradeChatMessageDto savedMessage =
+                marketMapper.selectTradeChatMessage(messageDto.getMessageId());
+        MarketDto.TradeChatMessageDto response =
+                savedMessage == null ? messageDto : savedMessage;
+
+        runAfterCommit(() -> messagingTemplate.convertAndSend(
+                MARKET_CHAT_TOPIC_PREFIX + roomId,
+                response));
+
+        return response;
+    }
+
+    @Transactional
+    public MarketDto.TradeChatRoomDto updateTradeChatNegotiatedPrice(
+            Long memberId,
+            Long roomId,
+            MarketDto.TradeChatPriceRequestDto request) {
+        MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
+        if (!room.getSellerId().equals(memberId)) {
+            throw new IllegalStateException("Only seller can update negotiated price.");
+        }
+        if (request == null || request.getNegotiatedPrice() == null || request.getNegotiatedPrice() < 0) {
+            throw new IllegalArgumentException("Negotiated price is required.");
+        }
+        if ("DONE".equals(room.getProductStatus())
+                || DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            throw new IllegalStateException("Completed trade chat cannot update price.");
+        }
+
+        marketMapper.updateTradeChatNegotiatedPrice(roomId, request.getNegotiatedPrice());
+        MarketDto.TradeChatRoomDto updatedRoom =
+                marketMapper.selectTradeChatRoomForMember(roomId, memberId);
+        runAfterCommit(() -> messagingTemplate.convertAndSend(
+                MARKET_CHAT_TOPIC_PREFIX + roomId + "/room",
+                updatedRoom));
+        return updatedRoom;
+    }
+
+    @Transactional
+    public MarketDto.TradeChatRoomDto closeTradeChatRoom(Long memberId, Long roomId) {
+        MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
+        if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            throw new IllegalStateException("Completed trade chat cannot be closed.");
+        }
+        if (!CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            marketMapper.updateTradeChatStatus(roomId, CLOSED_TRADE_CHAT_STATUS);
+        }
+        restoreReservableProductIfNoActiveChats(room.getProductId());
+
+        MarketDto.TradeChatRoomDto updatedRoom =
+                marketMapper.selectTradeChatRoomForMember(roomId, memberId);
+        runAfterCommit(() -> messagingTemplate.convertAndSend(
+                MARKET_CHAT_TOPIC_PREFIX + roomId + "/room",
+                updatedRoom));
+        return updatedRoom;
+    }
+
+    @Transactional
+    public Map<String, Object> deleteTradeChatRoom(Long memberId, Long roomId) {
+        MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
+        if (!CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            throw new IllegalStateException("Only closed trade chat can be deleted.");
+        }
+
+        marketMapper.deleteTradeChatMessages(roomId);
+        int rows = marketMapper.deleteTradeChatRoom(roomId);
+        restoreReservableProductIfNoActiveChats(room.getProductId());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", rows > 0);
+        result.put("productId", room.getProductId());
+        result.put("message", rows > 0 ? "채팅방이 삭제되었습니다." : "삭제할 채팅방이 없습니다.");
+        return result;
     }
 
     // 내 찜 목록
@@ -284,7 +487,69 @@ public class MarketService {
                 .build();
     }
 
+    @Transactional
+    public MarketDto.PaymentResultDto completeChatPayment(
+            MarketDto.ChatPaymentCompleteDto completeDto,
+            Long buyerId) {
+        validateChatPaymentCompleteRequest(completeDto);
+        MarketDto.TradeChatRoomDto room =
+                requireTradeChatRoom(completeDto.getRoomId(), buyerId);
+        if (!room.getBuyerId().equals(buyerId)) {
+            throw new IllegalStateException("Only buyer can pay in trade chat.");
+        }
+        if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus()) || "DONE".equals(room.getProductStatus())) {
+            throw new IllegalStateException("Trade is already completed.");
+        }
+        if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            throw new IllegalStateException("Closed trade chat cannot be paid.");
+        }
+
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(room.getProductId());
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        if (!product.getMemberId().equals(room.getSellerId())) {
+            throw new IllegalStateException("Product seller does not match chat seller.");
+        }
+
+        Long paymentAmount = room.getNegotiatedPrice() == null
+                ? product.getPrice()
+                : room.getNegotiatedPrice();
+        verifyPortOnePaymentAmount(completeDto.getPaymentId(), paymentAmount);
+
+        MarketDto.TradeDto tradeDto = MarketDto.TradeDto.builder()
+                .productId(product.getProductId())
+                .sellerId(room.getSellerId())
+                .buyerId(room.getBuyerId())
+                .tradeStatus("DONE")
+                .price(paymentAmount)
+                .build();
+        marketMapper.insertTrade(tradeDto);
+
+        MarketDto.PaymentDto paymentDto = MarketDto.PaymentDto.builder()
+                .tradeId(tradeDto.getTradeId())
+                .impUid(completeDto.getPaymentId())
+                .merchantUid(completeDto.getPaymentId())
+                .amount(paymentAmount)
+                .status("PAID")
+                .build();
+        marketMapper.insertPayment(paymentDto);
+        marketMapper.updateProductStatus(product.getProductId(), "DONE");
+        marketMapper.updateTradeChatStatus(room.getRoomId(), DONE_TRADE_CHAT_STATUS);
+
+        return MarketDto.PaymentResultDto.builder()
+                .tradeId(tradeDto.getTradeId())
+                .paymentId(paymentDto.getPaymentId())
+                .productStatus("DONE")
+                .paymentStatus("PAID")
+                .build();
+    }
+
     private void verifyPortOnePayment(MarketDto.PaymentCompleteDto completeDto, MarketDto.ProductDto product) {
+        verifyPortOnePaymentAmount(completeDto.getPaymentId(), product.getPrice());
+    }
+
+    private void verifyPortOnePaymentAmount(String requestPaymentId, Long expectedAmount) {
         if (isBlank(portoneTradeApiSecret)) {
             throw new IllegalStateException("PortOne API credentials are missing.");
         }
@@ -295,7 +560,7 @@ public class MarketService {
         ResponseEntity<PortOneTradePaymentResponse> response;
         try {
             response = restTemplate.exchange(
-                    "https://api.portone.io/payments/" + completeDto.getPaymentId(),
+                    "https://api.portone.io/payments/" + requestPaymentId,
                     HttpMethod.GET,
                     new HttpEntity<>(headers),
                     PortOneTradePaymentResponse.class
@@ -318,13 +583,13 @@ public class MarketService {
         Long amount = payment.amount == null ? null : payment.amount.total;
         String channelKey = payment.channel == null ? null : payment.channel.key;
 
-        if (!completeDto.getPaymentId().equals(paymentId)) {
+        if (!requestPaymentId.equals(paymentId)) {
             throw new IllegalStateException("Payment id does not match.");
         }
         if (!"PAID".equals(status)) {
             throw new IllegalStateException("Payment is not paid.");
         }
-        if (amount == null || !amount.equals(product.getPrice())) {
+        if (amount == null || !amount.equals(expectedAmount)) {
             throw new IllegalStateException("Payment amount does not match.");
         }
         if (!isAllowedTradeChannelKey(channelKey)) {
@@ -354,9 +619,63 @@ public class MarketService {
         }
     }
 
+    private void validateChatPaymentCompleteRequest(MarketDto.ChatPaymentCompleteDto completeDto) {
+        if (completeDto == null) {
+            throw new IllegalArgumentException("Payment request body is required.");
+        }
+        if (completeDto.getRoomId() == null) {
+            throw new IllegalArgumentException("Chat room id is required.");
+        }
+        if (isBlank(completeDto.getPaymentId())) {
+            throw new IllegalArgumentException("paymentId is required.");
+        }
+    }
+
+    private void validateMember(Long memberId) {
+        if (memberId == null) {
+            throw new IllegalArgumentException("Login is required.");
+        }
+    }
+
+    private MarketDto.TradeChatRoomDto requireTradeChatRoom(Long roomId, Long memberId) {
+        validateMember(memberId);
+        if (roomId == null) {
+            throw new IllegalArgumentException("Chat room id is required.");
+        }
+
+        MarketDto.TradeChatRoomDto room =
+                marketMapper.selectTradeChatRoomForMember(roomId, memberId);
+        if (room == null) {
+            throw new IllegalArgumentException("Trade chat room not found.");
+        }
+        return room;
+    }
+
+    private void validateChatMessageRequest(MarketDto.TradeChatMessageRequestDto request) {
+        if (request == null || request.getContent() == null || request.getContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("Message content is required.");
+        }
+        if (request.getContent().trim().length() > MAX_CHAT_MESSAGE_LENGTH) {
+            throw new IllegalArgumentException("Message content must be 2000 characters or less.");
+        }
+    }
+
     private void validateEditableProductStatus(String productStatus) {
         if (!"SALE".equals(productStatus) && !"RESERVE".equals(productStatus)) {
             throw new IllegalArgumentException("Product status can only be changed to SALE or RESERVE.");
+        }
+    }
+
+    private void restoreReservableProductIfNoActiveChats(Long productId) {
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null || product.getIsDeleted() == 1) {
+            return;
+        }
+        if (!"RESERVE".equals(product.getProductStatus())) {
+            return;
+        }
+        if (marketMapper.selectActiveTradeChatRoomCountByProduct(productId) == 0) {
+            marketMapper.updateProductStatus(productId, "SALE");
         }
     }
 
@@ -368,6 +687,21 @@ public class MarketService {
         if (image.getSize() > MAX_IMAGE_SIZE) {
             throw new IllegalArgumentException("Image size must be 30MB or less.");
         }
+    }
+
+    private void runAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 
     public static class PortOneTradePaymentResponse {

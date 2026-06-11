@@ -201,6 +201,31 @@
 	    INSERT INTO POST_REPORT (REPORT_ID, MEMBER_ID, POST_ID, REASON, DETAIL, PRESSED_AT)
 	    VALUES (SEQ_POST_REPORT.NEXTVAL, #{memberId}, #{postId}, #{reason}, #{detail}, SYSTIMESTAMP)
 	</insert>
+
+    <select id="selectTotalReportCount" parameterType="long" resultType="int">
+        SELECT COUNT(*)
+        FROM POST_REPORT
+        WHERE POST_ID = #{postId}
+    </select>
+
+    <update id="updatePostReportStatus" parameterType="long">
+        UPDATE POST
+        SET REPORT_COUNT = (
+                SELECT COUNT(*)
+                FROM POST_REPORT
+                WHERE POST_ID = #{postId}
+            ),
+            IS_BLIND = CASE
+                WHEN (
+                    SELECT COUNT(*)
+                    FROM POST_REPORT
+                    WHERE POST_ID = #{postId}
+                ) >= 5 THEN 1
+                ELSE IS_BLIND
+            END
+        WHERE POST_ID = #{postId}
+          AND IS_DELETED = 0
+    </update>
 	
 	<!-- ── 댓글 ─────────────────────────────────────────── -->
 
