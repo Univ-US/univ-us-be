@@ -29,7 +29,9 @@ spring:
   mvc:
     view: { prefix: /WEB-INF/views/, suffix: .jsp }
   servlet:
-    multipart: { max-file-size: 30MB, max-request-size: 100MB }
+    # PLM-005 강의자료 업로드 — 단일 파일·요청 합계 각 5GB (로컬 application.yml과 동일값.
+    # S3 전환 전 임시로 서버 경유 업로드라 한도 큼. Traefik/K8s 바디 한도는 별도 확인 필요)
+    multipart: { max-file-size: 5GB, max-request-size: 5GB }
   security:
     oauth2:
       client:
@@ -87,6 +89,11 @@ portone:
   #    ${}는 반드시 block 스타일(인라인 {} 금지 — snakeyaml flow-map 충돌, PR#43 CrashLoop 이력).
   subscription:
     api-secret: ${PORTONE_SUBSCRIPTION_API_SECRET:}
+    # 구독 빌링 키 3종 — SubscriptionServiceImpl·SubscriptionBillingServiceImpl이 @Value '빈 기본값'으로 읽음
+    # (미주입이어도 부팅은 OK, 구독 결제만 실패). 실제 값은 K8s ConfigMap(univ-us-be-config)이 주입.
+    store-id: ${PORTONE_SUBSCRIPTION_STORE_ID:}
+    card-billing-channel-key: ${PORTONE_SUBSCRIPTION_CARD_BILLING_CHANNEL_KEY:}
+    kakao-billing-channel-key: ${PORTONE_SUBSCRIPTION_KAKAO_BILLING_CHANNEL_KEY:}
 
 jwt:
   secret: ${JWT_SECRET:dev-only-change-me-min-32-bytes-0000000000}
