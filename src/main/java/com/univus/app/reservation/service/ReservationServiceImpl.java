@@ -127,6 +127,9 @@ public class ReservationServiceImpl implements ReservationService {
         if (reservation == null) {
             throw new IllegalArgumentException("취소할 수 있는 예약을 찾을 수 없습니다.");
         }
+        if (!isCancelableStatus(reservation.getStatus())) {
+            throw new IllegalArgumentException("이미 취소되었거나 완료된 예약입니다.");
+        }
 
         executeWithLocks(
                 List.of(
@@ -175,6 +178,9 @@ public class ReservationServiceImpl implements ReservationService {
                 reservationMapper.selectRoomReservationForMember(reservationId, memberId);
         if (reservation == null) {
             throw new IllegalArgumentException("취소할 수 있는 공간 예약을 찾을 수 없습니다.");
+        }
+        if (!isCancelableStatus(reservation.getStatus())) {
+            throw new IllegalArgumentException("이미 취소되었거나 완료된 예약입니다.");
         }
 
         executeWithLocks(
@@ -354,6 +360,10 @@ public class ReservationServiceImpl implements ReservationService {
         if (memberId == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
+    }
+
+    private boolean isCancelableStatus(String status) {
+        return "RESERVED".equals(status) || "USING".equals(status);
     }
 
     @FunctionalInterface
