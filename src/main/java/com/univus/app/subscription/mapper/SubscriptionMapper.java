@@ -19,16 +19,22 @@ public interface SubscriptionMapper {
     SubscriptionPlanResponseDto findActivePlanById(@Param("planId") Long planId);
 
     // 같은 학교명이 이미 구독 진행 중이거나 구독 중인지 확인합니다.
-    // 학교를 새로 insert하기 전에 호출해야 중복 학교 구독을 막을 수 있습니다.
+    // 기존 방식으로 생성된 PENDING 학교와 현재 ACTIVE 학교의 중복을 막습니다.
     int countPendingOrActiveSubscriptionByUnivName(@Param("univName") String univName);
 
-    // 구독 신청 과정에서 학교를 먼저 생성합니다.
+    // 같은 학교명으로 진행 중인 신청이 있는지 확인합니다.
+    int countPendingSubscriptionApplicationByUnivName(@Param("univName") String univName);
+
+    // 결제 검증 성공 후 학교를 생성합니다.
     // insert 후 selectKey로 dto.univId가 채워집니다.
     int insertUniversity(SubscriptionUniversityDto university);
 
     // 결제 전 PENDING 상태의 구독을 생성합니다.
     // 실제 결제 성공 전이므로 아직 ACTIVE가 아닙니다.
     int insertSubscription(SubscriptionInsertDto subscription);
+
+    // 결제 전 학교 신청 정보를 PENDING 상태로 저장합니다.
+    int insertSubscriptionApplication(SubscriptionApplicationDto application);
 
     // 결제 요청 전에 READY 상태의 결제 이력을 생성합니다.
     // PortOne에 넘길 merchantUid를 먼저 저장해 결제 검증 시 대조합니다.
@@ -49,7 +55,8 @@ public interface SubscriptionMapper {
     int markPaymentHistoryPaid(
             @Param("historyId") Long historyId,
             @Param("portonePaymentId") String portonePaymentId,
-            @Param("paidAt") LocalDateTime paidAt
+            @Param("paidAt") LocalDateTime paidAt,
+            @Param("univId") Long univId
     );
 
     // 결제 검증 실패 시 결제 이력을 FAILED 상태로 변경합니다.
@@ -63,7 +70,23 @@ public interface SubscriptionMapper {
     // 다음 결제일은 플랜 주기에 따라 서비스에서 계산해서 넘깁니다.
     int activateSubscription(
             @Param("subscriptionId") Long subscriptionId,
+            @Param("univId") Long univId,
             @Param("nextBillingAt") java.time.LocalDateTime nextBillingAt
+    );
+
+    // 결제 검증 성공 후 신청을 COMPLETED 상태로 변경합니다.
+    int completeSubscriptionApplication(@Param("applicationId") Long applicationId);
+
+    // 결제창 취소 시 신청을 CANCELED 상태로 변경합니다.
+    int cancelSubscriptionApplication(
+            @Param("applicationId") Long applicationId,
+            @Param("failReason") String failReason
+    );
+
+    // 결제 검증 실패 시 신청을 FAILED 상태로 변경합니다.
+    int failSubscriptionApplication(
+            @Param("applicationId") Long applicationId,
+            @Param("failReason") String failReason
     );
 
     // 결제창 취소 또는 결제 진행 실패 시 결제 이력을 CANCELED 상태로 변경합니다.

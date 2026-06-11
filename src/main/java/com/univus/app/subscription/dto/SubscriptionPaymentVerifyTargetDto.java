@@ -19,6 +19,13 @@ public class SubscriptionPaymentVerifyTargetDto {
     // 로그인 사용자와 결제 이력 소유자가 같은지 검증할 때 사용합니다.
     private Long memberId;
 
+    // SUBSCRIPTION_APPLICATIONS.APPLICATION_ID
+    private Long applicationId;
+
+    // FK를 사용하지 않는 개발 단계에서 신청서 연결 무결성을 확인할 때 사용합니다.
+    private Long applicationMemberId;
+    private Long applicationPlanId;
+
     // SUBSCRIPTION_PAYMENT_HISTORIES.UNIV_ID
     private Long univId;
 
@@ -40,4 +47,15 @@ public class SubscriptionPaymentVerifyTargetDto {
     // SUBSCRIPTIONS.STATUS
     // PENDING 상태일 때만 ACTIVE로 변경합니다.
     private String subscriptionStatus;
+
+    // SUBSCRIPTION_APPLICATIONS.STATUS
+    // 결제 검증과 취소는 PENDING 신청만 처리합니다.
+    private String applicationStatus;
+
+    // 결제 검증 성공 후 UNIVERSITY를 생성할 때 사용하는 신청 학교 정보입니다.
+    private String univName;
+    private String sido;
+    private String address;
+    private String schoolPhone;
+    private String homepage;
 }
