@@ -143,6 +143,8 @@ public class MemberService {
     response.setUnivName(member.getUnivName());
     response.setMemberName(member.getMemberName());
     response.setCommunityNickname(member.getCommunityNickname());
+    response.setPhoneNumber(member.getPhoneNumber());
+    response.setCreatedAt(member.getCreatedAt());
 
     return response;
   }
