@@ -11,6 +11,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +31,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     private static final String MEMBER_ROLE_ADMIN = "ADM";
 
+    private static final ZoneId SUBSCRIPTION_ZONE = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter MERCHANT_UID_TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
@@ -557,10 +560,11 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
     private LocalDateTime toLocalDateTime(String paidAt) {
         if (paidAt == null || paidAt.isBlank()) {
-            return LocalDateTime.now();
+            return LocalDateTime.now(SUBSCRIPTION_ZONE);
         }
 
-        return java.time.OffsetDateTime.parse(paidAt)
+        return OffsetDateTime.parse(paidAt)
+                .atZoneSameInstant(SUBSCRIPTION_ZONE)
                 .toLocalDateTime();
     }
 
