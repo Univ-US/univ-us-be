@@ -13,4 +13,6 @@ public class SubscriptionPaymentConfigResponseDto {
 
     private String storeId;
     private String channelKey;
+    private String cardBillingChannelKey;
+    private String kakaoBillingChannelKey;
 }

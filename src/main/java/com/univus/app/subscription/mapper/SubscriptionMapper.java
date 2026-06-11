@@ -40,6 +40,18 @@ public interface SubscriptionMapper {
     // PortOne에 넘길 merchantUid를 먼저 저장해 결제 검증 시 대조합니다.
     int insertPaymentHistory(SubscriptionPaymentHistoryInsertDto paymentHistory);
 
+    int insertBillingKey(SubscriptionBillingKeyInsertDto billingKey);
+
+    int attachSubscriptionBillingKey(
+            @Param("subscriptionId") Long subscriptionId,
+            @Param("billingKeyId") Long billingKeyId
+    );
+
+    int attachPaymentHistoryBillingKey(
+            @Param("historyId") Long historyId,
+            @Param("billingKeyId") Long billingKeyId
+    );
+
     // 이미 활성 또는 결제 대기 중인 구독이 있는지 확인합니다.
     // 같은 계정으로 중복 구독 신청을 막기 위해 사용합니다.
     int countPendingOrActiveSubscriptionByMemberId(@Param("memberId") Long memberId);
@@ -47,6 +59,10 @@ public interface SubscriptionMapper {
     // merchantUid로 결제 검증 대상 데이터를 조회합니다.
     // 결제 이력, 구독, 금액, 상태를 한 번에 가져와서 검증 로직에서 사용합니다.
     SubscriptionPaymentVerifyTargetDto findPaymentVerifyTargetByMerchantUid(
+            @Param("merchantUid") String merchantUid
+    );
+
+    SubscriptionRenewalTargetDto findRenewalTargetByMerchantUid(
             @Param("merchantUid") String merchantUid
     );
 
@@ -64,6 +80,17 @@ public interface SubscriptionMapper {
     int markPaymentHistoryFailed(
             @Param("historyId") Long historyId,
             @Param("failReason") String failReason
+    );
+
+    int markRenewalPaymentPaid(
+            @Param("historyId") Long historyId,
+            @Param("portonePaymentId") String portonePaymentId,
+            @Param("paidAt") LocalDateTime paidAt
+    );
+
+    int updateNextBillingAt(
+            @Param("subscriptionId") Long subscriptionId,
+            @Param("nextBillingAt") LocalDateTime nextBillingAt
     );
 
     // 결제 검증 성공 시 구독을 ACTIVE 상태로 변경합니다.

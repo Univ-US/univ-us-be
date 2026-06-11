@@ -158,6 +158,49 @@
         )
     </insert>
 
+    <insert id="insertBillingKey"
+            parameterType="com.univus.app.subscription.dto.SubscriptionBillingKeyInsertDto">
+        <selectKey keyProperty="billingKeyId" resultType="long" order="BEFORE">
+            SELECT SEQ_SUBSCRIPTION_BILLING_KEY.NEXTVAL FROM DUAL
+        </selectKey>
+
+        INSERT INTO SUBSCRIPTION_BILLING_KEY (
+            SUBSCRIPTION_BILLING_KEY_ID,
+            SUBSCRIPTION_BILLING_KEY_VALUE,
+            MEMBER_ID,
+            UNIV_ID,
+            PG_PROVIDER,
+            STATUS,
+            CREATED_AT,
+            UPDATED_AT
+        ) VALUES (
+            #{billingKeyId},
+            #{billingKeyValue},
+            #{memberId},
+            #{univId},
+            #{pgProvider},
+            #{status},
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="attachSubscriptionBillingKey">
+        UPDATE SUBSCRIPTIONS
+        SET BILLINGKEY_ID = #{billingKeyId}
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'PENDING'
+          AND BILLINGKEY_ID IS NULL
+    </update>
+
+    <update id="attachPaymentHistoryBillingKey">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET BILLINGKEY_ID = #{billingKeyId}
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+          AND BILLINGKEY_ID IS NULL
+    </update>
+
     <select id="countPendingOrActiveSubscriptionByMemberId" resultType="int">
         SELECT COUNT(*)
         FROM SUBSCRIPTIONS
@@ -197,6 +240,8 @@
             A.PLAN_ID AS applicationPlanId,
             H.UNIV_ID AS univId,
             S.PLAN_ID AS planId,
+            P.PLAN_NAME AS planName,
+            P.BILLING_CYCLE AS billingCycle,
             H.MERCHANT_UID AS merchantUid,
             H.AMOUNT AS amount,
             H.STATUS AS paymentStatus,
@@ -210,9 +255,38 @@
         FROM SUBSCRIPTION_PAYMENT_HISTORIES H
                  JOIN SUBSCRIPTIONS S
                       ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+                 JOIN SUBSCRIPTION_PLANS P
+                      ON P.PLAN_ID = S.PLAN_ID
                  LEFT JOIN SUBSCRIPTION_APPLICATIONS A
                       ON A.SUBSCRIPTION_ID = S.SUBSCRIPTION_ID
         WHERE H.MERCHANT_UID = #{merchantUid}
+    </select>
+
+    <select id="findRenewalTargetByMerchantUid"
+            resultType="com.univus.app.subscription.dto.SubscriptionRenewalTargetDto">
+        SELECT
+            H.HISTORY_ID AS paymentHistoryId,
+            H.SUBSCRIPTION_ID AS subscriptionId,
+            H.BILLINGKEY_ID AS billingKeyId,
+            H.MEMBER_ID AS memberId,
+            H.UNIV_ID AS univId,
+            H.AMOUNT AS amount,
+            H.MERCHANT_UID AS merchantUid,
+            H.STATUS AS paymentStatus,
+            S.STATUS AS subscriptionStatus,
+            B.SUBSCRIPTION_BILLING_KEY_VALUE AS portoneBillingKey,
+            B.STATUS AS billingKeyStatus,
+            P.PLAN_NAME AS planName,
+            P.BILLING_CYCLE AS billingCycle
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+                 JOIN SUBSCRIPTIONS S
+                      ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+                 JOIN SUBSCRIPTION_BILLING_KEY B
+                      ON B.SUBSCRIPTION_BILLING_KEY_ID = H.BILLINGKEY_ID
+                 JOIN SUBSCRIPTION_PLANS P
+                      ON P.PLAN_ID = S.PLAN_ID
+        WHERE H.MERCHANT_UID = #{merchantUid}
+          AND H.MERCHANT_UID LIKE 'sub_renew_%'
     </select>
 
     <!--
@@ -242,6 +316,24 @@
             FAIL_REASON = #{failReason}
         WHERE HISTORY_ID = #{historyId}
           AND STATUS = 'READY'
+    </update>
+
+    <update id="markRenewalPaymentPaid">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET STATUS = 'PAID',
+            PORTONE_PAYMENT_ID = #{portonePaymentId},
+            PAID_AT = #{paidAt},
+            FAIL_REASON = NULL
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+
+    <update id="updateNextBillingAt">
+        UPDATE SUBSCRIPTIONS
+        SET STATUS = 'ACTIVE',
+            NEXT_BILLING_AT = #{nextBillingAt}
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'ACTIVE'
     </update>
 
     <!--

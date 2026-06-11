@@ -110,6 +110,7 @@ public class SpringSecurityConfig {
 						"/uploads/lms/professor/image/**",
 						"/uploads/lms/student/image/**"
             	    ).permitAll()
+							.requestMatchers(HttpMethod.POST,  "/api/subscriptions/webhooks/portone").permitAll()
             	    .anyRequest().authenticated()
             )
 				// JWT 토큰 인증 필터 등록
