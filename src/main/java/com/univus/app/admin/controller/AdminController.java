@@ -110,4 +110,53 @@ public class AdminController {
     public void deleteNotice(@PathVariable Long noticeId) {
         adminService.deleteNotice(noticeId);
     }
+
+    // 학과 목록 조회 (ADM: 본인 대학, SUA: univId로 필터)
+    @GetMapping("/departments")
+    public ResponseEntity<List<AdminDto.DepartmentDto>> getDepartmentList(
+            @RequestParam(required = false) Long univId,
+            Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.getDepartmentList(memberId, univId));
+    }
+
+    // 강의코드 목록 조회 (ADM: 본인 대학, SUA: univId로 필터)
+    @GetMapping("/lecture-codes")
+    public ResponseEntity<List<AdminDto.LectureCodeListDto>> getLectureCodeList(
+            @RequestParam(required = false) Long univId,
+            Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.getLectureCodeList(memberId, univId));
+    }
+
+    // 강의코드 등록
+    @PostMapping("/lecture-codes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void createLectureCode(@RequestBody AdminDto.LectureCodeDto dto) {
+        adminService.createLectureCode(dto);
+    }
+
+    // 강의코드 수정
+    @PutMapping("/lecture-codes/{lectureCodeId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateLectureCode(@PathVariable Long lectureCodeId,
+                                  @RequestBody AdminDto.LectureCodeDto dto) {
+        dto.setLecCodeId(lectureCodeId);
+        adminService.updateLectureCode(dto);
+    }
+
+    // 강의코드 상태 변경
+    @PatchMapping("/lecture-codes/{lecCodeId}/status")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateLectureCodeStatus(@PathVariable Long lecCodeId,
+                                        @RequestBody AdminDto.LectureCodeStatusDto dto) {
+        adminService.updateLectureCodeStatus(lecCodeId, dto.getValStatus());
+    }
+
+    // 강의코드 삭제
+    @DeleteMapping("/lecture-codes/{lectureCodeId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteLectureCode(@PathVariable Long lectureCodeId) {
+        adminService.deleteLectureCode(lectureCodeId);
+    }
 }

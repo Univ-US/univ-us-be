@@ -94,4 +94,39 @@ public class AdminService {
     public AdminDto.UniversityDto getUniversity(Long univId) {
         return adminMapper.selectUniversityById(univId);
     }
+
+    public List<AdminDto.DepartmentDto> getDepartmentList(Long requesterId, Long univId) {
+        MemberDto requester = memberMapper.findByMemberId(requesterId);
+        Long effectiveUnivId = "SUA".equals(requester.getRole()) ? univId : requester.getUnivId();
+        return adminMapper.selectDepartmentList(effectiveUnivId);
+    }
+
+    public List<AdminDto.LectureCodeListDto> getLectureCodeList(Long requesterId, Long univId) {
+        MemberDto requester = memberMapper.findByMemberId(requesterId);
+        Long effectiveUnivId = "SUA".equals(requester.getRole()) ? univId : requester.getUnivId();
+        return adminMapper.selectLectureCodeList(effectiveUnivId);
+    }
+
+    @Transactional
+    public void createLectureCode(AdminDto.LectureCodeDto dto) {
+        adminMapper.insertLectureCode(dto);
+    }
+
+    @Transactional
+    public void updateLectureCode(AdminDto.LectureCodeDto dto) {
+        adminMapper.updateLectureCode(dto);
+    }
+
+    @Transactional
+    public void updateLectureCodeStatus(Long lecCodeId, String valStatus) {
+        AdminDto.LectureCodeStatusDto dto = new AdminDto.LectureCodeStatusDto();
+        dto.setLecCodeId(lecCodeId);
+        dto.setValStatus(valStatus);
+        adminMapper.updateLectureCodeStatus(dto);
+    }
+
+    @Transactional
+    public void deleteLectureCode(Long lectureCodeId) {
+        adminMapper.deleteLectureCode(lectureCodeId);
+    }
 }
