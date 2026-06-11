@@ -253,4 +253,229 @@
         WHERE LEC_CODE_ID = #{lectureCodeId}
     </delete>
 
+    <!-- 배정 강의 목록 조회 (학기·대학 필터) -->
+    <select id="selectLectureAssignList" resultType="com.univus.app.admin.dto.AdminDto$LectureAssignListDto">
+        SELECT L.LEC_ID,
+               LC.LEC_CODE_ID,
+               LC.LEC_CODE,
+               LC.LEC_COD_NAME,
+               D.DEPT_ID,
+               D.DEPT_NAME,
+               D.UNIV_ID,
+               U.UNIV_NAME,
+               M.MEMBER_ID AS PROFESSOR_MEMBER_ID,
+               M.MEMBER_NAME AS PROFESSOR_NAME,
+               S.SEM_ID,
+               S.SEM_YEAR,
+               S.SEM_TERM,
+               L.LEC_SECTION,
+               L.LEC_CREDIT,
+               L.LEC_TOT_CLASSES,
+               L.LEC_VAL_STATUS,
+               (SELECT LISTAGG(LT.LEC_TIM_DAY_CODE, ',') WITHIN GROUP (ORDER BY LT.LEC_TIM_ID)
+                FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS DAY_CODES,
+               (SELECT TO_CHAR(MIN(LT.LEC_TIM_STR_TIME), 'HH24:MI')
+                FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS START_TIME,
+               (SELECT TO_CHAR(MAX(LT.LEC_TIM_END_TIME), 'HH24:MI')
+                FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS END_TIME
+        FROM LECTURE L
+        JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+        JOIN DEPARTMENT D ON D.DEPT_ID = LC.DEPT_ID
+        JOIN UNIVERSITY U ON U.UNIV_ID = D.UNIV_ID
+        JOIN SEMESTERS S ON S.SEM_ID = L.SEM_ID
+        JOIN LMS_PROFILE LP ON LP.LMS_PRF_ID = L.LMS_PRF_ID
+        JOIN MEMBER M ON M.MEMBER_ID = LP.MEMBER_ID
+        <where>
+            <if test="univId != null">
+                D.UNIV_ID = #{univId}
+            </if>
+            <if test="semId != null">
+                AND L.SEM_ID = #{semId}
+            </if>
+        </where>
+        ORDER BY S.SEM_ID DESC, LC.LEC_COD_NAME, L.LEC_SECTION, L.LEC_ID
+    </select>
+
+    <!-- 배정 강의 단건 조회 (배정 직후 생성행 반환용) -->
+    <select id="selectLectureAssignById" resultType="com.univus.app.admin.dto.AdminDto$LectureAssignListDto">
+        SELECT L.LEC_ID,
+               LC.LEC_CODE_ID,
+               LC.LEC_CODE,
+               LC.LEC_COD_NAME,
+               D.DEPT_ID,
+               D.DEPT_NAME,
+               D.UNIV_ID,
+               U.UNIV_NAME,
+               M.MEMBER_ID AS PROFESSOR_MEMBER_ID,
+               M.MEMBER_NAME AS PROFESSOR_NAME,
+               S.SEM_ID,
+               S.SEM_YEAR,
+               S.SEM_TERM,
+               L.LEC_SECTION,
+               L.LEC_CREDIT,
+               L.LEC_TOT_CLASSES,
+               L.LEC_VAL_STATUS,
+               (SELECT LISTAGG(LT.LEC_TIM_DAY_CODE, ',') WITHIN GROUP (ORDER BY LT.LEC_TIM_ID)
+                FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS DAY_CODES,
+               (SELECT TO_CHAR(MIN(LT.LEC_TIM_STR_TIME), 'HH24:MI')
+                FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS START_TIME,
+               (SELECT TO_CHAR(MAX(LT.LEC_TIM_END_TIME), 'HH24:MI')
+                FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS END_TIME
+        FROM LECTURE L
+        JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+        JOIN DEPARTMENT D ON D.DEPT_ID = LC.DEPT_ID
+        JOIN UNIVERSITY U ON U.UNIV_ID = D.UNIV_ID
+        JOIN SEMESTERS S ON S.SEM_ID = L.SEM_ID
+        JOIN LMS_PROFILE LP ON LP.LMS_PRF_ID = L.LMS_PRF_ID
+        JOIN MEMBER M ON M.MEMBER_ID = LP.MEMBER_ID
+        WHERE L.LEC_ID = #{lecId}
+    </select>
+
+    <!-- 강의 배정 등록 (PK 선채번 → LECTURE_TIME에서 재사용. 분반·LMS_PRF_ID는 서비스에서 채움) -->
+    <insert id="insertLectureAssign" parameterType="com.univus.app.admin.dto.AdminDto$LectureAssignCreateDto">
+        <selectKey keyProperty="lecId" resultType="long" order="BEFORE">
+            SELECT SEQ_LECTURE.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO LECTURE (LEC_ID, LMS_PRF_ID, SEM_ID, LEC_CODE_ID, LEC_REG_DATE,
+                             LEC_CREDIT, LEC_TOT_CLASSES, LEC_VAL_STATUS, LEC_SECTION)
+        VALUES (#{lecId}, #{lmsPrfId}, #{semId}, #{lecCodeId}, SYSTIMESTAMP,
+                #{lecCredit, jdbcType=NUMERIC}, #{lecTotClasses, jdbcType=NUMERIC}, 'OPEN', #{lecSection})
+    </insert>
+
+    <!-- 강의 시간 등록 (요일별 1행, 같은 시간 적용) -->
+    <insert id="insertLectureTime">
+        INSERT INTO LECTURE_TIME (LEC_TIM_ID, LEC_ID, LEC_TIM_DAY_CODE, LEC_TIM_STR_TIME, LEC_TIM_END_TIME)
+        VALUES (SEQ_LECTURE_TIME.NEXTVAL, #{lecId}, #{time.dayCode},
+                TO_TIMESTAMP(#{time.startTime}, 'HH24:MI'), TO_TIMESTAMP(#{time.endTime}, 'HH24:MI'))
+    </insert>
+
+    <!-- 분반 자동 채번 (같은 학기·강의 MAX+1, 첫 배정=1) -->
+    <select id="selectNextLectureSection" resultType="int">
+        SELECT NVL(MAX(LEC_SECTION), 0) + 1
+        FROM LECTURE
+        WHERE SEM_ID = #{semId}
+          AND LEC_CODE_ID = #{lecCodeId}
+    </select>
+
+    <!-- 교수 시간표 충돌 검사: 같은 학기·같은 교수의 기존 강의 시간과 요일·시간대 겹침 카운트
+         (폐강 CNCL 제외. LEC_TIM_*_TIME은 날짜부가 입력 시점에 따라 달라 TO_CHAR HH24:MI 문자열로 시간만 비교) -->
+    <select id="countProfessorTimeConflicts" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE L
+        JOIN LECTURE_TIME LT ON LT.LEC_ID = L.LEC_ID
+        WHERE L.SEM_ID = #{semId}
+          AND L.LMS_PRF_ID = #{lmsPrfId}
+          AND L.LEC_VAL_STATUS != 'CNCL'
+          AND LT.LEC_TIM_DAY_CODE = #{dayCode}
+          AND TO_CHAR(LT.LEC_TIM_STR_TIME, 'HH24:MI') &lt; #{endTime}
+          AND TO_CHAR(LT.LEC_TIM_END_TIME, 'HH24:MI') &gt; #{startTime}
+        <if test="excludeLecId != null">
+            AND L.LEC_ID != #{excludeLecId}
+        </if>
+    </select>
+
+    <!-- 강의 배정 수정 (수강신청중 상태만 — 반은 서비스에서 유지/재채번 결정) -->
+    <update id="updateLectureAssign" parameterType="com.univus.app.admin.dto.AdminDto$LectureAssignCreateDto">
+        UPDATE LECTURE
+        SET LMS_PRF_ID = #{lmsPrfId},
+            SEM_ID = #{semId},
+            LEC_CODE_ID = #{lecCodeId},
+            LEC_CREDIT = #{lecCredit, jdbcType=NUMERIC},
+            LEC_TOT_CLASSES = #{lecTotClasses, jdbcType=NUMERIC},
+            LEC_SECTION = #{lecSection}
+        WHERE LEC_ID = #{lecId}
+    </update>
+
+    <!-- 강의 시간 전체 삭제 (배정 수정 시 교체용 — 해당 강의의 시간만) -->
+    <delete id="deleteLectureTimes">
+        DELETE FROM LECTURE_TIME
+        WHERE LEC_ID = #{lecId}
+    </delete>
+
+    <!-- 교수 LMS 프로필 ID 조회 (없으면 NULL — MIN 집계로 단일행 보장) -->
+    <select id="selectLmsPrfIdByMemberId" resultType="java.lang.Long">
+        SELECT MIN(LMS_PRF_ID)
+        FROM LMS_PROFILE
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <!-- 교수 LMS 프로필 지연 생성 -->
+    <insert id="insertLmsProfile">
+        INSERT INTO LMS_PROFILE (LMS_PRF_ID, MEMBER_ID)
+        VALUES (SEQ_LMS_PROFILE.NEXTVAL, #{memberId})
+    </insert>
+
+    <!-- 학기 목록 조회 (시작·종료일 포함 — 총 수업횟수 자동 계산용) -->
+    <select id="selectSemesterList" resultType="com.univus.app.admin.dto.AdminDto$SemesterDto">
+        SELECT SEM_ID,
+               SEM_YEAR,
+               SEM_TERM,
+               TO_CHAR(SEM_STR_DATE, 'YYYY-MM-DD') AS SEM_STR_DATE,
+               TO_CHAR(SEM_END_DATE, 'YYYY-MM-DD') AS SEM_END_DATE
+        FROM SEMESTERS
+        ORDER BY SEM_YEAR DESC, SEM_ID DESC
+    </select>
+
+    <!-- 교수 목록 조회 (대학 필터) -->
+    <select id="selectProfessorList" resultType="com.univus.app.admin.dto.AdminDto$ProfessorDto">
+        SELECT M.MEMBER_ID,
+               M.MEMBER_NAME,
+               D.DEPT_NAME
+        FROM MEMBER M
+        LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+        LEFT JOIN DEPARTMENT D ON MD.DEPT_ID = D.DEPT_ID
+        WHERE M.ROLE = 'PROF'
+        <if test="univId != null">
+            AND M.UNIV_ID = #{univId}
+        </if>
+        ORDER BY M.MEMBER_NAME, M.MEMBER_ID
+    </select>
+
+    <!-- 강의(코드) 목록 조회 (배정 강의 수 포함 — 삭제(DEL) 상태도 포함해 전체 노출) -->
+    <select id="selectLectureList" resultType="com.univus.app.admin.dto.AdminDto$LectureListDto">
+        SELECT LC.LEC_CODE_ID,
+               LC.DEPT_ID,
+               D.DEPT_NAME,
+               D.UNIV_ID,
+               U.UNIV_NAME,
+               LC.LEC_CODE,
+               LC.LEC_COD_NAME,
+               LC.VAL_STATUS,
+               (SELECT COUNT(*) FROM LECTURE L WHERE L.LEC_CODE_ID = LC.LEC_CODE_ID) AS ASSIGN_COUNT
+        FROM LECTURE_CODE LC
+        JOIN DEPARTMENT D ON LC.DEPT_ID = D.DEPT_ID
+        JOIN UNIVERSITY U ON D.UNIV_ID = U.UNIV_ID
+        <where>
+            <if test="univId != null">
+                D.UNIV_ID = #{univId}
+            </if>
+        </where>
+        ORDER BY LC.LEC_CODE_ID
+    </select>
+
+    <!-- 같은 학과 내 강의 코드 중복 검사 (DB 복합 UNIQUE(DEPT_ID, LEC_CODE) 위반 사전 차단 — 삭제(DEL) 상태 포함) -->
+    <select id="countLectureCodeDup" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE_CODE
+        WHERE DEPT_ID = #{deptId}
+          AND LEC_CODE = #{lecCode}
+        <if test="excludeLecCodeId != null">
+            AND LEC_CODE_ID != #{excludeLecCodeId}
+        </if>
+    </select>
+
+    <!-- 강의(코드)로 배정된 강의 수 (삭제 차단 검사) -->
+    <select id="countLectureAssigns" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE
+        WHERE LEC_CODE_ID = #{lecCodeId}
+    </select>
+
+    <!-- 강의(코드) 소프트 삭제 (물리 삭제 대신 상태 변경 — 배정 강의 보존) -->
+    <update id="softDeleteLecture">
+        UPDATE LECTURE_CODE
+        SET VAL_STATUS = 'DEL'
+        WHERE LEC_CODE_ID = #{lecCodeId}
+    </update>
+
 </mapper>
