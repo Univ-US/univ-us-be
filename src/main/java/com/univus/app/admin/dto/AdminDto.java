@@ -116,4 +116,37 @@ public class AdminDto {
         private String homepage;
         private String address;
     }
+
+    @Data
+    public static class DepartmentDto {
+        private Long deptId;
+        private String deptName;
+        private Long univId;
+    }
+
+    @Data
+    public static class LectureCodeStatusDto {
+        private Long lecCodeId;
+        private String valStatus;
+    }
+
+    @Data
+    public static class LectureCodeDto {
+        private Long lecCodeId;
+        private Long deptId;
+        private String lecCode;
+        private String lecCodName;
+    }
+
+    @Data
+    public static class LectureCodeListDto {
+        private Long lecCodeId;
+        private Long deptId;
+        private String deptName;
+        private Long univId;
+        private String univName;
+        private String lecCode;
+        private String lecCodName;
+        private String valStatus;
+    }
 }

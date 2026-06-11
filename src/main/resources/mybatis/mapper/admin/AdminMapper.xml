@@ -187,4 +187,60 @@
         WHERE UNIV_ID = #{univId}
     </select>
 
+    <!-- 학과 목록 조회 -->
+    <select id="selectDepartmentList" resultType="com.univus.app.admin.dto.AdminDto$DepartmentDto">
+        SELECT DEPT_ID, DEPT_NAME, UNIV_ID
+        FROM DEPARTMENT
+        WHERE UNIV_ID = #{univId}
+        ORDER BY DEPT_NAME
+    </select>
+
+    <!-- 강의코드 목록 조회 -->
+    <select id="selectLectureCodeList" resultType="com.univus.app.admin.dto.AdminDto$LectureCodeListDto">
+        SELECT LC.LEC_CODE_ID,
+               LC.DEPT_ID,
+               D.DEPT_NAME,
+               D.UNIV_ID,
+               U.UNIV_NAME,
+               LC.LEC_CODE,
+               LC.LEC_COD_NAME,
+               LC.VAL_STATUS
+        FROM LECTURE_CODE LC
+        JOIN DEPARTMENT D ON LC.DEPT_ID = D.DEPT_ID
+        JOIN UNIVERSITY U ON D.UNIV_ID = U.UNIV_ID
+        <where>
+            <if test="univId != null">
+                D.UNIV_ID = #{univId}
+            </if>
+        </where>
+        ORDER BY LC.LEC_CODE_ID
+    </select>
+
+    <!-- 강의코드 등록 -->
+    <insert id="insertLectureCode" parameterType="com.univus.app.admin.dto.AdminDto$LectureCodeDto">
+        INSERT INTO LECTURE_CODE (LEC_CODE_ID, DEPT_ID, LEC_CODE, LEC_COD_NAME, VAL_STATUS)
+        VALUES (SEQ_LECTURE_CODE.NEXTVAL, #{deptId}, #{lecCode}, #{lecCodName}, 'ACT')
+    </insert>
+
+    <!-- 강의코드 수정 -->
+    <update id="updateLectureCode" parameterType="com.univus.app.admin.dto.AdminDto$LectureCodeDto">
+        UPDATE LECTURE_CODE
+        SET LEC_CODE     = #{lecCode},
+            LEC_COD_NAME = #{lecCodName}
+        WHERE LEC_CODE_ID = #{lecCodeId}
+    </update>
+
+    <!-- 강의코드 상태 변경 -->
+    <update id="updateLectureCodeStatus" parameterType="com.univus.app.admin.dto.AdminDto$LectureCodeStatusDto">
+        UPDATE LECTURE_CODE
+        SET VAL_STATUS = #{valStatus}
+        WHERE LEC_CODE_ID = #{lecCodeId}
+    </update>
+
+    <!-- 강의코드 삭제 -->
+    <delete id="deleteLectureCode">
+        DELETE FROM LECTURE_CODE
+        WHERE LEC_CODE_ID = #{lectureCodeId}
+    </delete>
+
 </mapper>

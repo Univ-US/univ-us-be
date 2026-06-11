@@ -36,4 +36,16 @@ public interface AdminMapper {
     List<AdminDto.UniversityDto> selectUniversityList();
 
     AdminDto.UniversityDto selectUniversityById(@Param("univId") Long univId);
+
+    List<AdminDto.DepartmentDto> selectDepartmentList(@Param("univId") Long univId);
+
+    List<AdminDto.LectureCodeListDto> selectLectureCodeList(@Param("univId") Long univId);
+
+    int insertLectureCode(AdminDto.LectureCodeDto dto);
+
+    int updateLectureCode(AdminDto.LectureCodeDto dto);
+
+    int updateLectureCodeStatus(AdminDto.LectureCodeStatusDto dto);
+
+    int deleteLectureCode(@Param("lectureCodeId") Long lectureCodeId);
 }
