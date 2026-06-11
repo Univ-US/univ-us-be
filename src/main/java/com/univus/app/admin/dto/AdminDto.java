@@ -115,6 +115,16 @@ public class AdminDto {
         private String schoolPhone;
         private String homepage;
         private String address;
+        private String youtubeUrl;
+        private String clubUrl;
+        private String snsUrl;
+    }
+
+    @Data
+    public static class UniversityUpdateDto {
+        private String youtubeUrl;
+        private String clubUrl;
+        private String snsUrl;
     }
 
     @Data

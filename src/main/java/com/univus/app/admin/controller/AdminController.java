@@ -111,6 +111,14 @@ public class AdminController {
         adminService.deleteNotice(noticeId);
     }
 
+    // 대학 링크 수정 (ADM, SUA)
+    @PatchMapping("/universities/{univId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateUniversity(@PathVariable Long univId,
+                                 @RequestBody AdminDto.UniversityUpdateDto dto) {
+        adminService.updateUniversity(univId, dto);
+    }
+
     // 학과 목록 조회 (ADM: 본인 대학, SUA: univId로 필터)
     @GetMapping("/departments")
     public ResponseEntity<List<AdminDto.DepartmentDto>> getDepartmentList(
