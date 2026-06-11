@@ -27,6 +27,10 @@ public interface ReservationService {
 
     void cancelReadingSeatReservation(Long memberId, Long reservationId);
 
+    void checkInReadingSeat(Long memberId, Long reservationId);
+
+    ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId);
+
     List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(LocalDate date);
 
     List<ReservationDto.RoomReservationDto> getMyRoomReservations(Long memberId);

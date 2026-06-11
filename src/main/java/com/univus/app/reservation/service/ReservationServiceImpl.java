@@ -142,6 +142,49 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
+    public void checkInReadingSeat(Long memberId, Long reservationId) {
+        validateMember(memberId);
+        if (reservationId == null) {
+            throw new IllegalArgumentException("예약 ID는 필수입니다.");
+        }
+        
+        ReservationDto.ReadingSeatReservationDto reservation =
+                reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
+        if (reservation == null) {
+            throw new IllegalArgumentException("입실할 수 있는 예약을 찾을 수 없습니다.");
+        }
+
+        executeWithLocks(
+                List.of(
+                        redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId),
+                        redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + reservation.getSeatId())),
+                () -> {
+                    reservationCommandService.checkInReadingSeat(memberId, reservationId);
+                    return null;
+                });
+    }
+
+    @Override
+    public ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId) {
+        validateMember(memberId);
+        if (reservationId == null) {
+            throw new IllegalArgumentException("예약 ID는 필수입니다.");
+        }
+        
+        ReservationDto.ReadingSeatReservationDto reservation =
+                reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
+        if (reservation == null) {
+            throw new IllegalArgumentException("연장할 수 있는 예약을 찾을 수 없습니다.");
+        }
+
+        return executeWithLocks(
+                List.of(
+                        redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId),
+                        redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + reservation.getSeatId())),
+                () -> reservationCommandService.extendReadingSeatReservation(memberId, reservationId));
+    }
+
+    @Override
     public List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(LocalDate date) {
         if (date == null) {
             throw new IllegalArgumentException("예약 날짜는 필수입니다.");

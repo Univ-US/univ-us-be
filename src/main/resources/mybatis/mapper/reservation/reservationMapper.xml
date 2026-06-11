@@ -395,4 +395,68 @@
           AND MEMBER_ID = #{memberId}
           AND STATUS IN ('USING', 'RESERVED')
     </update>
+
+    <select id="selectExpiredReadingSeatReservations" resultMap="ReadingSeatReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.SEAT_ID,
+            S.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            S.SEAT_NUMBER,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT
+        FROM READING_SEAT_RESERVATIONS R
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = R.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE R.STATUS IN ('USING', 'RESERVED')
+          AND R.END_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+    </select>
+
+    <select id="selectNoShowReadingSeatReservations" resultMap="ReadingSeatReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.SEAT_ID,
+            S.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            S.SEAT_NUMBER,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT
+        FROM READING_SEAT_RESERVATIONS R
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = R.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE R.STATUS = 'RESERVED'
+          AND R.START_TIME + INTERVAL '20' MINUTE <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+    </select>
+
+    <update id="updateReadingSeatReservationStatus">
+        UPDATE READING_SEAT_RESERVATIONS
+        SET STATUS = #{status}
+        WHERE RESERVATION_ID = #{reservationId}
+    </update>
+
+    <update id="checkInReadingSeatReservation">
+        UPDATE READING_SEAT_RESERVATIONS
+        SET STATUS = 'USING'
+        WHERE RESERVATION_ID = #{reservationId}
+          AND MEMBER_ID = #{memberId}
+          AND STATUS = 'RESERVED'
+    </update>
+
+    <update id="extendReadingSeatReservation">
+        UPDATE READING_SEAT_RESERVATIONS
+        SET END_TIME = #{newEndTime}
+        WHERE RESERVATION_ID = #{reservationId}
+          AND MEMBER_ID = #{memberId}
+          AND STATUS = 'USING'
+    </update>
 </mapper>
