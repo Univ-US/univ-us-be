@@ -46,6 +46,12 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Value("${portone.subscription.channel-key:}")
     private String portOneChannelKey;
 
+    @Value("${portone.subscription.card-billing-channel-key:}")
+    private String portOneCardBillingChannelKey;
+
+    @Value("${portone.subscription.kakao-billing-channel-key:}")
+    private String portOneKakaoBillingChannelKey;
+
     @Override
     @Transactional(readOnly = true)
     public List<SubscriptionPlanResponseDto> getActivePlans() {
@@ -57,6 +63,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         return SubscriptionPaymentConfigResponseDto.builder()
                 .storeId(portOneStoreId)
                 .channelKey(portOneChannelKey)
+                .cardBillingChannelKey(portOneCardBillingChannelKey)
+                .kakaoBillingChannelKey(portOneKakaoBillingChannelKey)
                 .build();
     }
 
