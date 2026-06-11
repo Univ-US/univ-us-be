@@ -224,16 +224,20 @@
     </select>
 
     <select id="selectSeatChatMessages" resultMap="SeatChatMessageResultMap">
-        SELECT
-            MESSAGE_ID,
-            ROOM_ID,
-            SENDER_RES_ID,
-            SENDER_MEMBER_ID,
-            MESSAGE_TEXT,
-            IS_READ,
-            CREATED_AT
-        FROM SEAT_CHAT_MESSAGES
-        WHERE ROOM_ID = #{roomId}
+        SELECT * FROM (
+            SELECT
+                MESSAGE_ID,
+                ROOM_ID,
+                SENDER_RES_ID,
+                SENDER_MEMBER_ID,
+                MESSAGE_TEXT,
+                IS_READ,
+                CREATED_AT
+            FROM SEAT_CHAT_MESSAGES
+            WHERE ROOM_ID = #{roomId}
+            ORDER BY CREATED_AT DESC, MESSAGE_ID DESC
+            FETCH FIRST 200 ROWS ONLY
+        )
         ORDER BY CREATED_AT ASC, MESSAGE_ID ASC
     </select>
 
