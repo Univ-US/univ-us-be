@@ -99,6 +99,7 @@ public class AdminDto {
         private String memberName;
         private String contact;
         private String message;
+        private Integer status;
         private LocalDateTime createdAt;
     }
 
