@@ -15,4 +15,8 @@ public interface ReservationCommandService {
             ReservationDto.RoomReservationRequestDto request);
 
     void cancelRoomReservation(Long memberId, Long reservationId);
+
+    void checkInReadingSeat(Long memberId, Long reservationId);
+
+    ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId);
 }

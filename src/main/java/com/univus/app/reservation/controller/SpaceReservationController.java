@@ -145,4 +145,34 @@ public class SpaceReservationController {
                     .body(Map.of("success", false, "message", ex.getMessage()));
         }
     }
+
+    @PostMapping("/seats/{reservationId}/checkin")
+    public ResponseEntity<?> checkInReadingSeat(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("reservationId") Long reservationId) {
+        try {
+            reservationService.checkInReadingSeat(memberId, reservationId);
+            return ResponseEntity.ok(Map.of("success", true, "message", "정상적으로 입실 처리되었습니다."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/seats/{reservationId}/extend")
+    public ResponseEntity<?> extendReadingSeatReservation(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("reservationId") Long reservationId) {
+        try {
+            ReadingSeatReservationDto updatedReservation = 
+                    reservationService.extendReadingSeatReservation(memberId, reservationId);
+            return ResponseEntity.ok(Map.of(
+                    "success", true, 
+                    "message", "이용 시간이 2시간 연장되었습니다.",
+                    "data", updatedReservation));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
 }

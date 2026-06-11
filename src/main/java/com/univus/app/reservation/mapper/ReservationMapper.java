@@ -70,4 +70,21 @@ public interface ReservationMapper {
     int cancelRoomReservation(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
+
+    List<ReservationDto.ReadingSeatReservationDto> selectExpiredReadingSeatReservations();
+
+    List<ReservationDto.ReadingSeatReservationDto> selectNoShowReadingSeatReservations();
+
+    int updateReadingSeatReservationStatus(
+            @Param("reservationId") Long reservationId,
+            @Param("status") String status);
+
+    int checkInReadingSeatReservation(
+            @Param("reservationId") Long reservationId,
+            @Param("memberId") Long memberId);
+
+    int extendReadingSeatReservation(
+            @Param("reservationId") Long reservationId,
+            @Param("memberId") Long memberId,
+            @Param("newEndTime") LocalDateTime newEndTime);
 }

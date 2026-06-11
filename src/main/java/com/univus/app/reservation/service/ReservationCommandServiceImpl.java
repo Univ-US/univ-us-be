@@ -136,6 +136,58 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         publishRoomRealtimeEventAfterCommit(REALTIME_ACTION_CANCELLED, reservation);
     }
 
+    @Transactional
+    @Override
+    public void checkInReadingSeat(Long memberId, Long reservationId) {
+        int updated = reservationMapper.checkInReadingSeatReservation(reservationId, memberId);
+        if (updated == 0) {
+            throw new IllegalArgumentException("입실할 수 있는 예약이 아니거나 이미 처리되었습니다.");
+        }
+        
+        ReservationDto.ReadingSeatReservationDto reservation = 
+            reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
+        publishSeatRealtimeEventAfterCommit("CHECKED_IN", reservation);
+    }
+
+    @Transactional
+    @Override
+    public ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId) {
+        ReservationDto.ReadingSeatReservationDto reservation =
+                reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
+
+        if (reservation == null || !"USING".equals(reservation.getStatus())) {
+            throw new IllegalArgumentException("연장할 수 있는 예약이 아닙니다. (현재 입실하여 사용 중인 좌석만 연장 가능)");
+        }
+
+        // 최대 예약 가능 시간 상한선 체크 (예: 최초 6시간 + 2회 연장 = 10시간)
+        java.time.Duration duration = java.time.Duration.between(reservation.getStartTime(), reservation.getEndTime());
+        if (duration.toHours() >= 10) {
+            throw new IllegalStateException("최대 이용 시간(10시간)을 초과하여 더 이상 연장할 수 없습니다.");
+        }
+
+        java.time.LocalDateTime newEndTime = reservation.getEndTime().plusHours(2);
+
+        int overlapCount = reservationMapper.countOverlappingReadingSeatReservation(
+                reservation.getSeatId(),
+                reservation.getEndTime(),
+                newEndTime);
+        
+        if (overlapCount > 0) {
+            throw new IllegalStateException("해당 시간에 이미 다른 사용자의 예약이 있어 연장할 수 없습니다.");
+        }
+
+        int updated = reservationMapper.extendReadingSeatReservation(reservationId, memberId, newEndTime);
+        if (updated == 0) {
+            throw new IllegalArgumentException("연장 처리에 실패했습니다.");
+        }
+        
+        ReservationDto.ReadingSeatReservationDto updatedReservation =
+                reservationMapper.selectReadingSeatReservationForMember(reservationId, memberId);
+                
+        publishSeatRealtimeEventAfterCommit("EXTENDED", updatedReservation);
+        return updatedReservation;
+    }
+
     private void publishSeatRealtimeEventAfterCommit(
             String action,
             ReservationDto.ReadingSeatReservationDto reservation) {
