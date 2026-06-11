@@ -175,17 +175,26 @@
 
     <!-- 대학 목록 조회 -->
     <select id="selectUniversityList" resultType="com.univus.app.admin.dto.AdminDto$UniversityDto">
-        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE, HOMEPAGE, ADDRESS
+        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE, HOMEPAGE, ADDRESS, YOUTUBE_URL, CLUB_URL, SNS_URL
         FROM UNIVERSITY
         ORDER BY UNIV_NAME
     </select>
 
     <!-- 대학 단건 조회 -->
     <select id="selectUniversityById" resultType="com.univus.app.admin.dto.AdminDto$UniversityDto">
-        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE, HOMEPAGE, ADDRESS
+        SELECT UNIV_ID, UNIV_NAME, SCHOOL_PHONE, HOMEPAGE, ADDRESS, YOUTUBE_URL, CLUB_URL, SNS_URL
         FROM UNIVERSITY
         WHERE UNIV_ID = #{univId}
     </select>
+
+    <!-- 대학 링크 수정 -->
+    <update id="updateUniversity">
+        UPDATE UNIVERSITY
+        SET YOUTUBE_URL = #{dto.youtubeUrl},
+            CLUB_URL    = #{dto.clubUrl},
+            SNS_URL     = #{dto.snsUrl}
+        WHERE UNIV_ID = #{univId}
+    </update>
 
     <!-- 학과 목록 조회 -->
     <select id="selectDepartmentList" resultType="com.univus.app.admin.dto.AdminDto$DepartmentDto">

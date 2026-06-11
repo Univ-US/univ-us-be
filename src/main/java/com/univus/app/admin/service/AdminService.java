@@ -95,6 +95,11 @@ public class AdminService {
         return adminMapper.selectUniversityById(univId);
     }
 
+    @Transactional
+    public void updateUniversity(Long univId, AdminDto.UniversityUpdateDto dto) {
+        adminMapper.updateUniversity(univId, dto);
+    }
+
     public List<AdminDto.DepartmentDto> getDepartmentList(Long requesterId, Long univId) {
         MemberDto requester = memberMapper.findByMemberId(requesterId);
         Long effectiveUnivId = "SUA".equals(requester.getRole()) ? univId : requester.getUnivId();
