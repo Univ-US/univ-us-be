@@ -155,6 +155,7 @@
                S.MEMBER_NAME,
                S.CONTACT,
                S.MESSAGE,
+               S.STATUS,
                S.CREATED_AT
         FROM SUPPORT S
         JOIN UNIVERSITY U ON S.UNIV_ID = U.UNIV_ID
