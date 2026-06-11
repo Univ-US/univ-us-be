@@ -415,7 +415,7 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
 
     private String toPgProvider(String paymentMethod) {
         return "CARD".equals(normalizePaymentMethod(paymentMethod))
-                ? "nice_v2"
+                ? "tosspayments"
                 : "kakaopay";
     }
 
