@@ -195,8 +195,11 @@ public class MarketController {
     // DELETE /api/market/comments/{commentId}
     @DeleteMapping("/comments/{commentId}")
     public ResponseEntity<Map<String, Object>> deleteComment(
-            @PathVariable("commentId") Long commentId) {
+            @PathVariable("commentId") Long commentId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication) {
 
+        assertCanManageProductComment(commentId, requireMemberId(memberId), authentication);
         int rows = marketService.deleteProductComment(commentId);
 
         Map<String, Object> result = new HashMap<>();
@@ -394,6 +397,16 @@ public class MarketController {
         }
         if (!product.getMemberId().equals(memberId) && !isAdmin(authentication)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "상품 수정/삭제 권한이 없습니다.");
+        }
+    }
+
+    private void assertCanManageProductComment(Long commentId, Long memberId, Authentication authentication) {
+        MarketDto.ProductCommentDto comment = marketService.findProductCommentById(commentId);
+        if (comment == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.");
+        }
+        if (!comment.getMemberId().equals(memberId) && !isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 삭제 권한이 없습니다.");
         }
     }
 

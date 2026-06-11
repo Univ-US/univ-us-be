@@ -303,6 +303,26 @@
         ORDER BY PC.CREATED_AT ASC
     </select>
 
+    <select id="selectProductCommentById" parameterType="long"
+            resultMap="ProductCommentResultMap">
+        SELECT
+            PC.COMMENT_ID,
+            PC.MEMBER_ID,
+            PC.PRODUCT_ID,
+            PC.PARENT_ID,
+            PC.CONTENT,
+            PC.IS_ANONYMOUS,
+            PC.IS_DELETED,
+            PC.CREATED_AT,
+            M.MEMBER_NAME        AS AUTHOR_NAME,
+            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+        FROM PRODUCT_COMMENT PC
+        JOIN MEMBER M ON PC.MEMBER_ID = M.MEMBER_ID
+        LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+        WHERE PC.COMMENT_ID = #{commentId}
+          AND PC.IS_DELETED = 0
+    </select>
+
     <!-- ── 대댓글 목록 ────────────────────────────────────── -->
     <select id="selectProductReplyList" parameterType="long"
             resultMap="ProductCommentResultMap">

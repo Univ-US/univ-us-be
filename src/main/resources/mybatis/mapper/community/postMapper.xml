@@ -93,6 +93,22 @@
         <if test="keyword != null and keyword != ''">
             AND (P.TITLE LIKE '%' || #{keyword} || '%'
             OR  P.CONTENT LIKE '%' || #{keyword} || '%')
+          </if>
+    </select>
+
+    <select id="selectTodayPostCount" parameterType="com.univus.app.community.dto.PostDto"
+            resultType="int">
+        SELECT COUNT(*)
+        <include refid="postFromJoin"/>
+        WHERE P.IS_DELETED = 0
+          AND P.IS_BLIND = 0
+          AND TRUNC(P.CREATED_AT) = TRUNC(SYSTIMESTAMP)
+        <if test="boardId != null">
+            AND P.BOARD_ID = #{boardId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (P.TITLE LIKE '%' || #{keyword} || '%'
+            OR  P.CONTENT LIKE '%' || #{keyword} || '%')
         </if>
     </select>
 
@@ -263,6 +279,25 @@
 	      AND C.IS_DELETED = 0
 	    ORDER BY C.CREATED_AT ASC
 	</select>
+
+    <select id="selectCommentById" parameterType="long" resultMap="commentResultMap">
+        SELECT
+            C.COMMENT_ID,
+            C.MEMBER_ID,
+            C.POST_ID,
+            C.PARENT_ID,
+            C.CONTENT,
+            C.IS_ANONYMOUS,
+            C.IS_DELETED,
+            C.CREATED_AT,
+            M.MEMBER_NAME        AS AUTHOR_NAME,
+            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+        FROM POST_COMMENT C
+        JOIN MEMBER M ON C.MEMBER_ID = M.MEMBER_ID
+        LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+        WHERE C.COMMENT_ID = #{commentId}
+          AND C.IS_DELETED = 0
+    </select>
 	
 	<!-- 댓글 등록 -->
 	<insert id="insertComment" parameterType="com.univus.app.community.dto.PostCommentDto">

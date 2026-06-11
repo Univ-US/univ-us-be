@@ -206,6 +206,10 @@ public class MarketService {
         return comments;
     }
 
+    public MarketDto.ProductCommentDto findProductCommentById(Long commentId) {
+        return marketMapper.selectProductCommentById(commentId);
+    }
+
     // 댓글 등록
     @Transactional
     public int createProductComment(MarketDto.ProductCommentCreateDto createDto) {
