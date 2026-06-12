@@ -66,6 +66,9 @@
                 <include refid="postFromJoin"/>
                 WHERE P.IS_DELETED = 0
                   AND P.IS_BLIND   = 0
+                <if test="memberId != null">
+                    AND P.MEMBER_ID = #{memberId}
+                </if>
                 <if test="boardId != null">
                     AND P.BOARD_ID = #{boardId}
                 </if>
@@ -87,6 +90,9 @@
         <include refid="postFromJoin"/>
         WHERE P.IS_DELETED = 0
           AND P.IS_BLIND   = 0
+        <if test="memberId != null">
+            AND P.MEMBER_ID = #{memberId}
+        </if>
         <if test="boardId != null">
             AND P.BOARD_ID = #{boardId}
         </if>
@@ -103,6 +109,9 @@
         WHERE P.IS_DELETED = 0
           AND P.IS_BLIND = 0
           AND TRUNC(P.CREATED_AT) = TRUNC(SYSTIMESTAMP)
+        <if test="memberId != null">
+            AND P.MEMBER_ID = #{memberId}
+        </if>
         <if test="boardId != null">
             AND P.BOARD_ID = #{boardId}
         </if>
