@@ -1,4 +1,4 @@
-package com.univus.app.lms.code;
+package com.univus.app.commoncode.code;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;

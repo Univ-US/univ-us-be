@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-//TODO: SpringSequerity ROLE 필터 추가
 @RestController
 @RequestMapping("/api/lms/student")
 @RequiredArgsConstructor
