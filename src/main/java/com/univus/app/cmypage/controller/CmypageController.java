@@ -1,6 +1,8 @@
 package com.univus.app.cmypage.controller;
 
 import com.univus.app.cmypage.dto.CmypageCommentDto;
+import com.univus.app.cmypage.dto.CmypageTradeDto;
+import com.univus.app.cmypage.dto.CmypageWishlistDto;
 import com.univus.app.cmypage.service.CmypageService;
 import com.univus.app.community.dto.PostDto;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,20 @@ public class CmypageController {
     public ResponseEntity<List<PostDto>> getLikedPosts(@AuthenticationPrincipal Long memberId) {
         if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         List<PostDto> result = cmypageService.getLikedPosts(memberId);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/trades")
+    public ResponseEntity<List<CmypageTradeDto>> getMyTrades(@AuthenticationPrincipal Long memberId) {
+        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        List<CmypageTradeDto> result = cmypageService.getMyTrades(memberId);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/wishlist")
+    public ResponseEntity<List<CmypageWishlistDto>> getMyWishlist(@AuthenticationPrincipal Long memberId) {
+        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        List<CmypageWishlistDto> result = cmypageService.getMyWishlist(memberId);
         return ResponseEntity.ok(result);
     }
 }

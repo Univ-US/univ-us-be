@@ -38,4 +38,49 @@
         ORDER BY L.PRESSED_AT DESC
     </select>
 
+    <select id="selectMyTrades" resultType="com.univus.app.cmypage.dto.CmypageTradeDto">
+        SELECT * FROM (
+            SELECT 
+                P.PRODUCT_ID AS tradeId,
+                P.PRODUCT_NAME AS productName,
+                P.PRICE AS price,
+                P.PRODUCT_STATUS AS status,
+                '판매' AS role,
+                P.CREATED_AT AS createdAt
+            FROM PRODUCT P
+            WHERE P.MEMBER_ID = #{memberId}
+              AND P.IS_DELETED = 0
+
+            UNION ALL
+
+            SELECT 
+                P.PRODUCT_ID AS tradeId,
+                P.PRODUCT_NAME AS productName,
+                P.PRICE AS price,
+                P.PRODUCT_STATUS AS status,
+                '구매' AS role,
+                MIN(T.CREATED_AT) AS createdAt
+            FROM TRADE_CHAT_ROOM T
+            JOIN PRODUCT P ON T.PRODUCT_ID = P.PRODUCT_ID
+            WHERE T.BUYER_ID = #{memberId}
+              AND P.IS_DELETED = 0
+            GROUP BY P.PRODUCT_ID, P.PRODUCT_NAME, P.PRICE, P.PRODUCT_STATUS
+        )
+        ORDER BY createdAt DESC
+    </select>
+
+    <select id="selectMyWishlist" resultType="com.univus.app.cmypage.dto.CmypageWishlistDto">
+        SELECT 
+            P.PRODUCT_ID AS productId,
+            P.PRODUCT_NAME AS productName,
+            P.PRICE AS price,
+            P.PLACE AS place,
+            P.PRODUCT_STATUS AS status
+        FROM PRODUCT_LIKE L
+        JOIN PRODUCT P ON L.PRODUCT_ID = P.PRODUCT_ID
+        WHERE L.MEMBER_ID = #{memberId}
+          AND P.IS_DELETED = 0
+        ORDER BY L.PRESSED_AT DESC
+    </select>
+
 </mapper>
