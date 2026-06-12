@@ -23,7 +23,7 @@ public class HomeController {
 
     @GetMapping("/profile")
     public ResponseEntity<HomeProfileResponseDto> getHomeProfile(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         MemberDto member = memberMapper.findByMemberId(memberId);
         AdminDto.UniversityDto univ = adminMapper.selectUniversityById(member.getUnivId());
 
@@ -40,7 +40,7 @@ public class HomeController {
 
     @GetMapping("/config")
     public ResponseEntity<AdminDto.HomeConfigDto> getHomeConfig(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         MemberDto member = memberMapper.findByMemberId(memberId);
         return ResponseEntity.ok(adminService.getHomeConfig(member.getUnivId()));
     }

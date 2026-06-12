@@ -31,7 +31,7 @@ public class AdminController {
     public ResponseEntity<List<AdminDto.SupportListDto>> getSupportList(
             @RequestParam(required = false) Long univId,
             Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getSupportList(memberId, univId));
     }
 
@@ -60,7 +60,7 @@ public class AdminController {
     public ResponseEntity<Map<String, Object>> getMemberList(
             @ModelAttribute AdminDto.MemberSearchDto search,
             Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getMemberList(search, memberId));
     }
 
@@ -83,7 +83,7 @@ public class AdminController {
     // 공지 목록 조회
     @GetMapping("/notices")
     public ResponseEntity<List<AdminDto.NoticeListDto>> getNoticeList(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getNoticeList(memberId));
     }
 
@@ -91,7 +91,7 @@ public class AdminController {
     @PostMapping("/notices")
     @ResponseStatus(HttpStatus.CREATED)
     public void createNotice(@RequestBody AdminDto.NoticeDto notice, Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         adminService.createNotice(notice, memberId);
     }
 
@@ -152,7 +152,7 @@ public class AdminController {
     public ResponseEntity<List<AdminDto.DepartmentDto>> getDepartmentList(
             @RequestParam(required = false) Long univId,
             Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getDepartmentList(memberId, univId));
     }
 
@@ -161,7 +161,7 @@ public class AdminController {
     public ResponseEntity<List<AdminDto.LectureCodeListDto>> getLectureCodeList(
             @RequestParam(required = false) Long univId,
             Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getLectureCodeList(memberId, univId));
     }
 
@@ -201,7 +201,7 @@ public class AdminController {
     public ResponseEntity<List<AdminDto.LectureListDto>> getLectureList(
             @RequestParam(required = false) Long univId,
             Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getLectureList(memberId, univId));
     }
 
@@ -246,7 +246,7 @@ public class AdminController {
             @RequestParam(required = false) Long univId,
             @RequestParam(required = false) Long semId,
             Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getLectureAssignList(memberId, univId, semId));
     }
 
@@ -275,7 +275,7 @@ public class AdminController {
     public ResponseEntity<List<AdminDto.ProfessorDto>> getProfessorList(
             @RequestParam(required = false) Long univId,
             Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(adminService.getProfessorList(memberId, univId));
     }
 }

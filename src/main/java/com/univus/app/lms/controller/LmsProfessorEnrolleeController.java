@@ -42,7 +42,7 @@ public class LmsProfessorEnrolleeController {
     public ResponseEntity<List<LmsLectureDto>> requestGetLectures(
             Authentication authentication,
             @RequestParam(value = "semesterId", required = false) Long semesterId) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorEnrolleeService.getLectures(memberId, semesterId));
     }
 
@@ -61,7 +61,7 @@ public class LmsProfessorEnrolleeController {
             @RequestParam(value = "order", required = false) String order,
             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
             @RequestParam(value = "size", required = false, defaultValue = "10") int size) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorEnrolleeService.getLectureStudents(
                 memberId, lecId, search, submission, sort, order, page, size));
     }
@@ -77,7 +77,7 @@ public class LmsProfessorEnrolleeController {
             @RequestParam(value = "submission", required = false) String submission,
             @RequestParam(value = "sort", required = false) String sort,
             @RequestParam(value = "order", required = false) String order) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         byte[] body = lmsProfessorEnrolleeService.exportLectureStudentsExcel(
                 memberId, lecId, search, submission, sort, order);
 
@@ -98,7 +98,7 @@ public class LmsProfessorEnrolleeController {
             Authentication authentication,
             @PathVariable Long lecId,
             @PathVariable Long studentMemberId) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorEnrolleeService.getStudentReport(memberId, lecId, studentMemberId));
     }
 }

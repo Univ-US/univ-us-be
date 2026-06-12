@@ -8,4 +8,18 @@
         VALUES (SEQ_AI_LOG.NEXTVAL, #{memberId}, #{message}, #{response}, SYSDATE)
     </insert>
 
+    <select id="selectRecentLogs" parameterType="long" resultType="com.univus.app.ai.dto.AiDto">
+        SELECT MESSAGE, RESPONSE
+        FROM (
+            SELECT MESSAGE, RESPONSE, AI_CREATED_AT
+            FROM AI_LOG
+            WHERE MEMBER_ID = #{memberId}
+              AND MESSAGE IS NOT NULL
+              AND RESPONSE IS NOT NULL
+            ORDER BY AI_CREATED_AT DESC
+        )
+        WHERE ROWNUM &lt;= 10
+        ORDER BY AI_CREATED_AT ASC
+    </select>
+
 </mapper>

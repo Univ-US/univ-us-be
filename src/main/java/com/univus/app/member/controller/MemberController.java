@@ -62,6 +62,6 @@ public class MemberController {
   // 인증 확인용 API - 테스트용
   @GetMapping("/me")
   public Long me(Authentication authentication) {
-    return (Long) authentication.getPrincipal();
+    return Long.valueOf(authentication.getPrincipal().toString());
   }
 }

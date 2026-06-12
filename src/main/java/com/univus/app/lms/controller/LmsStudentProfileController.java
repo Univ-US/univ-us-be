@@ -23,7 +23,7 @@ public class LmsStudentProfileController {
     // GET /api/lms/student/profile
     @GetMapping("/profile")
     public ResponseEntity<LmsStudentProfileResponseDto> requestGetLmsStudentProfile(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsStudentProfileService.requestGetLmsStudentProfile(memberId)); // 200
     }
 
@@ -34,7 +34,7 @@ public class LmsStudentProfileController {
     public ResponseEntity<LmsStudentProfileResponseDto> requestUpdateLmsStudentProfile(
             Authentication authentication,
             @Valid @ModelAttribute LmsStudentProfileUpdateDto dto) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsStudentProfileService.requestUpdateLmsStudentProfile(memberId, dto)); // 200
     }
 
@@ -42,7 +42,7 @@ public class LmsStudentProfileController {
     // DELETE /api/lms/student/profile
     @DeleteMapping("/profile")
     public ResponseEntity<Void> requestDeleteLmsStudentProfile(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         lmsStudentProfileService.requestDeleteLmsStudentProfile(memberId);
         return ResponseEntity.noContent().build(); // 204 No Content
     }
