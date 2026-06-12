@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /* PLM-003 교수 페이지 - 수강생 현황 Controller */
-//TODO: SpringSecurity ROLE 가드(PROF/ADM) 추가
 @RestController
 @RequestMapping("/api/lms/professor")
 @RequiredArgsConstructor

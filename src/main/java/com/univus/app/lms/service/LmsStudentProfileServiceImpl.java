@@ -1,7 +1,7 @@
 package com.univus.app.lms.service;
 
 import com.univus.app.common.StorageService;
-import com.univus.app.lms.code.RoleCode;
+import com.univus.app.commoncode.code.RoleCode;
 import com.univus.app.lms.dto.LmsStudentProfileResponseDto;
 import com.univus.app.lms.dto.LmsStudentProfileUpdateDto;
 import com.univus.app.lms.exception.InvalidProfileImageException;

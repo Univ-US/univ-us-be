@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /* PLM-005 / PLM-005-01 교수 강의 자료 업로드 Controller */
-//TODO: SpringSecurity ROLE 가드(PROF/ADM/SUA) 추가 — 현재 authenticated() + service 소유권 검증
 @RestController
 @RequestMapping("/api/lms/professor/uploads")
 @RequiredArgsConstructor
