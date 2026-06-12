@@ -51,6 +51,18 @@ public interface AdminMapper {
 
     int deleteLectureCode(@Param("lectureCodeId") Long lectureCodeId);
 
+    AdminDto.HomeConfigDto selectHomeConfig(@Param("univId") Long univId);
+
+    int insertHomeConfigIfNotExists(@Param("univId") Long univId);
+
+    int updateHomeConfig(@Param("univId") Long univId, @Param("dto") AdminDto.HomeConfigDto dto);
+
+    AdminDto.NoticeConfigDto selectNoticeConfig(@Param("univId") Long univId);
+
+    int insertNoticeConfigIfNotExists(@Param("univId") Long univId);
+
+    int updateNoticeConfig(@Param("univId") Long univId, @Param("dto") AdminDto.NoticeConfigDto dto);
+
     List<AdminDto.LectureAssignListDto> selectLectureAssignList(@Param("univId") Long univId, @Param("semId") Long semId);
 
     AdminDto.LectureAssignListDto selectLectureAssignById(@Param("lecId") Long lecId);
