@@ -28,7 +28,7 @@ public class LmsProfessorGradingController {
     public ResponseEntity<LmsGradingDto.Overview> requestGetOverview(
             Authentication authentication,
             @RequestParam(value = "semesterId", required = false) Long semesterId) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorGradingService.getOverview(memberId, semesterId));
     }
 
@@ -36,7 +36,7 @@ public class LmsProfessorGradingController {
     // GET /api/lms/professor/grading/ungraded-count
     @GetMapping("/ungraded-count")
     public ResponseEntity<LmsGradingDto.UngradedCount> requestGetUngradedCount(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorGradingService.getTotalUngradedCount(memberId));
     }
 
@@ -46,7 +46,7 @@ public class LmsProfessorGradingController {
     public ResponseEntity<LmsGradingDto.Detail> requestGetAssignmentDetail(
             Authentication authentication,
             @PathVariable Long assignmentId) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorGradingService.getAssignmentDetail(memberId, assignmentId));
     }
 
@@ -58,7 +58,7 @@ public class LmsProfessorGradingController {
             @PathVariable Long assignmentId,
             @PathVariable Long submissionId,
             @Valid @RequestBody LmsGradingDto.SaveRequest request) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(
                 lmsProfessorGradingService.saveEvaluation(memberId, assignmentId, submissionId, request));
     }
@@ -69,7 +69,7 @@ public class LmsProfessorGradingController {
     public ResponseEntity<?> requestDownloadSubmissionFile(
             Authentication authentication,
             @PathVariable Long submissionId) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return lmsProfessorGradingService.downloadSubmissionFile(memberId, submissionId);
     }
 }

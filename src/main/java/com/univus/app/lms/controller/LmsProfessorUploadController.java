@@ -31,7 +31,7 @@ public class LmsProfessorUploadController {
     // GET /api/lms/professor/uploads/lectures
     @GetMapping("/lectures")
     public ResponseEntity<List<LmsUploadDto.Lecture>> requestGetLectures(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorUploadService.getLectures(memberId));
     }
 
@@ -39,7 +39,7 @@ public class LmsProfessorUploadController {
     // GET /api/lms/professor/uploads
     @GetMapping
     public ResponseEntity<List<LmsUploadDto.Material>> requestGetUploads(Authentication authentication) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorUploadService.getUploads(memberId));
     }
 
@@ -49,7 +49,7 @@ public class LmsProfessorUploadController {
     public ResponseEntity<LmsUploadDto.Material> requestCreateUpload(
             Authentication authentication,
             @Valid @ModelAttribute LmsUploadDto.CreateRequest request) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(lmsProfessorUploadService.createUpload(memberId, request));
     }
@@ -61,7 +61,7 @@ public class LmsProfessorUploadController {
             Authentication authentication,
             @PathVariable Long uploadId,
             @Valid @ModelAttribute LmsUploadDto.UpdateRequest request) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsProfessorUploadService.updateUpload(memberId, uploadId, request));
     }
 
@@ -71,7 +71,7 @@ public class LmsProfessorUploadController {
     public ResponseEntity<Void> requestDeleteUpload(
             Authentication authentication,
             @PathVariable Long uploadId) {
-        Long memberId = (Long) authentication.getPrincipal();
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         lmsProfessorUploadService.deleteUpload(memberId, uploadId);
         return ResponseEntity.noContent().build();
     }

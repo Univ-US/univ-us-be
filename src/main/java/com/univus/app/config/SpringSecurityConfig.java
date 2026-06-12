@@ -73,9 +73,6 @@ public class SpringSecurityConfig {
             	        "/ws-univus/**",
 
 
-						//ai챗봇
-						"/api/ai/**",
-
 						// 날씨
 						"/api/weather",
 
