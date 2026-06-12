@@ -280,10 +280,10 @@ public class AdminService {
         adminMapper.updateLectureCode(dto);
     }
 
-    // 강의 코드 형식(영문 대문자 1~20자, LEC_CODE VARCHAR2(20)) + 같은 학과 내 중복 차단(UNIQUE 위반 시 500 대신 409)
+    // 강의 코드 형식(영문 대문자·숫자·하이픈 1~20자, LEC_CODE VARCHAR2(20)) + 같은 학과 내 중복 차단(UNIQUE 위반 시 500 대신 409)
     private void validateLectureCode(Long deptId, String lecCode, Long excludeLecCodeId) {
-        if (lecCode == null || !lecCode.matches("[A-Z]{1,20}")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "강의 코드는 영문 대문자 1~20자여야 합니다.");
+        if (lecCode == null || !lecCode.matches("[A-Z0-9-]{1,20}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "강의 코드는 영문 대문자·숫자·하이픈(-) 1~20자여야 합니다.");
         }
         int dup = adminMapper.countLectureCodeDup(deptId, lecCode, excludeLecCodeId);
         if (dup > 0) {
