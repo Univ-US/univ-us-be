@@ -137,6 +137,43 @@ public class AdminService {
         adminMapper.deleteLectureCode(lectureCodeId);
     }
 
+    public AdminDto.HomeConfigDto getHomeConfig(Long univId) {
+        AdminDto.HomeConfigDto config = adminMapper.selectHomeConfig(univId);
+        if (config == null) {
+            config = new AdminDto.HomeConfigDto();
+            config.setWeather(true);
+            config.setAiChat(true);
+            config.setNotice(true);
+            config.setMeal(true);
+            config.setTel(true);
+            config.setShortcut(true);
+        }
+        return config;
+    }
+
+    @Transactional
+    public void updateHomeConfig(Long univId, AdminDto.HomeConfigDto dto) {
+        adminMapper.insertHomeConfigIfNotExists(univId);
+        adminMapper.updateHomeConfig(univId, dto);
+    }
+
+    public AdminDto.NoticeConfigDto getNoticeConfig(Long univId) {
+        AdminDto.NoticeConfigDto config = adminMapper.selectNoticeConfig(univId);
+        if (config == null) {
+            config = new AdminDto.NoticeConfigDto();
+            config.setDefaultTarget("ALL");
+            config.setShowTop(true);
+            config.setPushAlert(false);
+        }
+        return config;
+    }
+
+    @Transactional
+    public void updateNoticeConfig(Long univId, AdminDto.NoticeConfigDto dto) {
+        adminMapper.insertNoticeConfigIfNotExists(univId);
+        adminMapper.updateNoticeConfig(univId, dto);
+    }
+
     public List<AdminDto.LectureAssignListDto> getLectureAssignList(Long requesterId, Long univId, Long semId) {
         MemberDto requester = memberMapper.findByMemberId(requesterId);
         Long effectiveUnivId = "SUA".equals(requester.getRole()) ? univId : requester.getUnivId();
@@ -243,10 +280,10 @@ public class AdminService {
         adminMapper.updateLectureCode(dto);
     }
 
-    // 강의 코드 형식(영문 대문자 1~20자, LEC_CODE VARCHAR2(20)) + 같은 학과 내 중복 차단(UNIQUE 위반 시 500 대신 409)
+    // 강의 코드 형식(영문 대문자·숫자·하이픈 1~20자, LEC_CODE VARCHAR2(20)) + 같은 학과 내 중복 차단(UNIQUE 위반 시 500 대신 409)
     private void validateLectureCode(Long deptId, String lecCode, Long excludeLecCodeId) {
-        if (lecCode == null || !lecCode.matches("[A-Z]{1,20}")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "강의 코드는 영문 대문자 1~20자여야 합니다.");
+        if (lecCode == null || !lecCode.matches("[A-Z0-9-]{1,20}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "강의 코드는 영문 대문자·숫자·하이픈(-) 1~20자여야 합니다.");
         }
         int dup = adminMapper.countLectureCodeDup(deptId, lecCode, excludeLecCodeId);
         if (dup > 0) {

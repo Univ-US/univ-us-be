@@ -1,6 +1,8 @@
 package com.univus.app.cmypage.service;
 
 import com.univus.app.cmypage.dto.CmypageCommentDto;
+import com.univus.app.cmypage.dto.CmypageTradeDto;
+import com.univus.app.cmypage.dto.CmypageWishlistDto;
 import com.univus.app.cmypage.mapper.CmypageMapper;
 import com.univus.app.community.dto.PostDto;
 import com.univus.app.community.service.PostService;
@@ -28,5 +30,13 @@ public class CmypageService {
 
     public List<PostDto> getLikedPosts(Long memberId) {
         return cmypageMapper.selectLikedPosts(memberId);
+    }
+
+    public List<CmypageTradeDto> getMyTrades(Long memberId) {
+        return cmypageMapper.selectMyTrades(memberId);
+    }
+
+    public List<CmypageWishlistDto> getMyWishlist(Long memberId) {
+        return cmypageMapper.selectMyWishlist(memberId);
     }
 }

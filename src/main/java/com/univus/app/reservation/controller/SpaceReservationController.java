@@ -45,10 +45,11 @@ public class SpaceReservationController {
 
     @GetMapping("/rooms/availability")
     public ResponseEntity<List<RoomAvailabilityDto>> getRoomAvailability(
+            @AuthenticationPrincipal Long memberId,
             @RequestParam("date")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
             LocalDate date) {
-        return ResponseEntity.ok(reservationService.getRoomAvailability(date));
+        return ResponseEntity.ok(reservationService.getRoomAvailability(memberId, date));
     }
 
     @GetMapping("/rooms/me")
@@ -88,17 +89,19 @@ public class SpaceReservationController {
 
     @GetMapping("/seats/availability")
     public ResponseEntity<List<ReadingRoomAvailabilityDto>> getReadingRoomAvailability(
+            @AuthenticationPrincipal Long memberId,
             @RequestParam("startTime")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime startTime,
             @RequestParam("endTime")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime endTime) {
-        return ResponseEntity.ok(reservationService.getReadingRoomAvailability(startTime, endTime));
+        return ResponseEntity.ok(reservationService.getReadingRoomAvailability(memberId, startTime, endTime));
     }
 
     @GetMapping("/seats/availability/{readingRoomId}")
     public ResponseEntity<List<ReadingSeatAvailabilityDto>> getReadingSeatAvailability(
+            @AuthenticationPrincipal Long memberId,
             @PathVariable("readingRoomId") Long readingRoomId,
             @RequestParam("startTime")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -107,7 +110,7 @@ public class SpaceReservationController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime endTime) {
         return ResponseEntity.ok(
-                reservationService.getReadingSeatAvailability(readingRoomId, startTime, endTime));
+                reservationService.getReadingSeatAvailability(memberId, readingRoomId, startTime, endTime));
     }
 
     @PostMapping("/seats")
