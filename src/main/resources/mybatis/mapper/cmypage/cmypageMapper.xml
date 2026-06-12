@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.cmypage.mapper.CmypageMapper">
+
+    <select id="selectMyComments" resultType="com.univus.app.cmypage.dto.CmypageCommentDto">
+        SELECT 
+            C.COMMENT_ID AS commentId,
+            C.CONTENT AS content,
+            P.TITLE AS postTitle,
+            P.BOARD_ID AS boardId,
+            B.BOARD_NAME AS boardName,
+            C.CREATED_AT AS createdAt
+        FROM POST_COMMENT C
+        JOIN POST P ON C.POST_ID = P.POST_ID
+        JOIN BOARD_TYPE B ON P.BOARD_ID = B.BOARD_ID
+        WHERE C.MEMBER_ID = #{memberId}
+          AND C.IS_DELETED = 0
+          AND P.IS_DELETED = 0
+          AND P.IS_BLIND = 0
+        ORDER BY C.CREATED_AT DESC
+    </select>
+
+    <select id="selectLikedPosts" resultType="com.univus.app.community.dto.PostDto">
+        SELECT 
+            P.POST_ID AS postId,
+            P.TITLE AS title,
+            P.BOARD_ID AS boardId,
+            P.CREATED_AT AS createdAt,
+            (SELECT COUNT(*) FROM POST_LIKE PL WHERE PL.POST_ID = P.POST_ID) AS likeCount,
+            (SELECT COUNT(*) FROM POST_COMMENT PC WHERE PC.POST_ID = P.POST_ID AND PC.IS_DELETED = 0) AS commentCount
+        FROM POST_LIKE L
+        JOIN POST P ON L.POST_ID = P.POST_ID
+        WHERE L.MEMBER_ID = #{memberId}
+          AND P.IS_DELETED = 0
+          AND P.IS_BLIND = 0
+        ORDER BY L.PRESSED_AT DESC
+    </select>
+
+</mapper>
