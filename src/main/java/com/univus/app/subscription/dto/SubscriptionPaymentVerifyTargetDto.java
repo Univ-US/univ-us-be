@@ -31,6 +31,8 @@ public class SubscriptionPaymentVerifyTargetDto {
 
     // SUBSCRIPTIONS.PLAN_ID
     private Long planId;
+    private String planName;
+    private String billingCycle;
 
     // SUBSCRIPTION_PAYMENT_HISTORIES.MERCHANT_UID
     // 프론트가 보낸 주문번호와 DB 주문번호를 매칭합니다.

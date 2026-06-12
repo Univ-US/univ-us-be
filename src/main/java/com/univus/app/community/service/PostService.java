@@ -45,6 +45,7 @@ public class PostService {
 
         // 전체 게시글 수
         int totalCount = postMapper.selectPostCount(postDto);
+        int todayCount = postMapper.selectTodayPostCount(postDto);
 
         // 게시글 목록
         List<PostDto> postList = postMapper.selectPostList(postDto);
@@ -55,6 +56,7 @@ public class PostService {
         Map<String, Object> result = new HashMap<>();
         result.put("postList", postList);
         result.put("totalCount", totalCount);
+        result.put("todayCount", todayCount);
         result.put("totalPage", totalPage);
         result.put("currentPage", postDto.getPage());
 
@@ -143,6 +145,10 @@ public class PostService {
 	 public List<PostCommentDto> getCommentList(Long postId) {
 	     return postMapper.selectCommentList(postId);
 	 }
+
+     public PostCommentDto findCommentById(Long commentId) {
+         return postMapper.selectCommentById(commentId);
+     }
 	
 	 // 댓글 등록
 	 public int writeComment(PostCommentDto commentDto) {

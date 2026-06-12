@@ -217,7 +217,10 @@ public class PostController {
 	 @DeleteMapping("/{postId}/comments/{commentId}")
 	 public ResponseEntity<Map<String, Object>> removeComment(
 	         @PathVariable("postId") Long postId,
-	         @PathVariable("commentId") Long commentId) {
+	         @PathVariable("commentId") Long commentId,
+             @AuthenticationPrincipal Long memberId,
+             Authentication authentication) {
+         assertCanManageComment(commentId, requireMemberId(memberId), authentication);
 	     int result = postService.removeComment(commentId);
 	     if (result > 0) {
 	         return ResponseEntity.ok(Map.of("message", "댓글이 삭제되었습니다."));
@@ -257,6 +260,16 @@ public class PostController {
         }
         if (!post.getMemberId().equals(memberId) && !isAdmin(authentication)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 수정/삭제 권한이 없습니다.");
+        }
+    }
+
+    private void assertCanManageComment(Long commentId, Long memberId, Authentication authentication) {
+        PostCommentDto comment = postService.findCommentById(commentId);
+        if (comment == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.");
+        }
+        if (!comment.getMemberId().equals(memberId) && !isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 삭제 권한이 없습니다.");
         }
     }
 

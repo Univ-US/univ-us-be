@@ -177,4 +177,77 @@ public class AdminDto {
         private Boolean showTop;
         private Boolean pushAlert;
     }
+
+    @Data
+    public static class SemesterDto {
+        private Long semId;
+        private Integer semYear;
+        private String semTerm;
+        private String semStrDate; // YYYY-MM-DD (총 수업횟수 자동 계산용)
+        private String semEndDate; // YYYY-MM-DD
+    }
+
+    @Data
+    public static class ProfessorDto {
+        private Long memberId;
+        private String memberName;
+        private String deptName;
+    }
+
+    @Data
+    public static class LectureTimeDto {
+        private String dayCode;
+        private String startTime; // HH:mm
+        private String endTime;   // HH:mm
+    }
+
+    @Data
+    public static class LectureAssignCreateDto {
+        private Long lecId;          // 내부 채번 값 (selectKey)
+        private Long lecCodeId;
+        private Long semId;
+        private Long professorMemberId;
+        private Long lmsPrfId;       // 내부 변환 값 (MEMBER_ID → LMS_PRF_ID)
+        private Integer lecSection;  // 내부 자동 채번 값 (같은 학기·강의 MAX+1)
+        private Integer lecCredit;
+        private Integer lecTotClasses;
+        private List<LectureTimeDto> times;
+    }
+
+    @Data
+    public static class LectureAssignListDto {
+        private Long lecId;
+        private Long lecCodeId;
+        private String lecCode;
+        private String lecCodName;
+        private Long deptId;
+        private String deptName;
+        private Long univId;
+        private String univName;
+        private Long professorMemberId;
+        private String professorName;
+        private Long semId;
+        private Integer semYear;
+        private String semTerm;
+        private Integer lecSection;
+        private Integer lecCredit;
+        private Integer lecTotClasses;
+        private String lecValStatus;
+        private String dayCodes;  // "TUE,THU" (LECTURE_TIME 요일 합침)
+        private String startTime; // "10:30"
+        private String endTime;   // "12:00"
+    }
+
+    @Data
+    public static class LectureListDto {
+        private Long lecCodeId;
+        private Long deptId;
+        private String deptName;
+        private Long univId;
+        private String univName;
+        private String lecCode;
+        private String lecCodName;
+        private String valStatus;
+        private Integer assignCount; // 이 강의(코드)로 배정된 강의 수
+    }
 }

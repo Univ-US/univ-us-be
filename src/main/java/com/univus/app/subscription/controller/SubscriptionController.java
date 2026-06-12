@@ -1,6 +1,7 @@
 package com.univus.app.subscription.controller;
 
 import com.univus.app.subscription.dto.*;
+import com.univus.app.subscription.service.SubscriptionBillingService;
 import com.univus.app.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
+    private final SubscriptionBillingService subscriptionBillingService;
 
     // 구독 플랜 목록 조회 API입니다.
     // 로그인하지 않은 사용자도 결제 전 플랜을 볼 수 있어야 하므로,
@@ -83,6 +85,24 @@ public class SubscriptionController {
                     .body(Map.of("success", false, "message", ex.getMessage()));
         } catch (IllegalStateException ex) {
             // 이미 처리된 결제이거나 상태가 맞지 않는 경우입니다.
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/payments/billing")
+    public ResponseEntity<?> completeInitialBillingPayment(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody SubscriptionBillingPaymentRequestDto request
+    ) {
+        try {
+            return ResponseEntity.ok(
+                    subscriptionBillingService.completeInitialBillingPayment(memberId, request)
+            );
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("success", false, "message", ex.getMessage()));
         }

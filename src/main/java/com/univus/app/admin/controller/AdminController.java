@@ -195,4 +195,87 @@ public class AdminController {
     public void deleteLectureCode(@PathVariable Long lectureCodeId) {
         adminService.deleteLectureCode(lectureCodeId);
     }
+
+    // 강의 목록 조회 (강의 관리 — 배정 강의 수 포함, 삭제(DEL) 상태도 포함 전체)
+    @GetMapping("/lectures")
+    public ResponseEntity<List<AdminDto.LectureListDto>> getLectureList(
+            @RequestParam(required = false) Long univId,
+            Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.getLectureList(memberId, univId));
+    }
+
+    // 강의 등록 (강의 관리 — 같은 학과 내 코드 중복 시 409)
+    @PostMapping("/lectures")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void createLecture(@RequestBody AdminDto.LectureCodeDto dto) {
+        adminService.createLecture(dto);
+    }
+
+    // 강의 수정 (강의 관리 — 같은 학과 내 코드 중복 시 409)
+    @PutMapping("/lectures/{lectureId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateLecture(@PathVariable Long lectureId,
+                              @RequestBody AdminDto.LectureCodeDto dto) {
+        dto.setLecCodeId(lectureId);
+        adminService.updateLecture(dto);
+    }
+
+    // 강의 상태 변경 (강의 관리 — 강의코드 상태 변경 재사용. '삭제(DEL)'는 소프트 삭제라 배정 존재 검사 경유)
+    @PatchMapping("/lectures/{lectureId}/status")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateLectureStatus(@PathVariable Long lectureId,
+                                    @RequestBody AdminDto.LectureCodeStatusDto dto) {
+        if ("DEL".equals(dto.getValStatus())) {
+            adminService.deleteLecture(lectureId);
+            return;
+        }
+        adminService.updateLectureCodeStatus(lectureId, dto.getValStatus());
+    }
+
+    // 강의 삭제 (강의 관리 — 소프트 삭제, 배정 강의 존재 시 409)
+    @DeleteMapping("/lectures/{lectureId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteLecture(@PathVariable Long lectureId) {
+        adminService.deleteLecture(lectureId);
+    }
+
+    // 배정 강의 목록 조회 (강의 배정 — ADM: 본인 대학, SUA: univId로 필터)
+    @GetMapping("/lectures/assigns")
+    public ResponseEntity<List<AdminDto.LectureAssignListDto>> getLectureAssignList(
+            @RequestParam(required = false) Long univId,
+            @RequestParam(required = false) Long semId,
+            Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.getLectureAssignList(memberId, univId, semId));
+    }
+
+    // 강의 배정 등록 (분반 자동 채번 + 요일·시간) — 생성된 배정 강의 반환
+    @PostMapping("/lectures/assigns")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdminDto.LectureAssignListDto createLectureAssign(@RequestBody AdminDto.LectureAssignCreateDto dto) {
+        return adminService.createLectureAssign(dto);
+    }
+
+    // 강의 배정 수정 (수강신청중 OPEN 상태만 — 수정된 배정 강의 반환)
+    @PutMapping("/lectures/assigns/{lecId}")
+    public ResponseEntity<AdminDto.LectureAssignListDto> updateLectureAssign(@PathVariable Long lecId,
+                                                                             @RequestBody AdminDto.LectureAssignCreateDto dto) {
+        return ResponseEntity.ok(adminService.updateLectureAssign(lecId, dto));
+    }
+
+    // 학기 목록 조회
+    @GetMapping("/lectures/semesters")
+    public ResponseEntity<List<AdminDto.SemesterDto>> getSemesterList() {
+        return ResponseEntity.ok(adminService.getSemesterList());
+    }
+
+    // 교수 목록 조회 (ADM: 본인 대학, SUA: univId로 필터)
+    @GetMapping("/lectures/professors")
+    public ResponseEntity<List<AdminDto.ProfessorDto>> getProfessorList(
+            @RequestParam(required = false) Long univId,
+            Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.getProfessorList(memberId, univId));
+    }
 }

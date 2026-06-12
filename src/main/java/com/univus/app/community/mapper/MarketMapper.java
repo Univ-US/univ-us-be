@@ -50,6 +50,8 @@ public interface MarketMapper {
     // 댓글 목록 조회 (부모 댓글만)
     List<MarketDto.ProductCommentDto> selectProductCommentList(Long productId);
 
+    MarketDto.ProductCommentDto selectProductCommentById(@Param("commentId") Long commentId);
+
     // 대댓글 목록 조회
     List<MarketDto.ProductCommentDto> selectProductReplyList(Long parentId);
 
