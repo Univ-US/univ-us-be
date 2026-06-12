@@ -9,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -59,6 +60,21 @@ public class GlobalExceptionHandler {
         ModelAndView mav = new ModelAndView("error/error2");
         mav.addObject("title", "잘못된 요청입니다.");
         mav.addObject("message", "죄송합니다.<br><strong>400 - 요청을 처리할 수 없습니다.</strong>");
+        mav.setStatus(HttpStatus.BAD_REQUEST);
+        return mav;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public Object handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+                                               HttpServletRequest request) {
+        log.info("BAD_REQUEST (JSON parse error) - ", ex);
+        if (isApiRequest(request)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", "요청 본문 형식이 올바르지 않습니다."));
+        }
+        ModelAndView mav = new ModelAndView("error/error2");
+        mav.addObject("title", "잘못된 요청입니다.");
+        mav.addObject("message", "요청 본문 형식이 올바르지 않습니다.");
         mav.setStatus(HttpStatus.BAD_REQUEST);
         return mav;
     }

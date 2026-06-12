@@ -152,6 +152,9 @@ public class PostService {
 	
 	 // 댓글 등록
 	 public int writeComment(PostCommentDto commentDto) {
+         if (commentDto.getIsAnonymous() == null) {
+             commentDto.setIsAnonymous(0);
+         }
 	     return postMapper.insertComment(commentDto);
 	 }
 	

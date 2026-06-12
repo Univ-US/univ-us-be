@@ -16,8 +16,8 @@ public class PostCommentDto {
     private Long postId;               // POST_ID
     private Long parentId;             // PARENT_ID (NULL = 최상위 댓글)
     private String content;            // CONTENT VARCHAR2(2000)
-    private int isAnonymous;           // IS_ANONYMOUS NUMBER(1)
-    private int isDeleted;             // IS_DELETED NUMBER(1)
+    private Integer isAnonymous;       // IS_ANONYMOUS NUMBER(1)
+    private Integer isDeleted;         // IS_DELETED NUMBER(1)
     private LocalDateTime createdAt;   // CREATED_AT
 
     // ── MEMBER JOIN (프론트 필드명 기준) ──────────
@@ -25,9 +25,9 @@ public class PostCommentDto {
     private String authorNickname;     // MEMBER.COMMUNITY_NICKNAME
 
     // ── 댓글 좋아요 (DB 없음, 0 고정) ───────────
-    private int likeCount;
+    private Integer likeCount;
 
     // ── 요청 파라미터용 ───────────────────────────
-    private int page;
-    private int size;
+    private Integer page;
+    private Integer size;
 }

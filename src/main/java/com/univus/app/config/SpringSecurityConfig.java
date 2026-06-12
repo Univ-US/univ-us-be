@@ -50,6 +50,12 @@ public class SpringSecurityConfig {
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers(HttpMethod.GET, "/api/admin/universities/*").hasAnyRole("ADM", "SUA")
                     .requestMatchers(HttpMethod.POST, "/api/admin/support").permitAll()
+                    .requestMatchers(
+                            "/api/posts/**",
+                            "/api/market/**",
+                            "/api/trades/**",
+                            "/api/chat/**"
+                    ).hasAnyRole("SUA", "ADM", "STU", "ALU")
             	    .requestMatchers(
 											"/",
 //            	       "/api/test/**",
@@ -78,19 +84,9 @@ public class SpringSecurityConfig {
 						// 공통코드 (FE 드롭다운, 비로그인 가능)
 						"/api/common-codes/**",
 
-            	        // 커뮤니티 게시판
-            	        "/api/posts/**",
-            	        
             	        // 게시글 이미지
             	        "/uploads/community/post/**",
             	        "/uploads/community/market/**",
-
-            	        // 중고거래 상품
-            	        "/api/market/**",
-
-            	        // 거래 내역 + 채팅
-            	        "/api/trades/**",
-            	        "/api/chat/**",
 
             	        // 결제
             	        "/api/payments/**",
