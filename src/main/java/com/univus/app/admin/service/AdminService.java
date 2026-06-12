@@ -134,4 +134,41 @@ public class AdminService {
     public void deleteLectureCode(Long lectureCodeId) {
         adminMapper.deleteLectureCode(lectureCodeId);
     }
+
+    public AdminDto.HomeConfigDto getHomeConfig(Long univId) {
+        AdminDto.HomeConfigDto config = adminMapper.selectHomeConfig(univId);
+        if (config == null) {
+            config = new AdminDto.HomeConfigDto();
+            config.setWeather(true);
+            config.setAiChat(true);
+            config.setNotice(true);
+            config.setMeal(true);
+            config.setTel(true);
+            config.setShortcut(true);
+        }
+        return config;
+    }
+
+    @Transactional
+    public void updateHomeConfig(Long univId, AdminDto.HomeConfigDto dto) {
+        adminMapper.insertHomeConfigIfNotExists(univId);
+        adminMapper.updateHomeConfig(univId, dto);
+    }
+
+    public AdminDto.NoticeConfigDto getNoticeConfig(Long univId) {
+        AdminDto.NoticeConfigDto config = adminMapper.selectNoticeConfig(univId);
+        if (config == null) {
+            config = new AdminDto.NoticeConfigDto();
+            config.setDefaultTarget("ALL");
+            config.setShowTop(true);
+            config.setPushAlert(false);
+        }
+        return config;
+    }
+
+    @Transactional
+    public void updateNoticeConfig(Long univId, AdminDto.NoticeConfigDto dto) {
+        adminMapper.insertNoticeConfigIfNotExists(univId);
+        adminMapper.updateNoticeConfig(univId, dto);
+    }
 }

@@ -253,4 +253,61 @@
         WHERE LEC_CODE_ID = #{lectureCodeId}
     </delete>
 
+    <!-- 홈 설정 조회 -->
+    <select id="selectHomeConfig" resultType="com.univus.app.admin.dto.AdminDto$HomeConfigDto">
+        SELECT WEATHER, AI_CHAT, NOTICE, MEAL, TEL, SHORTCUT
+        FROM UNIV_HOME_CONFIG
+        WHERE UNIV_ID = #{univId}
+    </select>
+
+    <!-- 홈 설정 행 없을 때 기본값(모두 true)으로 초기화 -->
+    <insert id="insertHomeConfigIfNotExists">
+        MERGE INTO UNIV_HOME_CONFIG HC
+        USING DUAL ON (HC.UNIV_ID = #{univId})
+        WHEN NOT MATCHED THEN
+            INSERT (UNIV_ID, WEATHER, AI_CHAT, NOTICE, MEAL, TEL, SHORTCUT)
+            VALUES (#{univId}, 1, 1, 1, 1, 1, 1)
+    </insert>
+
+    <!-- 홈 설정 부분 업데이트 (null 필드는 유지) -->
+    <update id="updateHomeConfig">
+        UPDATE UNIV_HOME_CONFIG
+        <set>
+            <if test="dto.weather != null">WEATHER = #{dto.weather},</if>
+            <if test="dto.aiChat != null">AI_CHAT = #{dto.aiChat},</if>
+            <if test="dto.notice != null">NOTICE = #{dto.notice},</if>
+            <if test="dto.meal != null">MEAL = #{dto.meal},</if>
+            <if test="dto.tel != null">TEL = #{dto.tel},</if>
+            <if test="dto.shortcut != null">SHORTCUT = #{dto.shortcut},</if>
+        </set>
+        WHERE UNIV_ID = #{univId}
+    </update>
+
+    <!-- 공지 설정 조회 -->
+    <select id="selectNoticeConfig" resultType="com.univus.app.admin.dto.AdminDto$NoticeConfigDto">
+        SELECT DEFAULT_TARGET, SHOW_TOP, PUSH_ALERT
+        FROM UNIV_NOTICE_CONFIG
+        WHERE UNIV_ID = #{univId}
+    </select>
+
+    <!-- 공지 설정 행 없을 때 기본값으로 초기화 -->
+    <insert id="insertNoticeConfigIfNotExists">
+        MERGE INTO UNIV_NOTICE_CONFIG NC
+        USING DUAL ON (NC.UNIV_ID = #{univId})
+        WHEN NOT MATCHED THEN
+            INSERT (UNIV_ID, DEFAULT_TARGET, SHOW_TOP, PUSH_ALERT)
+            VALUES (#{univId}, 'ALL', 1, 0)
+    </insert>
+
+    <!-- 공지 설정 부분 업데이트 (null 필드는 유지) -->
+    <update id="updateNoticeConfig">
+        UPDATE UNIV_NOTICE_CONFIG
+        <set>
+            <if test="dto.defaultTarget != null">DEFAULT_TARGET = #{dto.defaultTarget},</if>
+            <if test="dto.showTop != null">SHOW_TOP = #{dto.showTop},</if>
+            <if test="dto.pushAlert != null">PUSH_ALERT = #{dto.pushAlert},</if>
+        </set>
+        WHERE UNIV_ID = #{univId}
+    </update>
+
 </mapper>

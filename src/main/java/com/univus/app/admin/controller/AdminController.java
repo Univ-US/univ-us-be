@@ -119,6 +119,34 @@ public class AdminController {
         adminService.updateUniversity(univId, dto);
     }
 
+    // 홈 설정 조회 (ADM, SUA)
+    @GetMapping("/universities/{univId}/home-config")
+    public ResponseEntity<AdminDto.HomeConfigDto> getHomeConfig(@PathVariable Long univId) {
+        return ResponseEntity.ok(adminService.getHomeConfig(univId));
+    }
+
+    // 홈 설정 수정 (ADM, SUA)
+    @PatchMapping("/universities/{univId}/home-config")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateHomeConfig(@PathVariable Long univId,
+                                 @RequestBody AdminDto.HomeConfigDto dto) {
+        adminService.updateHomeConfig(univId, dto);
+    }
+
+    // 공지 설정 조회 (ADM, SUA)
+    @GetMapping("/universities/{univId}/notice-config")
+    public ResponseEntity<AdminDto.NoticeConfigDto> getNoticeConfig(@PathVariable Long univId) {
+        return ResponseEntity.ok(adminService.getNoticeConfig(univId));
+    }
+
+    // 공지 설정 수정 (ADM, SUA)
+    @PatchMapping("/universities/{univId}/notice-config")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void updateNoticeConfig(@PathVariable Long univId,
+                                   @RequestBody AdminDto.NoticeConfigDto dto) {
+        adminService.updateNoticeConfig(univId, dto);
+    }
+
     // 학과 목록 조회 (ADM: 본인 대학, SUA: univId로 필터)
     @GetMapping("/departments")
     public ResponseEntity<List<AdminDto.DepartmentDto>> getDepartmentList(

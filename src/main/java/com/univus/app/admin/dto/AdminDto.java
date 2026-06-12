@@ -160,4 +160,21 @@ public class AdminDto {
         private String lecCodName;
         private String valStatus;
     }
+
+    @Data
+    public static class HomeConfigDto {
+        private Boolean weather;
+        private Boolean aiChat;
+        private Boolean notice;
+        private Boolean meal;
+        private Boolean tel;
+        private Boolean shortcut;
+    }
+
+    @Data
+    public static class NoticeConfigDto {
+        private String defaultTarget;
+        private Boolean showTop;
+        private Boolean pushAlert;
+    }
 }

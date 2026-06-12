@@ -2,6 +2,7 @@ package com.univus.app.controller;
 
 import com.univus.app.admin.dto.AdminDto;
 import com.univus.app.admin.mapper.AdminMapper;
+import com.univus.app.admin.service.AdminService;
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class HomeController {
 
     private final MemberMapper memberMapper;
     private final AdminMapper adminMapper;
+    private final AdminService adminService;
 
     @GetMapping("/profile")
     public ResponseEntity<HomeProfileResponseDto> getHomeProfile(Authentication authentication) {
@@ -34,5 +36,12 @@ public class HomeController {
         response.setSnsUrl(univ.getSnsUrl());
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<AdminDto.HomeConfigDto> getHomeConfig(Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        MemberDto member = memberMapper.findByMemberId(memberId);
+        return ResponseEntity.ok(adminService.getHomeConfig(member.getUnivId()));
     }
 }
