@@ -19,6 +19,7 @@ public class MarketDto {
     public static class ProductDto {
         private Long productId;
         private Long memberId;
+        private Long univId;
         private String productName;
         private Long price;
         private String description;
@@ -63,6 +64,7 @@ public class MarketDto {
     public static class ProductCreateDto {
         private Long productId;
         private Long memberId;
+        private Long univId;
         private String productName;
         private Long price;
         private String description;
@@ -93,6 +95,7 @@ public class MarketDto {
         private Long commentId;
         private Long memberId;
         private Long productId;
+        private Long univId;
         private Long parentId;
         private String content;
         private Integer isAnonymous;
@@ -114,6 +117,7 @@ public class MarketDto {
     public static class ProductCommentCreateDto {
         private Long memberId;
         private Long productId;
+        private Long univId;
         private Long parentId;
         private String content;
         private Integer isAnonymous;
@@ -149,6 +153,7 @@ public class MarketDto {
         private String keyword;
         private String category;
         private String productStatus;
+        private Long univId;
         private int page;
         private int size;
     }

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import com.univus.app.community.dto.PostCommentDto;
+import com.univus.app.community.service.CommunityAccessService.CommunityAccessScope;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,7 @@ public class PostService {
 
     private final PostMapper postMapper;
     private final StorageService storageService;
+    private final CommunityAccessService communityAccessService;
 
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
@@ -37,8 +39,13 @@ public class PostService {
     private static final String POST_IMAGE_URL_PREFIX = "/uploads/community/post/";
 
     // 게시글 목록 조회 (페이징 + 검색)
-    public Map<String, Object> getPostList(PostDto postDto) {
+    public Map<String, Object> getPostList(PostDto postDto, Long memberId) {
+        CommunityAccessScope scope = communityAccessService.getScope(memberId);
+        postDto.setUnivId(scope.getQueryUnivId());
+        return getPostList(postDto);
+    }
 
+    public Map<String, Object> getPostList(PostDto postDto) {
         // 기본값 처리
         if (postDto.getPage() <= 0) postDto.setPage(1);
         if (postDto.getSize() <= 0) postDto.setSize(10);
@@ -63,14 +70,28 @@ public class PostService {
         return result;
     }
 
-    // 게시글 단건 조회 + 조회수 증가
-    public PostDto getPostById(Long postId) {
-        postMapper.updateViewCount(postId);
+    // 게시글 단건 조회
+    public PostDto getPostById(Long postId, Long memberId) {
         PostDto post = postMapper.selectPostById(postId);
+        if (post == null) {
+            return null;
+        }
+        communityAccessService.assertAccessible(post.getUnivId(), communityAccessService.getScope(memberId));
         if (post != null) {
             post.setImages(postMapper.selectPostImageList(postId));
         }
         return post;
+    }
+
+    @Transactional
+    public PostDto increaseViewCount(Long postId, Long memberId) {
+        PostDto post = requireAccessiblePost(postId, memberId);
+        postMapper.updateViewCount(postId);
+        PostDto updatedPost = postMapper.selectPostById(post.getPostId());
+        if (updatedPost != null) {
+            updatedPost.setImages(postMapper.selectPostImageList(postId));
+        }
+        return updatedPost;
     }
 
     public PostDto findPostById(Long postId) {
@@ -80,6 +101,14 @@ public class PostService {
     // 게시글 등록
     @Transactional
     public int writePost(PostDto postDto) {
+        CommunityAccessScope scope = communityAccessService.getScope(postDto.getMemberId());
+        if (scope.isSuperAdmin()) {
+            if (postDto.getUnivId() == null) {
+                throw new IllegalArgumentException("University id is required.");
+            }
+        } else {
+            postDto.setUnivId(scope.getUnivId());
+        }
         return postMapper.insertPost(postDto);
     }
 
@@ -95,6 +124,7 @@ public class PostService {
 
     // 좋아요 토글 (없으면 추가, 있으면 취소)
     public Map<String, Object> toggleLike(Long postId, Long memberId) {
+        assertPostAccessible(postId, memberId);
         int exists = postMapper.selectLikeCount(postId, memberId);
         Map<String, Object> result = new HashMap<>();
         if (exists > 0) {
@@ -109,6 +139,7 @@ public class PostService {
 
     // 좋아요 여부 확인
     public boolean isLiked(Long postId, Long memberId) {
+        assertPostAccessible(postId, memberId);
         return postMapper.selectLikeCount(postId, memberId) > 0;
     }
 
@@ -117,6 +148,7 @@ public class PostService {
     // 신고 (중복 신고 차단)
     @Transactional
     public Map<String, Object> reportPost(PostDto postDto) {
+        assertPostAccessible(postDto.getPostId(), postDto.getMemberId());
         Map<String, Object> result = new HashMap<>();
         int exists = postMapper.selectReportCount(postDto.getPostId(), postDto.getMemberId());
         if (exists > 0) {
@@ -136,13 +168,15 @@ public class PostService {
 
     // 신고 여부 확인
     public boolean isReported(Long postId, Long memberId) {
+        assertPostAccessible(postId, memberId);
         return postMapper.selectReportCount(postId, memberId) > 0;
     }
     
 	 // ── 댓글 ──────────────────────────────────────────────
 	
 	 // 댓글 목록 조회
-	 public List<PostCommentDto> getCommentList(Long postId) {
+	 public List<PostCommentDto> getCommentList(Long postId, Long memberId) {
+         assertPostAccessible(postId, memberId);
 	     return postMapper.selectCommentList(postId);
 	 }
 
@@ -152,6 +186,8 @@ public class PostService {
 	
 	 // 댓글 등록
 	 public int writeComment(PostCommentDto commentDto) {
+         PostDto post = requireAccessiblePost(commentDto.getPostId(), commentDto.getMemberId());
+         commentDto.setUnivId(post.getUnivId());
          if (commentDto.getIsAnonymous() == null) {
              commentDto.setIsAnonymous(0);
          }
@@ -203,8 +239,22 @@ public class PostService {
         return postMapper.selectPostImageList(postId);
     }
 
-    public List<PostImageDto> getPostImageList(Long postId) {
+    public List<PostImageDto> getPostImageList(Long postId, Long memberId) {
+        assertPostAccessible(postId, memberId);
         return postMapper.selectPostImageList(postId);
+    }
+
+    public void assertPostAccessible(Long postId, Long memberId) {
+        requireAccessiblePost(postId, memberId);
+    }
+
+    private PostDto requireAccessiblePost(Long postId, Long memberId) {
+        PostDto post = postMapper.selectPostById(postId);
+        if (post == null) {
+            throw new IllegalArgumentException("Post not found.");
+        }
+        communityAccessService.assertAccessible(post.getUnivId(), communityAccessService.getScope(memberId));
+        return post;
     }
 
     private void validatePostImage(MultipartFile image) {
