@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -59,5 +60,19 @@ public class CmypageController {
         if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         List<CmypageWishlistDto> result = cmypageService.getMyWishlist(memberId);
         return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/deactivate")
+    public ResponseEntity<Void> deactivateCommunity(@AuthenticationPrincipal Long memberId) {
+        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        cmypageService.deactivateCommunity(memberId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reactivate")
+    public ResponseEntity<Void> reactivateCommunity(@AuthenticationPrincipal Long memberId) {
+        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        cmypageService.reactivateCommunity(memberId);
+        return ResponseEntity.ok().build();
     }
 }

@@ -20,5 +20,6 @@ public class LoginResponseDto {
     private String univName;
     private String memberName;
     private String communityNickname;
+    private String status;
 
 }

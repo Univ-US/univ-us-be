@@ -47,6 +47,8 @@ public interface ReservationMapper {
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
 
+    int cancelAllPendingReadingSeatReservations(@Param("memberId") Long memberId);
+
     List<ReservationDto.RoomAvailabilityDto> selectActiveReservationRooms(@Param("memberId") Long memberId);
 
     List<ReservationDto.RoomReservationSlotDto> selectRoomReservationsBetween(
@@ -72,6 +74,8 @@ public interface ReservationMapper {
     int cancelRoomReservation(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
+
+    int cancelAllPendingRoomReservations(@Param("memberId") Long memberId);
 
     List<ReservationDto.ReadingSeatReservationDto> selectExpiredReadingSeatReservations();
 

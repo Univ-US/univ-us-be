@@ -14,4 +14,5 @@ public interface CmypageMapper {
     List<PostDto> selectLikedPosts(Long memberId);
     List<CmypageTradeDto> selectMyTrades(Long memberId);
     List<CmypageWishlistDto> selectMyWishlist(Long memberId);
+    int updateMemberStatus(@org.apache.ibatis.annotations.Param("memberId") Long memberId, @org.apache.ibatis.annotations.Param("status") String status);
 }
