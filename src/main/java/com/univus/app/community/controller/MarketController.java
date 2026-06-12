@@ -29,10 +29,12 @@ public class MarketController {
     // GET /api/market/products?keyword=&category=&productStatus=&page=0&size=10
     @GetMapping("/products")
     public ResponseEntity<Map<String, Object>> getProductList(
-            @ModelAttribute MarketDto.ProductSearchDto searchDto) {
+            @ModelAttribute MarketDto.ProductSearchDto searchDto,
+            @AuthenticationPrincipal Long memberId) {
 
-        List<MarketDto.ProductDto> list  = marketService.getProductList(searchDto);
-        int totalCount                   = marketService.getProductCount(searchDto);
+        Long currentMemberId = requireMemberId(memberId);
+        List<MarketDto.ProductDto> list  = marketService.getProductList(searchDto, currentMemberId);
+        int totalCount                   = marketService.getProductCount(searchDto, currentMemberId);
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -45,9 +47,10 @@ public class MarketController {
     // GET /api/market/products/{productId}
     @GetMapping("/products/{productId}")
     public ResponseEntity<Map<String, Object>> getProductDetail(
-            @PathVariable("productId") Long productId) {
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId) {
 
-        MarketDto.ProductDto product = marketService.getProductDetail(productId);
+        MarketDto.ProductDto product = marketService.getProductDetail(productId, requireMemberId(memberId));
 
         Map<String, Object> result = new HashMap<>();
         if (product == null) {
@@ -154,18 +157,20 @@ public class MarketController {
     // GET /api/market/products/{productId}/images
     @GetMapping("/products/{productId}/images")
     public ResponseEntity<List<MarketDto.ProductImageDto>> getProductImages(
-            @PathVariable("productId") Long productId) {
-        return ResponseEntity.ok(marketService.getProductImageList(productId));
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(marketService.getProductImageList(productId, requireMemberId(memberId)));
     }
 
     // 댓글
     // GET /api/market/products/{productId}/comments
     @GetMapping("/products/{productId}/comments")
     public ResponseEntity<Map<String, Object>> getCommentList(
-            @PathVariable("productId") Long productId) {
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId) {
 
         List<MarketDto.ProductCommentDto> comments =
-                marketService.getProductCommentList(productId);
+                marketService.getProductCommentList(productId, requireMemberId(memberId));
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -221,7 +226,7 @@ public class MarketController {
         likeDto.setProductId(productId);
         likeDto.setMemberId(requireMemberId(memberId));
         boolean liked = marketService.toggleProductLike(likeDto);
-        int likeCount = marketService.getProductLikeCount(productId);
+        int likeCount = marketService.getProductLikeCount(productId, requireMemberId(memberId));
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -241,7 +246,7 @@ public class MarketController {
         likeDto.setProductId(productId);
         likeDto.setMemberId(requireMemberId(memberId));
         boolean liked = marketService.isProductLiked(likeDto);
-        int likeCount = marketService.getProductLikeCount(productId);
+        int likeCount = marketService.getProductLikeCount(productId, requireMemberId(memberId));
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -276,9 +281,9 @@ public class MarketController {
     // GET /api/market/likes?memberId=1
     @GetMapping("/likes")
     public ResponseEntity<Map<String, Object>> getMyLikeList(
-            @RequestParam("memberId") Long memberId) {
+            @AuthenticationPrincipal Long memberId) {
 
-        List<MarketDto.ProductDto> list = marketService.getMyLikeList(memberId);
+        List<MarketDto.ProductDto> list = marketService.getMyLikeList(requireMemberId(memberId));
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
@@ -395,6 +400,7 @@ public class MarketController {
         if (product == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "상품을 찾을 수 없습니다.");
         }
+        marketService.assertProductAccessible(productId, memberId);
         if (!product.getMemberId().equals(memberId) && !isAdmin(authentication)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "상품 수정/삭제 권한이 없습니다.");
         }
@@ -405,6 +411,7 @@ public class MarketController {
         if (comment == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.");
         }
+        marketService.assertProductAccessible(comment.getProductId(), memberId);
         if (!comment.getMemberId().equals(memberId) && !isAdmin(authentication)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 삭제 권한이 없습니다.");
         }

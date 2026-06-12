@@ -26,19 +26,30 @@ public class PostController {
 
     // GET /api/posts?page=1&size=10&keyword=검색어&boardId=1
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getPostList(PostDto postDto) {
-        Map<String, Object> result = postService.getPostList(postDto);
+    public ResponseEntity<Map<String, Object>> getPostList(
+            PostDto postDto,
+            @AuthenticationPrincipal Long memberId) {
+        Map<String, Object> result = postService.getPostList(postDto, requireMemberId(memberId));
         return ResponseEntity.ok(result);
     }
 
     // GET /api/posts/{postId}
     @GetMapping("/{postId}")
-    public ResponseEntity<PostDto> getPostById(@PathVariable("postId") Long postId) {
-        PostDto post = postService.getPostById(postId);
+    public ResponseEntity<PostDto> getPostById(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId) {
+        PostDto post = postService.getPostById(postId, requireMemberId(memberId));
         if (post == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(post);
+    }
+
+    @PostMapping("/{postId}/view")
+    public ResponseEntity<PostDto> increaseViewCount(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(postService.increaseViewCount(postId, requireMemberId(memberId)));
     }
 
     // POST /api/posts
@@ -174,8 +185,10 @@ public class PostController {
 	
 	 // GET /api/posts/{postId}/comments
 	 @GetMapping("/{postId}/comments")
-	 public ResponseEntity<List<PostCommentDto>> getCommentList(@PathVariable("postId") Long postId) {
-	     List<PostCommentDto> commentList = postService.getCommentList(postId);
+	 public ResponseEntity<List<PostCommentDto>> getCommentList(
+             @PathVariable("postId") Long postId,
+             @AuthenticationPrincipal Long memberId) {
+	     List<PostCommentDto> commentList = postService.getCommentList(postId, requireMemberId(memberId));
 	     return ResponseEntity.ok(commentList);
 	 }
 	
@@ -232,7 +245,9 @@ public class PostController {
     @PostMapping("/{postId}/images")
     public ResponseEntity<Map<String, Object>> uploadPostImages(
             @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId,
             @RequestParam("images") List<MultipartFile> images) {
+        postService.assertPostAccessible(postId, requireMemberId(memberId));
         List<PostImageDto> uploadedImages = postService.uploadPostImages(postId, images);
         return ResponseEntity.ok(Map.of(
                 "message", "Images uploaded successfully.",
@@ -242,8 +257,10 @@ public class PostController {
 
     // GET /api/posts/{postId}/images
     @GetMapping("/{postId}/images")
-    public ResponseEntity<List<PostImageDto>> getPostImages(@PathVariable("postId") Long postId) {
-        return ResponseEntity.ok(postService.getPostImageList(postId));
+    public ResponseEntity<List<PostImageDto>> getPostImages(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(postService.getPostImageList(postId, requireMemberId(memberId)));
     }
 
     private Long requireMemberId(Long memberId) {
@@ -258,6 +275,7 @@ public class PostController {
         if (post == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
+        postService.assertPostAccessible(postId, memberId);
         if (!post.getMemberId().equals(memberId) && !isAdmin(authentication)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "게시글 수정/삭제 권한이 없습니다.");
         }
@@ -268,6 +286,7 @@ public class PostController {
         if (comment == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.");
         }
+        postService.assertPostAccessible(comment.getPostId(), memberId);
         if (!comment.getMemberId().equals(memberId) && !isAdmin(authentication)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 삭제 권한이 없습니다.");
         }

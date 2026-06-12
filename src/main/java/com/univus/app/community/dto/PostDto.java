@@ -14,6 +14,7 @@ public class PostDto {
     // ── POST 테이블 ───────────────────────────────
     private Long postId;
     private Long memberId;
+    private Long univId;
     private Long boardId;
     private String title;
     private String content;          // CLOB
