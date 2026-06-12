@@ -11,10 +11,12 @@ public interface ReservationService {
     ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days);
 
     List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
+            Long memberId,
             LocalDateTime startTime,
             LocalDateTime endTime);
 
     List<ReservationDto.ReadingSeatAvailabilityDto> getReadingSeatAvailability(
+            Long memberId,
             Long readingRoomId,
             LocalDateTime startTime,
             LocalDateTime endTime);
@@ -31,7 +33,7 @@ public interface ReservationService {
 
     ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId);
 
-    List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(LocalDate date);
+    List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(Long memberId, LocalDate date);
 
     List<ReservationDto.RoomReservationDto> getMyRoomReservations(Long memberId);
 

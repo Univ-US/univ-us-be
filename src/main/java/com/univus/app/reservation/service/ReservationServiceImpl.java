@@ -75,24 +75,28 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Override
     public List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
+            Long memberId,
             LocalDateTime startTime,
             LocalDateTime endTime) {
+        validateMember(memberId);
         validateTimeRange(startTime, endTime);
         validateReservationTimePolicy(startTime, endTime, MAX_RESERVATION_HOURS);
-        return reservationMapper.selectReadingRoomAvailability(startTime, endTime);
+        return reservationMapper.selectReadingRoomAvailability(memberId, startTime, endTime);
     }
 
     @Override
     public List<ReservationDto.ReadingSeatAvailabilityDto> getReadingSeatAvailability(
+            Long memberId,
             Long readingRoomId,
             LocalDateTime startTime,
             LocalDateTime endTime) {
+        validateMember(memberId);
         if (readingRoomId == null) {
             throw new IllegalArgumentException("독서실 ID는 필수입니다.");
         }
         validateTimeRange(startTime, endTime);
         validateReservationTimePolicy(startTime, endTime, MAX_RESERVATION_HOURS);
-        return reservationMapper.selectReadingSeatAvailability(readingRoomId, startTime, endTime);
+        return reservationMapper.selectReadingSeatAvailability(memberId, readingRoomId, startTime, endTime);
     }
 
     @Override
@@ -185,7 +189,8 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(LocalDate date) {
+    public List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(Long memberId, LocalDate date) {
+        validateMember(memberId);
         if (date == null) {
             throw new IllegalArgumentException("예약 날짜는 필수입니다.");
         }
@@ -196,7 +201,7 @@ public class ReservationServiceImpl implements ReservationService {
         List<ReservationDto.RoomReservationSlotDto> reservations =
                 reservationMapper.selectRoomReservationsBetween(dateStart, dateEnd);
 
-        return reservationMapper.selectActiveReservationRooms().stream()
+        return reservationMapper.selectActiveReservationRooms(memberId).stream()
                 .map(room -> {
                     room.setSlots(buildRoomSlots(room.getRoomId(), date, serverNow, reservations));
                     return room;
