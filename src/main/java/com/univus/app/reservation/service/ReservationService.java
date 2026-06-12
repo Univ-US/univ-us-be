@@ -42,4 +42,6 @@ public interface ReservationService {
             ReservationDto.RoomReservationRequestDto request);
 
     void cancelRoomReservation(Long memberId, Long reservationId);
+
+    void cancelAllPendingReservations(Long memberId);
 }

@@ -83,4 +83,10 @@
         ORDER BY L.PRESSED_AT DESC
     </select>
 
+    <update id="updateMemberStatus">
+        UPDATE MEMBER
+        SET STATUS = #{status}
+        WHERE MEMBER_ID = #{memberId}
+    </update>
+
 </mapper>
