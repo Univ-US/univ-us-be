@@ -5,8 +5,8 @@ import com.univus.app.commoncode.code.RoleCode;
 import com.univus.app.lms.code.LmsUsrSecReqStatusCode;
 import com.univus.app.lms.dto.LmsProfessorProfileResponseDto;
 import com.univus.app.lms.dto.LmsProfessorProfileUpdateDto;
-import com.univus.app.lms.exception.InvalidProfileImageException;
 import com.univus.app.lms.mapper.LmsProfessorProfileMapper;
+import com.univus.app.lms.support.ProfileImageValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +26,6 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
     //TODO: 배포 시 저장 경로 설정 필수
     @Value("${file.upload-root:${user.home}/univus/uploads}") // application.yml setting: 없으면 기본 경로
     private String uploadRoot;
-    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png"); // JPG, JPEG, PNG
-    private static final long MAX_IMAGE_SIZE = 30L * 1024 * 1024; // 30MB
     //TODO: 배포 시 저장 경로 설정 필수
     private static final String IMAGE_SUBDIR = "lms" + File.separator + "professor" + File.separator + "image"; // 저장 하위 폴더
     //TODO: 배포 시 저장 경로 설정 필수
@@ -54,7 +51,7 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
         // 이미지 처리 (새 이미지가 넘어온 경우에만)
         MultipartFile lmsProfessorProfileImage = lmsProfessorProfileUpdateDto.getLmsProfessorProfileImage();
         if (lmsProfessorProfileImage != null && !lmsProfessorProfileImage.isEmpty()) {
-            validateImage(lmsProfessorProfileImage);
+            ProfileImageValidator.validate(lmsProfessorProfileImage); // 형식·용량·매직바이트 검증(공용)
             String directoryPath = uploadRoot + File.separator + IMAGE_SUBDIR;
             String trnFileName = storageService.uploadFileToServer(lmsProfessorProfileImage, directoryPath); // 변환(저장) 파일명
             String orgFileName = lmsProfessorProfileImage.getOriginalFilename();
@@ -109,23 +106,6 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
             lmsPrfId = lmsProfessorProfileMapper.findLmsPrfIdByMemberId(memberId);
         }
         return lmsPrfId;
-    }
-
-    /*
-    * 이미지 검증
-    * JPG/PNG ONLY
-    * 30MB
-    * */
-    private void validateImage(MultipartFile lmsProfessorProfileImage) {
-        String imageContentType = lmsProfessorProfileImage.getContentType();
-        // type 검사
-        if (imageContentType == null || !ALLOWED_TYPES.contains(imageContentType)) {
-            throw new InvalidProfileImageException("이미지는 JPG/JPEG 또는 PNG 형식만 업로드 할 수 있습니다");
-        }
-        // 30MB 용량 검사
-        if (lmsProfessorProfileImage.getSize() > MAX_IMAGE_SIZE) {
-            throw new InvalidProfileImageException("이미지는 용량은 30MB를 초과할 수 없습니다.");
-        }
     }
 
     /* 이미지 타입 추출 ("image/png" → "png") */

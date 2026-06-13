@@ -5,8 +5,8 @@ import com.univus.app.commoncode.code.RoleCode;
 import com.univus.app.lms.code.LmsUsrSecReqStatusCode;
 import com.univus.app.lms.dto.LmsStudentProfileResponseDto;
 import com.univus.app.lms.dto.LmsStudentProfileUpdateDto;
-import com.univus.app.lms.exception.InvalidProfileImageException;
 import com.univus.app.lms.mapper.LmsStudentProfileMapper;
+import com.univus.app.lms.support.ProfileImageValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -28,8 +27,6 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
     @Value("${file.upload-root:${user.home}/univus/uploads}") // applicaton.yml settings:업슬 때 경로
     private String uploadRoot;
 
-    private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png"); // JPG/JPEG/PNG
-    private static final long MAX_IMAGE_SIZE = 30L * 1024 * 1024; // 30MB
     //TODO: 배포 시 저장 경로 설정 필수
     private static final String IMAGE_SUBDIR = "lms" + File.separator + "student" + File.separator + "image";
     //TODO: 배포 시 저장 경로 설정 필수
@@ -56,7 +53,7 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
         // 이미지 (새 파일이 있을 때만)
         MultipartFile image = dto.getLmsStudentProfileImage();
         if (image != null && !image.isEmpty()) {
-            validateImage(image);
+            ProfileImageValidator.validate(image); // 형식·용량·매직바이트 검증(공용)
             String directoryPath = uploadRoot + File.separator + IMAGE_SUBDIR;
             String trnFileName = storageService.uploadFileToServer(image, directoryPath); // 변환(저장) 파일명
             String orgFileName = image.getOriginalFilename();
@@ -112,21 +109,6 @@ public class LmsStudentProfileServiceImpl implements LmsStudentProfileService {
             lmsPrfId = lmsStudentProfileMapper.findLmsPrfIdByMemberId(memberId);
         }
         return lmsPrfId;
-    }
-
-    /*
-     * 이미지 검증
-     * JPG/JPEG/PNG ONLY
-     * 30MB (화면 기준)
-     */
-    private void validateImage(MultipartFile image) {
-        String contentType = image.getContentType();
-        if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
-            throw new InvalidProfileImageException("이미지는 JPG/JPEG 또는 PNG 형식만 업로드할 수 있습니다.");
-        }
-        if (image.getSize() > MAX_IMAGE_SIZE) {
-            throw new InvalidProfileImageException("이미지 용량은 30MB를 초과할 수 없습니다.");
-        }
     }
 
     /* 이미지 타입 추출 ("image/png" → "png") */

@@ -87,7 +87,10 @@
           AND l.LMS_PRF_ID = #{professorLmsPrfId}
           AND e.LEC_STD_ENR_STATUS != 'DRP'
           <if test="search != null and search != ''">
-            AND (m.MEMBER_NAME LIKE '%' || #{search} || '%' OR m.LOGIN_ID LIKE '%' || #{search} || '%')
+            <!-- 검색값의 LIKE 와일드카드(% _)와 이스케이프 문자(\)를 리터럴로 중화 → ESCAPE '\' 로 지정.
+                 (#{search}는 바인딩이라 인젝션은 안전하나, % _ 가 패턴 기호로 동작하는 의미 왜곡을 차단) -->
+            AND ( m.MEMBER_NAME LIKE '%' || REPLACE(REPLACE(REPLACE(#{search}, '\', '\\'), '%', '\%'), '_', '\_') || '%' ESCAPE '\'
+               OR m.LOGIN_ID    LIKE '%' || REPLACE(REPLACE(REPLACE(#{search}, '\', '\\'), '%', '\%'), '_', '\_') || '%' ESCAPE '\' )
           </if>
         ORDER BY m.MEMBER_NAME, m.MEMBER_ID
     </select>

@@ -1,5 +1,8 @@
 package com.univus.app.lms.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -142,7 +145,12 @@ public final class LmsGradingDto {
     @AllArgsConstructor
     @Builder
     public static class SaveRequest {
-        private BigDecimal score; // null 허용(미채점 되돌림). 범위 0~maxScore는 service 검증
+        // null 허용(미채점 되돌림) — Bean Validation은 null을 통과시키므로 점수를 비우면 채점 취소.
+        // 만점 100 고정(DEFAULT_MAX_SCORE) · 점수 컬럼 NUMBER(5,2) → 정수 3자리·소수 2자리.
+        @DecimalMin(value = "0", message = "점수는 0 이상이어야 합니다.")
+        @DecimalMax(value = "100", message = "점수는 100 이하여야 합니다.")
+        @Digits(integer = 3, fraction = 2, message = "점수는 소수점 둘째 자리까지만 입력할 수 있습니다.")
+        private BigDecimal score;
         @Size(max = 200, message = "피드백은 200자 이내여야 합니다.")
         private String feedback;  // null/빈문자 허용, 최대 200자
     }

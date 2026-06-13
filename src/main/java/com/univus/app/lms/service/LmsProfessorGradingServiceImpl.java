@@ -127,11 +127,9 @@ public class LmsProfessorGradingServiceImpl implements LmsProfessorGradingServic
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 강의의 제출이 아닙니다.");
         }
 
+        // 점수 검증(0~100·소수 2자리)은 SaveRequest의 Bean Validation(@Valid)에서 수행 →
+        // 위반 시 LmsRestExceptionHandler가 400으로 응답. null = 미채점 되돌림(검증 통과).
         BigDecimal score = request != null ? request.getScore() : null;
-        if (score != null && (score.signum() < 0 || score.compareTo(BigDecimal.valueOf(DEFAULT_MAX_SCORE)) > 0)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "점수는 0~" + DEFAULT_MAX_SCORE + " 범위여야 합니다.");
-        }
         String feedback = request != null ? request.getFeedback() : null;
 
         gradingMapper.upsertEvaluation(submissionId, score, feedback);
