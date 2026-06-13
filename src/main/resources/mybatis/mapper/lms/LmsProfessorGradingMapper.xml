@@ -32,6 +32,7 @@
         SELECT
             asn.LEC_ASN_ID                              AS assignmentId,
             lc.LEC_COD_NAME                             AS courseName,
+            l.LEC_SECTION                               AS lecSection,
             asn.LEC_ASN_TITLE                           AS title,
             TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS dueDate,
             (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb

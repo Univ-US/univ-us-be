@@ -44,6 +44,7 @@ public final class LmsGradingDto {
     public static class AssignmentRow {
         private Long assignmentId;
         private String courseName;
+        private Integer lecSection;    // 분반 (LECTURE.LEC_SECTION) — FE가 "N반" 표기
         private String title;
         private String dueDate;        // "YYYY.MM.DD" (TO_CHAR)
         private int submittedCount;    // 제출 학생 수 (LEC_ASN_SBM_STATUS != 'NSB')
