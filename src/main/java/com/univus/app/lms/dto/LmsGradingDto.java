@@ -27,12 +27,9 @@ public final class LmsGradingDto {
     @AllArgsConstructor
     @Builder
     public static class Overview {
-        private Integer year;                          // 학기 연도 (SEMESTERS.SEM_YEAR)
-        private String termCode;                       // 학기 코드 (SEM_TERM 공통코드 — FE가 라벨 매핑)
-        private int totalUngraded;                     // 미채점 제출 건수 합
-        private List<CourseCount> byCourse;            // 과목별 미채점 제출 건수 (배너용)
-        private List<AssignmentRow> assignments;       // 미채점 과제 목록 (ungradedCount > 0)
-        private List<AssignmentRow> gradedAssignments; // 채점완료 과제 목록 (ungradedCount == 0)
+        private int totalUngraded;          // 미채점 제출 건수 합 (선택 필터 범위)
+        private List<CourseCount> byCourse; // 과목별 미채점 제출 건수 (배너용)
+        // 미채점/채점 과제 목록은 서버 페이지네이션 별도 엔드포인트(GET /grading/assignments)로 분리(2026-06-13)
     }
 
     /** 과제 1행 (개요 목록). MyBatis가 6필드 채우고 service가 ungradedCount·maxScore 보강 */

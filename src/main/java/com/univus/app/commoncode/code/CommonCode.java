@@ -1,4 +1,4 @@
-package com.univus.app.common;
+package com.univus.app.commoncode.code;
 
 /* Enum 공통 코드 재사용 로직 */
 public interface CommonCode {

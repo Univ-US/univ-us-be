@@ -24,15 +24,28 @@ public interface LmsProfessorUploadMapper {
     int countOwnedUpload(@Param("uploadId") Long uploadId,
                          @Param("professorLmsPrfId") Long professorLmsPrfId);
 
-    /** 자료 목록 — 교수 담당 강의 전체 자료 (본체만, 첨부는 별도 조회 후 그룹핑) */
-    List<LmsUploadDto.Material> selectUploadsByProfessor(@Param("professorLmsPrfId") Long professorLmsPrfId);
+    /** 자료 개수 (서버 페이지네이션 — 년도/학기 필터 선택 적용. year/termCode null이면 전체) */
+    int countUploadsByProfessor(@Param("professorLmsPrfId") Long professorLmsPrfId,
+                                @Param("year") Integer year,
+                                @Param("termCode") String termCode);
+
+    /** 자료 목록 1페이지 (서버 페이지네이션 — 년도/학기 필터 + OFFSET/FETCH. 본체만, 첨부는 별도 조회) */
+    List<LmsUploadDto.Material> selectUploadsPaged(@Param("professorLmsPrfId") Long professorLmsPrfId,
+                                                   @Param("year") Integer year,
+                                                   @Param("termCode") String termCode,
+                                                   @Param("offset") int offset,
+                                                   @Param("size") int size);
+
+    /** 목록 필터 옵션 — 자료가 존재하는 년도/학기 distinct (드롭다운 소스) */
+    List<LmsUploadDto.SemesterOption> selectDistinctMaterialSemesters(
+            @Param("professorLmsPrfId") Long professorLmsPrfId);
 
     /** 자료 단건 (등록/수정 응답용 — 본체만) */
     LmsUploadDto.Material selectUploadById(@Param("uploadId") Long uploadId);
 
-    /** 교수 전체 자료의 유효(ACT) 첨부 목록 (uploadId 포함 — 서비스에서 자료별 그룹핑) */
-    List<LmsUploadDto.AttachmentListRow> selectActiveAttachmentsByProfessor(
-            @Param("professorLmsPrfId") Long professorLmsPrfId);
+    /** 주어진 자료들(현재 페이지 uploadId들)의 유효(ACT) 첨부 목록 (서비스에서 자료별 그룹핑) */
+    List<LmsUploadDto.AttachmentListRow> selectActiveAttachmentsByUploadIds(
+            @Param("uploadIds") List<Long> uploadIds);
 
     /** 자료 1건의 유효(ACT) 첨부 목록 */
     List<LmsUploadDto.AttachmentListRow> selectActiveAttachmentsByUploadId(@Param("uploadId") Long uploadId);
