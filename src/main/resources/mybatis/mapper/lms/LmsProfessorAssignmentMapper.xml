@@ -81,10 +81,22 @@ PLM-006 교수 과제 관리 SQL
         JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
     </sql>
 
-    <select id="selectAssignmentsByProfessor" resultType="com.univus.app.lms.dto.LmsAssignmentDto$Assignment">
+    <!-- 선택 과목 1개의 과제 개수 (서버 페이지네이션 — 본인 강의 한정) -->
+    <select id="countAssignmentsByCourse" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE_ASSIGNMENT asn
+        JOIN LECTURE l ON l.LEC_ID = asn.LEC_ID
+        WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+          AND asn.LEC_ID = #{lecId}
+    </select>
+
+    <!-- 과목 1개의 과제 1페이지 (마감일 내림차순 + OFFSET/FETCH, Oracle 12c+) -->
+    <select id="selectAssignmentsByCoursePaged" resultType="com.univus.app.lms.dto.LmsAssignmentDto$Assignment">
         <include refid="selectAssignmentColumns"/>
         WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
-        ORDER BY s.SEM_ID DESC, lc.LEC_COD_NAME, asn.LEC_ASN_DUE_DATE DESC, asn.LEC_ASN_ID DESC
+          AND asn.LEC_ID = #{lecId}
+        ORDER BY asn.LEC_ASN_DUE_DATE DESC, asn.LEC_ASN_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
 
     <select id="selectAssignmentById" resultType="com.univus.app.lms.dto.LmsAssignmentDto$Assignment">
@@ -92,8 +104,8 @@ PLM-006 교수 과제 관리 SQL
         WHERE asn.LEC_ASN_ID = #{assignmentId}
     </select>
 
-    <!-- 유효(ACT) 첨부 목록 — 교수 전체 과제분 (서비스에서 assignmentId로 그룹핑) -->
-    <select id="selectActiveAttachmentsByProfessor"
+    <!-- 유효(ACT) 첨부 목록 — 주어진 과제들(현재 페이지 assignmentId들)분 (서비스에서 과제별 그룹핑) -->
+    <select id="selectActiveAttachmentsByAssignmentIds"
             resultType="com.univus.app.lms.dto.LmsAssignmentDto$AttachmentListRow">
         SELECT a.LEC_ASN_ID               AS assignmentId,
                a.LEC_ASN_ATT_ID           AS attachmentId,
@@ -101,9 +113,8 @@ PLM-006 교수 과제 관리 SQL
                a.LEC_ASN_ATT_EXT_TYPE     AS fileExt,
                a.LEC_ASN_ATT_FIL_SIZE     AS fileSize
         FROM LECTURE_ASSIGNMENT_ATTACHMENT a
-        JOIN LECTURE_ASSIGNMENT asn ON asn.LEC_ASN_ID = a.LEC_ASN_ID
-        JOIN LECTURE l              ON l.LEC_ID       = asn.LEC_ID
-        WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+        WHERE a.LEC_ASN_ID IN
+        <foreach item="id" collection="assignmentIds" open="(" separator="," close=")">#{id}</foreach>
           AND a.ATT_VAL_STATUS = 'ACT'
         ORDER BY a.LEC_ASN_ID, a.LEC_ASN_ATT_REG_DATE, a.LEC_ASN_ATT_ID
     </select>
