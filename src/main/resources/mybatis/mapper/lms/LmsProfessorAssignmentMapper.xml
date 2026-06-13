@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+PLM-006 교수 과제 관리 SQL
+· 본체: LECTURE_ASSIGNMENT (LEC_ASN_ID PK / LEC_ID FK / LEC_ASN_REG_DATE [DEFAULT SYSTIMESTAMP]
+        / LEC_ASN_TITLE VARCHAR2(200) / LEC_ASN_CONTENT CLOB NULL [=설명, 에디터 HTML]
+        / LEC_ASN_DUE_DATE TIMESTAMP / LEC_ASN_VAL_STATUS [공통코드 AVL/MOD/LAT/CLS/NOP, 등록=AVL])
+· 첨부: LECTURE_ASSIGNMENT_ATTACHMENT — 1:N 다중 첨부(PLM-005 정책: 추가/개별 제거, ATT_VAL_STATUS ACT/DEL)
+· 집계(PLM-004 채점 현황과 동일 산식): 제출 LECTURE_ASSIGNMENT_SUBMISSION(status!='NSB')·
+        채점 ASSIGNMENT_SUBMISSION_EVALUATION(score not null)·수강생 LECTURE_STUDENT_ENROLLMENT(status!='DRP')
+· ⚠️ PK는 IDENTITY가 아니라 시퀀스 채번 → SEQ_LECTURE_ASSIGNMENT / SEQ_LECTURE_ASSIGNMENT_ATTACHMENT .NEXTVAL
+· ⚠️ dueDate 문자열("YYYY-MM-DDTHH:mm") ↔ TIMESTAMP: TO_TIMESTAMP/TO_CHAR 'YYYY-MM-DD"T"HH24:MI' (T 리터럴)
+· 소유권: LECTURE.LMS_PRF_ID = 교수 LMS_PRF_ID
+-->
+<mapper namespace="com.univus.app.lms.mapper.LmsProfessorAssignmentMapper">
+
+    <!-- 교수 본인 LMS_PRF_ID -->
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <!-- 등록 폼 과목(강의) 드롭다운 — 담당 강의 전체(폐강 포함, 상태 라벨은 FE 공통코드 매핑) -->
+    <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsAssignmentDto$Lecture">
+        SELECT l.LEC_ID         AS lecId,
+               lc.LEC_COD_NAME  AS courseName,
+               l.LEC_SECTION    AS lecSection,
+               s.SEM_YEAR       AS year,
+               s.SEM_TERM       AS termCode,
+               l.LEC_VAL_STATUS AS lecValStatus
+        FROM LECTURE l
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
+        WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+        ORDER BY s.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
+    </select>
+
+    <!-- 소유권: 본인 담당 강의 여부 -->
+    <select id="countOwnedLecture" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE
+        WHERE LEC_ID = #{lecId}
+          AND LMS_PRF_ID = #{professorLmsPrfId}
+    </select>
+
+    <!-- 소유권: 본인 강의의 과제 여부 -->
+    <select id="countOwnedAssignment" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE_ASSIGNMENT asn
+        JOIN LECTURE l ON l.LEC_ID = asn.LEC_ID
+        WHERE asn.LEC_ASN_ID = #{assignmentId}
+          AND l.LMS_PRF_ID = #{professorLmsPrfId}
+    </select>
+
+    <!-- 과제 본체 + 집계 공용 SELECT (첨부는 별도 쿼리로 조회 후 서비스 그룹핑).
+         submittedCount/gradedCount = PLM-004 채점 현황과 동일 서브쿼리,
+         totalStudents = 해당 강의 수강생(DRP 제외). ungradedCount는 service가 max(0, submitted-graded) 계산 -->
+    <sql id="selectAssignmentColumns">
+        SELECT asn.LEC_ASN_ID                              AS assignmentId,
+               asn.LEC_ID                                  AS lecId,
+               lc.LEC_COD_NAME                             AS courseName,
+               l.LEC_SECTION                               AS lecSection,
+               s.SEM_YEAR                                  AS year,
+               s.SEM_TERM                                  AS termCode,
+               asn.LEC_ASN_TITLE                           AS title,
+               asn.LEC_ASN_CONTENT                         AS description,
+               TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI') AS dueDate,
+               asn.LEC_ASN_VAL_STATUS                      AS valStatus,
+               (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb
+                 WHERE sb.LEC_ASN_ID = asn.LEC_ASN_ID
+                   AND sb.LEC_ASN_SBM_STATUS != 'NSB')      AS submittedCount,
+               (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb
+                  JOIN ASSIGNMENT_SUBMISSION_EVALUATION ev ON ev.LEC_ASN_SBM_ID = sb.LEC_ASN_SBM_ID
+                 WHERE sb.LEC_ASN_ID = asn.LEC_ASN_ID
+                   AND ev.ASN_SBM_EVL_SCORE IS NOT NULL)    AS gradedCount,
+               (SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e
+                 WHERE e.LEC_ID = asn.LEC_ID
+                   AND e.LEC_STD_ENR_STATUS != 'DRP')       AS totalStudents
+        FROM LECTURE_ASSIGNMENT asn
+        JOIN LECTURE l       ON l.LEC_ID       = asn.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
+    </sql>
+
+    <select id="selectAssignmentsByProfessor" resultType="com.univus.app.lms.dto.LmsAssignmentDto$Assignment">
+        <include refid="selectAssignmentColumns"/>
+        WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+        ORDER BY s.SEM_ID DESC, lc.LEC_COD_NAME, asn.LEC_ASN_DUE_DATE DESC, asn.LEC_ASN_ID DESC
+    </select>
+
+    <select id="selectAssignmentById" resultType="com.univus.app.lms.dto.LmsAssignmentDto$Assignment">
+        <include refid="selectAssignmentColumns"/>
+        WHERE asn.LEC_ASN_ID = #{assignmentId}
+    </select>
+
+    <!-- 유효(ACT) 첨부 목록 — 교수 전체 과제분 (서비스에서 assignmentId로 그룹핑) -->
+    <select id="selectActiveAttachmentsByProfessor"
+            resultType="com.univus.app.lms.dto.LmsAssignmentDto$AttachmentListRow">
+        SELECT a.LEC_ASN_ID               AS assignmentId,
+               a.LEC_ASN_ATT_ID           AS attachmentId,
+               a.LEC_ASN_ATT_ORG_FIL_NAME AS fileName,
+               a.LEC_ASN_ATT_EXT_TYPE     AS fileExt,
+               a.LEC_ASN_ATT_FIL_SIZE     AS fileSize
+        FROM LECTURE_ASSIGNMENT_ATTACHMENT a
+        JOIN LECTURE_ASSIGNMENT asn ON asn.LEC_ASN_ID = a.LEC_ASN_ID
+        JOIN LECTURE l              ON l.LEC_ID       = asn.LEC_ID
+        WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+          AND a.ATT_VAL_STATUS = 'ACT'
+        ORDER BY a.LEC_ASN_ID, a.LEC_ASN_ATT_REG_DATE, a.LEC_ASN_ATT_ID
+    </select>
+
+    <!-- 유효(ACT) 첨부 목록 — 과제 1건분 -->
+    <select id="selectActiveAttachmentsByAssignmentId"
+            resultType="com.univus.app.lms.dto.LmsAssignmentDto$AttachmentListRow">
+        SELECT a.LEC_ASN_ID               AS assignmentId,
+               a.LEC_ASN_ATT_ID           AS attachmentId,
+               a.LEC_ASN_ATT_ORG_FIL_NAME AS fileName,
+               a.LEC_ASN_ATT_EXT_TYPE     AS fileExt,
+               a.LEC_ASN_ATT_FIL_SIZE     AS fileSize
+        FROM LECTURE_ASSIGNMENT_ATTACHMENT a
+        WHERE a.LEC_ASN_ID = #{assignmentId}
+          AND a.ATT_VAL_STATUS = 'ACT'
+        ORDER BY a.LEC_ASN_ATT_REG_DATE, a.LEC_ASN_ATT_ID
+    </select>
+
+    <!-- 과제 본체 INSERT — PK 시퀀스 채번(BEFORE selectKey), 등록 상태=AVL 고정.
+         dueDate("YYYY-MM-DDTHH:mm") → TO_TIMESTAMP (T 리터럴) -->
+    <insert id="insertAssignment" parameterType="com.univus.app.lms.dto.LmsAssignmentDto$InsertParam">
+        <selectKey keyProperty="assignmentId" resultType="long" order="BEFORE">
+            SELECT SEQ_LECTURE_ASSIGNMENT.NEXTVAL FROM dual
+        </selectKey>
+        INSERT INTO LECTURE_ASSIGNMENT (
+            LEC_ASN_ID, LEC_ID, LEC_ASN_REG_DATE, LEC_ASN_TITLE,
+            LEC_ASN_CONTENT, LEC_ASN_DUE_DATE, LEC_ASN_VAL_STATUS
+        ) VALUES (
+            #{assignmentId}, #{lecId}, SYSTIMESTAMP, #{title},
+            #{description, jdbcType=CLOB},
+            TO_TIMESTAMP(#{dueDate}, 'YYYY-MM-DD"T"HH24:MI'),
+            'AVL'
+        )
+    </insert>
+
+    <!-- 첨부 INSERT (신규 = 유효 ACT, 다중 허용) -->
+    <insert id="insertAttachment">
+        INSERT INTO LECTURE_ASSIGNMENT_ATTACHMENT (
+            LEC_ASN_ATT_ID, LEC_ASN_ID, LEC_ASN_ATT_REG_DATE,
+            LEC_ASN_ATT_ORG_FIL_NAME, LEC_ASN_ATT_TRN_FIL_NAME, LEC_ASN_ATT_ORG_URL,
+            LEC_ASN_ATT_FIL_SIZE, LEC_ASN_ATT_EXT_TYPE, ATT_VAL_STATUS
+        ) VALUES (
+            SEQ_LECTURE_ASSIGNMENT_ATTACHMENT.NEXTVAL, #{assignmentId}, SYSTIMESTAMP,
+            #{orgFileName}, #{trnFileName}, #{orgUrl},
+            #{fileSize}, #{extType}, 'ACT'
+        )
+    </insert>
+
+    <!-- 과제 본체 수정 (제목·마감일·설명) -->
+    <update id="updateAssignment">
+        UPDATE LECTURE_ASSIGNMENT
+        SET LEC_ASN_TITLE    = #{title},
+            LEC_ASN_DUE_DATE = TO_TIMESTAMP(#{dueDate}, 'YYYY-MM-DD"T"HH24:MI'),
+            LEC_ASN_CONTENT  = #{description, jdbcType=CLOB}
+        WHERE LEC_ASN_ID = #{assignmentId}
+    </update>
+
+    <!-- 기존 첨부 1건 무효화 — assignmentId 조건으로 "그 과제의 첨부"만 제거 가능(소유권 체인) -->
+    <update id="invalidateAttachmentById">
+        UPDATE LECTURE_ASSIGNMENT_ATTACHMENT
+        SET ATT_VAL_STATUS = 'DEL'
+        WHERE LEC_ASN_ATT_ID = #{attachmentId}
+          AND LEC_ASN_ID = #{assignmentId}
+          AND ATT_VAL_STATUS = 'ACT'
+    </update>
+
+    <!-- 삭제 시 디스크 파일 정리용 첨부 전체 조회 -->
+    <select id="selectAttachmentsByAssignmentId" resultType="com.univus.app.lms.dto.LmsAssignmentDto$AttachmentRow">
+        SELECT LEC_ASN_ATT_ID           AS attachmentId,
+               LEC_ASN_ATT_TRN_FIL_NAME AS trnFileName
+        FROM LECTURE_ASSIGNMENT_ATTACHMENT
+        WHERE LEC_ASN_ID = #{assignmentId}
+    </select>
+
+    <!-- 물리 삭제 (첨부 → 본체 순서: FK) -->
+    <delete id="deleteAttachments">
+        DELETE FROM LECTURE_ASSIGNMENT_ATTACHMENT WHERE LEC_ASN_ID = #{assignmentId}
+    </delete>
+
+    <delete id="deleteAssignment">
+        DELETE FROM LECTURE_ASSIGNMENT WHERE LEC_ASN_ID = #{assignmentId}
+    </delete>
+
+</mapper>
