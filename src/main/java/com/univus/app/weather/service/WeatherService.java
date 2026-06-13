@@ -24,6 +24,9 @@ public class WeatherService {
     private static final String GEO_URL =
             "https://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={apiKey}";
 
+    private static final String DIRECT_GEO_URL =
+            "https://api.openweathermap.org/geo/1.0/direct?q={city},KR&limit=1&appid={apiKey}";
+
     public WeatherDto getWeather(double lat, double lon) {
         Map weatherData = restTemplate.getForObject(WEATHER_URL, Map.class, lat, lon, apiKey);
         List<Map> geoData = restTemplate.getForObject(GEO_URL, List.class, lat, lon, apiKey);
@@ -41,6 +44,20 @@ public class WeatherService {
         dto.setCity(city);
 
         return dto;
+    }
+
+    public WeatherDto getWeatherByCityName(String city) {
+        try {
+            List<Map> geoData = restTemplate.getForObject(DIRECT_GEO_URL, List.class, city, apiKey);
+            if (geoData == null || geoData.isEmpty()) return null;
+
+            Map geo = geoData.get(0);
+            double lat = ((Number) geo.get("lat")).doubleValue();
+            double lon = ((Number) geo.get("lon")).doubleValue();
+            return getWeather(lat, lon);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String resolveCity(List<Map> geoData, String fallback) {

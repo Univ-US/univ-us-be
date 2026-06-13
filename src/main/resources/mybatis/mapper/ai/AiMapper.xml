@@ -22,4 +22,5 @@
         ORDER BY AI_CREATED_AT ASC
     </select>
 
+
 </mapper>
