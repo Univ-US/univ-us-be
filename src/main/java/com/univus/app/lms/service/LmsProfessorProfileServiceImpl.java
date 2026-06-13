@@ -2,6 +2,7 @@ package com.univus.app.lms.service;
 
 import com.univus.app.common.StorageService;
 import com.univus.app.commoncode.code.RoleCode;
+import com.univus.app.lms.code.LmsUsrSecReqStatusCode;
 import com.univus.app.lms.dto.LmsProfessorProfileResponseDto;
 import com.univus.app.lms.dto.LmsProfessorProfileUpdateDto;
 import com.univus.app.lms.exception.InvalidProfileImageException;
@@ -72,7 +73,7 @@ public class LmsProfessorProfileServiceImpl implements LmsProfessorProfileServic
     public void requestDeleteLmsProfessorProfile(Long memberId) {
         Long lmsPrfId = ensureLmsProfile(memberId);
         // 탈퇴 요청 상태값 = "REQ" (공통코드 LMS_USR_SEC_REQ_STATUS)
-        lmsProfessorProfileMapper.insertSecessionRequest(lmsPrfId, "REQ");
+        lmsProfessorProfileMapper.insertSecessionRequest(lmsPrfId, LmsUsrSecReqStatusCode.REQUESTED.getCode());
     }
 
     /* 조회 + 역할 코드→한글 라벨 변환 (get/update 공통, FO 응답은 label만 내려감) */

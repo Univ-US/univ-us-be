@@ -1,5 +1,6 @@
 package com.univus.app.lms.controller;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsUploadDto;
 import com.univus.app.lms.service.LmsProfessorUploadService;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -35,12 +37,27 @@ public class LmsProfessorUploadController {
         return ResponseEntity.ok(lmsProfessorUploadService.getLectures(memberId));
     }
 
-    /** PLM-005 자료 목록 (담당 강의 전체 자료, 최신순 — 페이지네이션은 FE 클라이언트 슬라이싱) */
-    // GET /api/lms/professor/uploads
+    /** PLM-005 자료 목록 — 서버 페이지네이션(년도/학기 필터 선택). page 0-based, size 기본 10 */
+    // GET /api/lms/professor/uploads?page=&size=&year=&termCode=
     @GetMapping
-    public ResponseEntity<List<LmsUploadDto.Material>> requestGetUploads(Authentication authentication) {
+    public ResponseEntity<PaginateUtilRestApiRes<LmsUploadDto.Material>> requestGetUploads(
+            Authentication authentication,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "year", required = false) Integer year,
+            @RequestParam(value = "termCode", required = false) String termCode) {
         Long memberId = Long.valueOf(authentication.getPrincipal().toString());
-        return ResponseEntity.ok(lmsProfessorUploadService.getUploads(memberId));
+        int p = page == null ? 0 : page;
+        int s = size == null ? 10 : size;
+        return ResponseEntity.ok(lmsProfessorUploadService.getUploads(memberId, p, s, year, termCode));
+    }
+
+    /** PLM-005 목록 메타 — 전체 건수(필터 무관) + 필터 옵션(자료 보유 년도/학기) */
+    // GET /api/lms/professor/uploads/meta
+    @GetMapping("/meta")
+    public ResponseEntity<LmsUploadDto.UploadMeta> requestGetUploadsMeta(Authentication authentication) {
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
+        return ResponseEntity.ok(lmsProfessorUploadService.getUploadsMeta(memberId));
     }
 
     /** PLM-005-01 자료 등록 (multipart: lecId·title 필수, content[에디터 HTML]·file 선택) → 생성 자료 반환 */

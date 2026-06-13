@@ -1,5 +1,6 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.lms.code.LecAsnSbmStatusCode;
 import com.univus.app.lms.dto.LmsAssignmentScoreDto;
 import com.univus.app.lms.dto.LmsLectureDto;
 import com.univus.app.lms.dto.LmsLectureStudentsResponseDto;
@@ -26,7 +27,7 @@ import java.util.List;
 public class LmsProfessorEnrolleeServiceImpl implements LmsProfessorEnrolleeService {
 
     /** 미제출 코드 (공통코드 LEC_ASN_SBM_STATUS = NSB). 코드→라벨은 FE가 공통코드 API로 매핑 */
-    private static final String NOT_SUBMITTED_CODE = "NSB";
+    private static final String NOT_SUBMITTED_CODE = LecAsnSbmStatusCode.NOT_SUBMITTED.getCode();
     /** 수강생 목록 기본 페이지 크기 (10명 초과 시 페이지네이션) */
     private static final int DEFAULT_PAGE_SIZE = 10;
 

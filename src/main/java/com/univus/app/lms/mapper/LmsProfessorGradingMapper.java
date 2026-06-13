@@ -18,12 +18,31 @@ public interface LmsProfessorGradingMapper {
     /** 학기 (semId 주면 그 학기, null이면 최신 학기) */
     LmsSemesterResponseDto findSemester(@Param("semId") Long semId);
 
-    /** 개요: 교수 담당 강의 과제 + 제출/채점 카운트 (semId optional) */
-    List<LmsGradingDto.AssignmentRow> selectOverviewAssignments(
-            @Param("professorLmsPrfId") Long professorLmsPrfId, @Param("semId") Long semId);
+    /** 과제 목록 개수 (서버 페이지네이션 — 미채점/채점 분리 + 년도/학기 필터. ungradedOnly=true면 미채점, false면 채점완료) */
+    int countGradingAssignments(@Param("professorLmsPrfId") Long professorLmsPrfId,
+                                @Param("year") Integer year,
+                                @Param("termCode") String termCode,
+                                @Param("ungradedOnly") boolean ungradedOnly);
 
-    /** 사이드바 배지: 교수 전 학기 미채점 합 (overview totalUngraded와 동일 규칙, 학기 필터 없음) */
-    int sumUngradedAcrossSemesters(@Param("professorLmsPrfId") Long professorLmsPrfId);
+    /** 과제 목록 1페이지 (미채점/채점 분리 + 년도/학기 필터 + OFFSET/FETCH, 마감일 순) */
+    List<LmsGradingDto.AssignmentRow> selectGradingAssignmentsPaged(
+            @Param("professorLmsPrfId") Long professorLmsPrfId,
+            @Param("year") Integer year,
+            @Param("termCode") String termCode,
+            @Param("ungradedOnly") boolean ungradedOnly,
+            @Param("offset") int offset,
+            @Param("size") int size);
+
+    /** 미채점 합계 (배너·사이드바 배지 공용 — year/termCode null이면 전 학기, 지정 시 그 범위) */
+    int sumUngraded(@Param("professorLmsPrfId") Long professorLmsPrfId,
+                    @Param("year") Integer year,
+                    @Param("termCode") String termCode);
+
+    /** 과목별 미채점 건수 (배너 byCourse — 선택 필터 범위, 미채점>0 과목만) */
+    List<LmsGradingDto.CourseCount> selectUngradedByCourse(
+            @Param("professorLmsPrfId") Long professorLmsPrfId,
+            @Param("year") Integer year,
+            @Param("termCode") String termCode);
 
     /** 과제 헤더(+소유권 검증). 본인 강의 아니면 null */
     LmsGradingDto.Detail selectAssignmentHeader(

@@ -1,8 +1,10 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.common.StorageService;
+import com.univus.app.lms.code.LecAsnSbmStatusCode;
 import com.univus.app.lms.dto.LmsGradingDto;
-import com.univus.app.lms.dto.LmsSemesterResponseDto;
 import com.univus.app.lms.mapper.LmsProfessorGradingMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +17,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,58 +35,50 @@ public class LmsProfessorGradingServiceImpl implements LmsProfessorGradingServic
     // TODO maxScore: LECTURE_ASSIGNMENT에 만점 컬럼이 없어 100 고정(잠정). 추후 재검토(컬럼 추가 vs 고정).
     private static final int DEFAULT_MAX_SCORE = 100;
 
-    private static final String SUBMITTED_NONE = "NSB"; // 미제출 상태코드
+    private static final String SUBMITTED_NONE = LecAsnSbmStatusCode.NOT_SUBMITTED.getCode(); // 미제출 상태코드
     private static final String UPLOAD_WEB_PREFIX = "/uploads"; // ORG_URL 웹 접두어 (프로필 이미지와 동일 관례)
     private static final String FILE_DOWNLOAD_PATH = "/api/lms/professor/grading/submissions/%d/file";
 
-    /* PLM-004 채점 개요 */
+    /* PLM-004 채점 개요 — 배너 카운트(미채점 합 + 과목별). 년도/학기 null이면 전체 범위 */
     @Override
     @Transactional(readOnly = true)
-    public LmsGradingDto.Overview getOverview(Long memberId, Long semesterId) {
+    public LmsGradingDto.Overview getOverview(Long memberId, Integer year, String termCode) {
         Long professorLmsPrfId = requireProfessorLmsPrfId(memberId);
-        LmsSemesterResponseDto semester = gradingMapper.findSemester(semesterId);
-        Long semId = semester != null ? semester.getSemId() : semesterId;
-
-        List<LmsGradingDto.AssignmentRow> rows = gradingMapper.selectOverviewAssignments(professorLmsPrfId, semId);
-
-        List<LmsGradingDto.AssignmentRow> ungraded = new ArrayList<>();
-        List<LmsGradingDto.AssignmentRow> graded = new ArrayList<>();
-        Map<String, Integer> ungradedByCourse = new LinkedHashMap<>();
-        int totalUngraded = 0;
-
-        for (LmsGradingDto.AssignmentRow row : rows) {
-            int ungradedCount = Math.max(0, row.getSubmittedCount() - row.getGradedCount());
-            row.setUngradedCount(ungradedCount);
-            row.setMaxScore(DEFAULT_MAX_SCORE);
-            if (ungradedCount > 0) {
-                ungraded.add(row);
-                totalUngraded += ungradedCount;
-                ungradedByCourse.merge(row.getCourseName(), ungradedCount, Integer::sum);
-            } else {
-                graded.add(row);
-            }
-        }
-
-        List<LmsGradingDto.CourseCount> byCourse = new ArrayList<>();
-        ungradedByCourse.forEach((course, count) ->
-                byCourse.add(LmsGradingDto.CourseCount.builder().courseName(course).count(count).build()));
-
+        int totalUngraded = gradingMapper.sumUngraded(professorLmsPrfId, year, termCode);
+        List<LmsGradingDto.CourseCount> byCourse =
+                gradingMapper.selectUngradedByCourse(professorLmsPrfId, year, termCode);
         return LmsGradingDto.Overview.builder()
-                .year(semester != null ? semester.getYear() : null)
-                .termCode(semester != null ? semester.getTermCode() : null)
                 .totalUngraded(totalUngraded)
                 .byCourse(byCourse)
-                .assignments(ungraded)
-                .gradedAssignments(graded)
                 .build();
     }
 
-    /* PLM-004 사이드바 배지: 전 학기 미채점 합 (overview 학기별 N+1 합산 대체) */
+    /* PLM-004 과제 목록 1페이지 — 서버 페이지네이션(미채점/채점 분리 + 년도/학기 필터) */
+    @Override
+    @Transactional(readOnly = true)
+    public PaginateUtilRestApiRes<LmsGradingDto.AssignmentRow> getAssignments(
+            Long memberId, boolean graded, Integer year, String termCode, int page, int size) {
+        Long professorLmsPrfId = requireProfessorLmsPrfId(memberId);
+        boolean ungradedOnly = !graded; // 미채점 목록=ungraded>0 / 채점 목록=<=0
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        long total = gradingMapper.countGradingAssignments(professorLmsPrfId, year, termCode, ungradedOnly);
+        List<LmsGradingDto.AssignmentRow> rows = gradingMapper.selectGradingAssignmentsPaged(
+                professorLmsPrfId, year, termCode, ungradedOnly,
+                PaginateUtilRestApi.offset(safePage, safeSize), safeSize);
+        for (LmsGradingDto.AssignmentRow row : rows) {
+            row.setUngradedCount(Math.max(0, row.getSubmittedCount() - row.getGradedCount()));
+            row.setMaxScore(DEFAULT_MAX_SCORE);
+        }
+        return PaginateUtilRestApi.of(rows, total, safePage, safeSize);
+    }
+
+    /* PLM-004 사이드바 배지: 전 학기 미채점 합 (year/termCode null = 전체) */
     @Override
     @Transactional(readOnly = true)
     public LmsGradingDto.UngradedCount getTotalUngradedCount(Long memberId) {
         Long professorLmsPrfId = requireProfessorLmsPrfId(memberId);
-        int totalUngraded = gradingMapper.sumUngradedAcrossSemesters(professorLmsPrfId);
+        int totalUngraded = gradingMapper.sumUngraded(professorLmsPrfId, null, null);
         return LmsGradingDto.UngradedCount.builder()
                 .totalUngraded(totalUngraded)
                 .build();

@@ -45,6 +45,7 @@ public final class LmsUploadDto {
         private Long uploadId;     // LECTURE_UPLOADING.LEC_UPL_ID
         private Long lecId;
         private String courseName;
+        private Integer lecSection; // LECTURE.LEC_SECTION 분반 (2026-06-13 추가 — 목록 분반 컬럼)
         private Integer year;      // SEMESTERS.SEM_YEAR — 목록 년도/학기 필터용 (2026-06-11 추가)
         private String termCode;   // SEMESTERS.SEM_TERM (SM1/SMR/SM2/WNT) — 라벨은 FE 공통코드 매핑
         private String title;
@@ -78,6 +79,28 @@ public final class LmsUploadDto {
         private String fileName;
         private String fileExt;
         private Long fileSize;
+    }
+
+    /** 목록 필터 옵션용 학기 1행 — 자료가 존재하는 년도/학기 distinct (드롭다운 소스) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SemesterOption {
+        private Integer year;
+        private String termCode;
+    }
+
+    /** 목록 메타 — 전체 건수(필터 무관) + 필터 드롭다운 옵션(자료 보유 년도/학기) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class UploadMeta {
+        private long totalAll;
+        private java.util.List<SemesterOption> semesters;
     }
 
     /** 등록 요청 (multipart/form-data, @ModelAttribute 바인딩) — 파일 선택(텍스트 설명만으로도 등록 가능) */

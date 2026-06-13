@@ -1,11 +1,6 @@
 package com.univus.app.commoncode.code;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.univus.app.common.CommonCode;
-
 /* 사용자 역할 코드 (MEMBER.ROLE) */
-@JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum RoleCode implements CommonCode {
     SUA("SUA", "슈퍼관리자", 1),
     ADM("ADM", "관리자", 2),
@@ -24,13 +19,10 @@ public enum RoleCode implements CommonCode {
         this.order = order;
     }
 
-    @JsonProperty("code")
     @Override public String getCode()  { return code; }
 
-    @JsonProperty("label")
     @Override public String getLabel() { return label; }
 
-    @JsonProperty("order")
     @Override public int getOrder()    { return order; }
 
     public static RoleCode fromCode(String code) {

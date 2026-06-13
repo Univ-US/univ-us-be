@@ -1,5 +1,7 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
+import com.univus.app.common.PaginateUtilRestApi;
 import com.univus.app.common.StorageService;
 import com.univus.app.lms.dto.LmsUploadDto;
 import com.univus.app.lms.mapper.LmsProfessorUploadMapper;
@@ -66,19 +68,47 @@ public class LmsProfessorUploadServiceImpl implements LmsProfessorUploadService 
 
     @Override
     @Transactional(readOnly = true)
-    public List<LmsUploadDto.Material> getUploads(Long memberId) {
+    public PaginateUtilRestApiRes<LmsUploadDto.Material> getUploads(
+            Long memberId, int page, int size, Integer year, String termCode) {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
-        List<LmsUploadDto.Material> materials = lmsProfessorUploadMapper.selectUploadsByProfessor(lmsPrfId);
-        // 첨부 전체를 한 번에 조회해 자료별로 그룹핑(자료 수 N에 대한 N+1 쿼리 방지)
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        long total = lmsProfessorUploadMapper.countUploadsByProfessor(lmsPrfId, year, termCode);
+        List<LmsUploadDto.Material> materials = lmsProfessorUploadMapper.selectUploadsPaged(
+                lmsPrfId, year, termCode, PaginateUtilRestApi.offset(safePage, safeSize), safeSize);
+        attachMaterialAttachments(materials);
+        return PaginateUtilRestApi.of(materials, total, safePage, safeSize);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LmsUploadDto.UploadMeta getUploadsMeta(Long memberId) {
+        Long lmsPrfId = requireProfessorLmsPrfId(memberId);
+        long totalAll = lmsProfessorUploadMapper.countUploadsByProfessor(lmsPrfId, null, null);
+        List<LmsUploadDto.SemesterOption> semesters =
+                lmsProfessorUploadMapper.selectDistinctMaterialSemesters(lmsPrfId);
+        return LmsUploadDto.UploadMeta.builder()
+                .totalAll(totalAll)
+                .semesters(semesters)
+                .build();
+    }
+
+    /* 현재 페이지 자료들의 유효(ACT) 첨부를 조회해 각 Material에 그룹핑 (빈 목록이면 첨부 조회 생략 — IN() 방지) */
+    private void attachMaterialAttachments(List<LmsUploadDto.Material> materials) {
+        if (materials.isEmpty()) {
+            return;
+        }
+        List<Long> uploadIds = materials.stream()
+                .map(LmsUploadDto.Material::getUploadId)
+                .collect(Collectors.toList());
         Map<Long, List<LmsUploadDto.Attachment>> grouped =
-                lmsProfessorUploadMapper.selectActiveAttachmentsByProfessor(lmsPrfId).stream()
+                lmsProfessorUploadMapper.selectActiveAttachmentsByUploadIds(uploadIds).stream()
                         .collect(Collectors.groupingBy(
                                 LmsUploadDto.AttachmentListRow::getUploadId,
                                 Collectors.mapping(this::toAttachment, Collectors.toList())));
         for (LmsUploadDto.Material material : materials) {
             material.setAttachments(grouped.getOrDefault(material.getUploadId(), Collections.emptyList()));
         }
-        return materials;
     }
 
     @Override
