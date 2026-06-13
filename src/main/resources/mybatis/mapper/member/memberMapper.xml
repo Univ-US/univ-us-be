@@ -59,6 +59,7 @@
         SELECT
             M.MEMBER_ID,
             M.UNIV_ID,
+            M.LOGIN_ID,
             MD.DEPT_ID,
             M.PASSWORD,
             M.MEMBER_NAME,
@@ -70,7 +71,9 @@
             M.LOGTIME_AT,
             M.BIRTH,
             MD.COMMUNITY_NICKNAME,
-            U.UNIV_NAME
+            U.UNIV_NAME,
+            U.SCHOOL_PHONE,
+            U.HOMEPAGE
         FROM MEMBER M
                  LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
                  LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID

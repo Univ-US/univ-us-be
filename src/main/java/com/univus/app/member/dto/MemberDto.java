@@ -23,4 +23,6 @@ public class MemberDto {
   private String birth;
   private String communityNickname;
   private String univName;
+  private String schoolPhone;
+  private String homepage;
 }
