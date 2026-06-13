@@ -1,5 +1,6 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsAssignmentDto;
 
 import java.util.List;
@@ -10,8 +11,9 @@ public interface LmsProfessorAssignmentService {
     /** 등록 폼 과목(강의) 드롭다운 — 교수 담당 강의 전체 */
     List<LmsAssignmentDto.Lecture> getLectures(Long memberId);
 
-    /** 과제 목록 — 담당 강의 전체 과제 + 집계 + 첨부 (그룹핑은 FE 클라이언트) */
-    List<LmsAssignmentDto.Assignment> getAssignments(Long memberId);
+    /** 선택 과목 1개의 과제 1페이지 — 서버 페이지네이션. page 0-based (과목 드롭다운은 getLectures 재사용) */
+    PaginateUtilRestApiRes<LmsAssignmentDto.Assignment> getCourseAssignments(
+            Long memberId, Long lecId, int page, int size);
 
     /** 과제 등록 (multipart) → 생성된 과제 반환 */
     LmsAssignmentDto.Assignment createAssignment(Long memberId, LmsAssignmentDto.CreateRequest request);

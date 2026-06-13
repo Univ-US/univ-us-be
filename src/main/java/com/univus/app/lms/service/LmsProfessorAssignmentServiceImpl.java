@@ -1,5 +1,7 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.common.StorageService;
 import com.univus.app.lms.dto.LmsAssignmentDto;
 import com.univus.app.lms.mapper.LmsProfessorAssignmentMapper;
@@ -68,21 +70,37 @@ public class LmsProfessorAssignmentServiceImpl implements LmsProfessorAssignment
 
     @Override
     @Transactional(readOnly = true)
-    public List<LmsAssignmentDto.Assignment> getAssignments(Long memberId) {
+    public PaginateUtilRestApiRes<LmsAssignmentDto.Assignment> getCourseAssignments(
+            Long memberId, Long lecId, int page, int size) {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
-        List<LmsAssignmentDto.Assignment> assignments =
-                lmsProfessorAssignmentMapper.selectAssignmentsByProfessor(lmsPrfId);
-        // 첨부 전체를 한 번에 조회해 과제별 그룹핑(과제 수 N에 대한 N+1 쿼리 방지)
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        long total = lmsProfessorAssignmentMapper.countAssignmentsByCourse(lmsPrfId, lecId);
+        List<LmsAssignmentDto.Assignment> assignments = lmsProfessorAssignmentMapper.selectAssignmentsByCoursePaged(
+                lmsPrfId, lecId, PaginateUtilRestApi.offset(safePage, safeSize), safeSize);
+        for (LmsAssignmentDto.Assignment assignment : assignments) {
+            applyUngraded(assignment);
+        }
+        attachAssignmentAttachments(assignments);
+        return PaginateUtilRestApi.of(assignments, total, safePage, safeSize);
+    }
+
+    /* 현재 페이지 과제들의 유효(ACT) 첨부를 조회해 각 Assignment에 그룹핑 (빈 목록이면 IN() 방지) */
+    private void attachAssignmentAttachments(List<LmsAssignmentDto.Assignment> assignments) {
+        if (assignments.isEmpty()) {
+            return;
+        }
+        List<Long> assignmentIds = assignments.stream()
+                .map(LmsAssignmentDto.Assignment::getAssignmentId)
+                .collect(Collectors.toList());
         Map<Long, List<LmsAssignmentDto.Attachment>> grouped =
-                lmsProfessorAssignmentMapper.selectActiveAttachmentsByProfessor(lmsPrfId).stream()
+                lmsProfessorAssignmentMapper.selectActiveAttachmentsByAssignmentIds(assignmentIds).stream()
                         .collect(Collectors.groupingBy(
                                 LmsAssignmentDto.AttachmentListRow::getAssignmentId,
                                 Collectors.mapping(this::toAttachment, Collectors.toList())));
         for (LmsAssignmentDto.Assignment assignment : assignments) {
-            applyUngraded(assignment);
             assignment.setAttachments(grouped.getOrDefault(assignment.getAssignmentId(), Collections.emptyList()));
         }
-        return assignments;
     }
 
     @Override

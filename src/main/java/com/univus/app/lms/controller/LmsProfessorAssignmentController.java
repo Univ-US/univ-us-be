@@ -1,5 +1,6 @@
 package com.univus.app.lms.controller;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsAssignmentDto;
 import com.univus.app.lms.service.LmsProfessorAssignmentService;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -35,12 +37,18 @@ public class LmsProfessorAssignmentController {
         return ResponseEntity.ok(lmsProfessorAssignmentService.getLectures(memberId));
     }
 
-    /** 과제 목록 (담당 강의 전체 과제 + 집계 + 첨부, 학기/그룹핑은 FE 클라이언트) */
-    // GET /api/lms/professor/assignments
+    /** 선택 과목 1개의 과제 1페이지 — 서버 페이지네이션(과목 드롭다운은 /lectures 재사용). page 0-based, size 기본 10 */
+    // GET /api/lms/professor/assignments?lecId=&page=&size=
     @GetMapping
-    public ResponseEntity<List<LmsAssignmentDto.Assignment>> requestGetAssignments(Authentication authentication) {
+    public ResponseEntity<PaginateUtilRestApiRes<LmsAssignmentDto.Assignment>> requestGetCourseAssignments(
+            Authentication authentication,
+            @RequestParam("lecId") Long lecId,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
         Long memberId = (Long) authentication.getPrincipal();
-        return ResponseEntity.ok(lmsProfessorAssignmentService.getAssignments(memberId));
+        int p = page == null ? 0 : page;
+        int s = size == null ? 10 : size;
+        return ResponseEntity.ok(lmsProfessorAssignmentService.getCourseAssignments(memberId, lecId, p, s));
     }
 
     /** 과제 등록 (multipart: lecId·title·dueDate 필수, description·files 선택) → 생성 과제 반환 */

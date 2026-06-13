@@ -24,16 +24,22 @@ public interface LmsProfessorAssignmentMapper {
     int countOwnedAssignment(@Param("assignmentId") Long assignmentId,
                              @Param("professorLmsPrfId") Long professorLmsPrfId);
 
-    /** 과제 목록 — 교수 담당 강의 전체 과제 + 제출/채점/수강생 집계 (첨부는 별도 조회 후 그룹핑) */
-    List<LmsAssignmentDto.Assignment> selectAssignmentsByProfessor(
-            @Param("professorLmsPrfId") Long professorLmsPrfId);
+    /** 선택 과목 1개의 과제 개수 (서버 페이지네이션 — 본인 강의 한정) */
+    int countAssignmentsByCourse(@Param("professorLmsPrfId") Long professorLmsPrfId,
+                                 @Param("lecId") Long lecId);
+
+    /** 과목 1개의 과제 1페이지 (카드별 OFFSET/FETCH. 본체+집계만, 첨부는 별도 조회) */
+    List<LmsAssignmentDto.Assignment> selectAssignmentsByCoursePaged(@Param("professorLmsPrfId") Long professorLmsPrfId,
+                                                                     @Param("lecId") Long lecId,
+                                                                     @Param("offset") int offset,
+                                                                     @Param("size") int size);
 
     /** 과제 단건 + 집계 (등록/수정 응답용 — 본체만) */
     LmsAssignmentDto.Assignment selectAssignmentById(@Param("assignmentId") Long assignmentId);
 
-    /** 교수 전체 과제의 유효(ACT) 첨부 목록 (assignmentId 포함 — 서비스에서 과제별 그룹핑) */
-    List<LmsAssignmentDto.AttachmentListRow> selectActiveAttachmentsByProfessor(
-            @Param("professorLmsPrfId") Long professorLmsPrfId);
+    /** 주어진 과제들(현재 페이지 assignmentId들)의 유효(ACT) 첨부 목록 (서비스에서 과제별 그룹핑) */
+    List<LmsAssignmentDto.AttachmentListRow> selectActiveAttachmentsByAssignmentIds(
+            @Param("assignmentIds") List<Long> assignmentIds);
 
     /** 과제 1건의 유효(ACT) 첨부 목록 */
     List<LmsAssignmentDto.AttachmentListRow> selectActiveAttachmentsByAssignmentId(
