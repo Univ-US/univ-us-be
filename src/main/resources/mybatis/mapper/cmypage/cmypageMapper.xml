@@ -71,6 +71,7 @@
     <select id="selectMyComments" resultType="com.univus.app.cmypage.dto.CmypageCommentDto">
         SELECT 
             C.COMMENT_ID AS commentId,
+            P.POST_ID AS postId,
             C.CONTENT AS content,
             P.TITLE AS postTitle,
             P.BOARD_ID AS boardId,
@@ -106,6 +107,8 @@
         SELECT * FROM (
             SELECT 
                 P.PRODUCT_ID AS tradeId,
+                P.PRODUCT_ID AS productId,
+                NULL AS roomId,
                 P.PRODUCT_NAME AS productName,
                 P.PRICE AS price,
                 P.PRODUCT_STATUS AS status,
@@ -119,6 +122,8 @@
 
             SELECT 
                 P.PRODUCT_ID AS tradeId,
+                P.PRODUCT_ID AS productId,
+                MIN(T.ROOM_ID) AS roomId,
                 P.PRODUCT_NAME AS productName,
                 P.PRICE AS price,
                 P.PRODUCT_STATUS AS status,
