@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 @Data
 public class CmypageCommentDto {
     private Long commentId;
+    private Long postId;
     private String content;
     private String postTitle;
     private Long boardId;
