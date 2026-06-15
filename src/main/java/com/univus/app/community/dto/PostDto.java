@@ -14,15 +14,16 @@ public class PostDto {
     // ── POST 테이블 ───────────────────────────────
     private Long postId;
     private Long memberId;
+    private Long viewerMemberId;
     private Long univId;
     private Long boardId;
     private String title;
     private String content;          // CLOB
     private String category;         // VARCHAR2(20) NULL
-    private int viewCount;
-    private int isBlind;
-    private int reportCount;
-    private int isDeleted;
+    private Integer viewCount;
+    private Integer isBlind;
+    private Integer reportCount;
+    private Integer isDeleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -32,16 +33,16 @@ public class PostDto {
 
     // ── BOARD_TYPE JOIN ───────────────────────────
     private String boardName;        // BOARD_TYPE.BOARD_NAME
-    private int isAnonymous;         // BOARD_TYPE.IS_ANONYMOUS
+    private Integer isAnonymous;     // BOARD_TYPE.IS_ANONYMOUS
 
     // ── COUNT JOIN ────────────────────────────────
-    private int likeCount;           // POST_LIKE COUNT
-    private int commentCount;        // POST_COMMENT COUNT
+    private Integer likeCount;       // POST_LIKE COUNT
+    private Integer commentCount;    // POST_COMMENT COUNT
     private List<PostImageDto> images;
 
     // ── 요청 파라미터용 ───────────────────────────
-    private int page;
-    private int size;
+    private Integer page;
+    private Integer size;
     private String keyword;
 
     // ── 신고 ──────────────────────────────────────

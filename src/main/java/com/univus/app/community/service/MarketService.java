@@ -686,6 +686,7 @@ public class MarketService {
 
     private void applySchoolScope(MarketDto.ProductSearchDto searchDto, Long memberId) {
         CommunityAccessScope scope = communityAccessService.getScope(memberId);
+        searchDto.setViewerMemberId(memberId);
         searchDto.setUnivId(scope.getQueryUnivId());
     }
 

@@ -41,14 +41,15 @@ public class PostService {
     // 게시글 목록 조회 (페이징 + 검색)
     public Map<String, Object> getPostList(PostDto postDto, Long memberId) {
         CommunityAccessScope scope = communityAccessService.getScope(memberId);
+        postDto.setViewerMemberId(memberId);
         postDto.setUnivId(scope.getQueryUnivId());
         return getPostList(postDto);
     }
 
     public Map<String, Object> getPostList(PostDto postDto) {
         // 기본값 처리
-        if (postDto.getPage() <= 0) postDto.setPage(1);
-        if (postDto.getSize() <= 0) postDto.setSize(10);
+        if (postDto.getPage() == null || postDto.getPage() <= 0) postDto.setPage(1);
+        if (postDto.getSize() == null || postDto.getSize() <= 0) postDto.setSize(10);
 
         // 전체 게시글 수
         int totalCount = postMapper.selectPostCount(postDto);
