@@ -1,5 +1,7 @@
 package com.univus.app.security;
 
+import com.univus.app.member.dto.MemberDto;
+import com.univus.app.member.mapper.MemberMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final MemberMapper memberMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -35,16 +38,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null && jwtTokenProvider.validateToken(token)) {
             Long memberId = jwtTokenProvider.getMemberId(token);
             String role = jwtTokenProvider.getRole(token);
+            MemberDto member = memberMapper.findByMemberId(memberId);
 
-            // Spring Security는 SecurityContext에 인증 객체가 있어야 인증된 요청으로 판단한다.
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            memberId,
-                            null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                    );
+            if (member != null
+                    && "ACTIVE".equals(member.getStatus())
+                    && role != null
+                    && role.equals(member.getRole())) {
+                // Spring Security는 SecurityContext에 인증 객체가 있어야 인증된 요청으로 판단한다.
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                memberId,
+                                null,
+                                List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                        );
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
         }
 
         // 인증 여부와 관계없이 다음 필터로 요청을 넘긴다.
