@@ -121,6 +121,7 @@ public class ServiceAdminPaymentService {
                         .billingKeyId(target.getBillingKeyId())
                         .merchantUid(createMerchantUid())
                         .amount(target.getAmount())
+                        .planName(target.getPlanName())
                         .build();
         requireSingleRow(
                 serviceAdminPaymentMapper.insertRetryPayment(retryPayment),
@@ -199,6 +200,7 @@ public class ServiceAdminPaymentService {
                         .billingKeyId(target.getBillingKeyId())
                         .merchantUid(createMerchantUid())
                         .amount(target.getAmount())
+                        .planName(target.getPlanName())
                         .build();
         requireSingleRow(
                 serviceAdminPaymentMapper.insertScheduledPayment(nextPayment),

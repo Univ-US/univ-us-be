@@ -67,8 +67,8 @@
     <insert id="insertMemberBulk">
         INSERT ALL
         <foreach collection="members" item="item">
-            INTO MEMBER (MEMBER_ID, PASSWORD, MEMBER_NAME, ROLE, PHONE_NUMBER, GENDER, STATUS, CREATED_AT, LOGTIME_AT, BIRTH)
-            VALUES (#{item.memberId}, #{item.password}, #{item.memberName}, #{item.role},
+            INTO MEMBER (MEMBER_ID, UNIV_ID, PASSWORD, MEMBER_NAME, ROLE, PHONE_NUMBER, GENDER, STATUS, CREATED_AT, LOGTIME_AT, BIRTH)
+            VALUES (#{item.memberId}, #{item.univId}, #{item.password}, #{item.memberName}, #{item.role},
                     #{item.phoneNumber}, #{item.gender}, 'ACTIVE', SYSTIMESTAMP, SYSTIMESTAMP, #{item.birth})
         </foreach>
         SELECT 1 FROM DUAL

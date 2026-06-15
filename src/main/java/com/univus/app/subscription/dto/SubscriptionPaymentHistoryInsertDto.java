@@ -38,4 +38,5 @@ public class SubscriptionPaymentHistoryInsertDto {
     private LocalDateTime paidAt;
     private String failReason;
     private Long amount;
+    private String planName;
 }
