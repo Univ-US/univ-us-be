@@ -12,5 +12,7 @@ public class CmypageTradeDto {
     private Long price;
     private String status;
     private String role;
+    private Integer reportCount;
+    private Integer isBlind;
     private Date createdAt;
 }
