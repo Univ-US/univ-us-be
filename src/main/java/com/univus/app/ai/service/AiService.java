@@ -49,10 +49,10 @@ public class AiService {
             "- 이름: %s\n" +
             "- %s: %s\n\n" +
             "[서비스 정보 — 아래 사실만 그대로 답변하고 절대 추가 정보를 지어내지 마]\n" +
-            "- 현재 접속 중인 학교: %s\n" +
+            "- 현재 서비스를 이용 중인 학교: %s\n" +
             "- 학교 대표번호: %s\n" +
             "- 학교 홈페이지: %s\n" +
-            "- 개발팀: EARTH 개발팀 (그 이상의 설명은 하지 마)";
+            "- 이 서비스 개발팀: EARTH 개발팀 (학교와 완전히 무관한 외부 개발팀. 절대 학교 이름을 개발팀과 연결하지 말 것)";
 
     private static final List<String> VAGUE_NOTICE_QUERIES = List.of("공지사항", "공지", "알림", "학교 소식");
 
@@ -121,16 +121,17 @@ public class AiService {
                 }
                 streamResponse(messages, writer, fullResponse);
             } catch (Exception e) {
-                String errMsg = "죄송해요, 잠시 문제가 생겼어요. 다시 시도해 주세요. 🙏";
-                writer.print("data:" + errMsg + "\n\n");
+                writer.print("data:죄송해요, 잠시 문제가 생겼어요. 다시 시도해 주세요. 🙏\n\n");
                 writer.flush();
-                fullResponse.append(errMsg);
             }
         }
 
-        aiDto.setMemberId(memberId);
-        aiDto.setResponse(fullResponse.toString());
-        aiMapper.insertAiLog(aiDto);
+        // 정상 응답이 있을 때만 DB에 저장
+        if (!fullResponse.isEmpty()) {
+            aiDto.setMemberId(memberId);
+            aiDto.setResponse(fullResponse.toString());
+            aiMapper.insertAiLog(aiDto);
+        }
     }
 
     private boolean isWeatherQuery(String message) {
