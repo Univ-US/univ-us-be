@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.univus.app.lms.mapper.LmsStuCoursesMapper">
+
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID
+        FROM LMS_PROFILE
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectStudentCourseRows" resultType="com.univus.app.lms.dto.LmsStuCoursesDto$CourseFlatRow">
+        SELECT s.SEM_ID AS semId,
+               s.SEM_YEAR AS year,
+               s.SEM_TERM AS termCode,
+               CASE
+                   WHEN TRUNC(SYSDATE) BETWEEN TRUNC(s.SEM_STR_DATE) AND TRUNC(s.SEM_END_DATE) THEN 1
+                   ELSE 0
+               END AS inProgressFlag,
+               l.LEC_ID AS lecId,
+               lc.LEC_COD_NAME AS courseName,
+               l.LEC_SECTION AS lecSection,
+               NVL(l.LEC_CREDIT, 0) AS credit,
+               pm.MEMBER_NAME AS professor,
+               t.LEC_TIM_DAY_CODE AS dayCode,
+               TO_CHAR(t.LEC_TIM_STR_TIME, 'HH24:MI') AS startTime,
+               TO_CHAR(t.LEC_TIM_END_TIME, 'HH24:MI') AS endTime
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
+        JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
+        LEFT JOIN LECTURE_TIME t ON t.LEC_ID = l.LEC_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+        ORDER BY s.SEM_YEAR DESC,
+                 s.SEM_ID DESC,
+                 l.LEC_ID,
+                 CASE t.LEC_TIM_DAY_CODE
+                     WHEN 'MON' THEN 1
+                     WHEN 'TUE' THEN 2
+                     WHEN 'WED' THEN 3
+                     WHEN 'THU' THEN 4
+                     WHEN 'FRI' THEN 5
+                     WHEN 'SAT' THEN 6
+                     WHEN 'SUN' THEN 7
+                     ELSE 8
+                 END,
+                 t.LEC_TIM_STR_TIME
+    </select>
+
+</mapper>
