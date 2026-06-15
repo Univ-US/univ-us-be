@@ -35,6 +35,8 @@ public interface LmsStuAssignmentsMapper {
             @Param("submissionId") Long submissionId,
             @Param("memo") String memo);
 
+    int updateSubmissionAsNotSubmitted(@Param("submissionId") Long submissionId);
+
     int insertSubmissionAttachment(
             @Param("submissionId") Long submissionId,
             @Param("orgFileName") String orgFileName,
