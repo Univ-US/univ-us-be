@@ -18,7 +18,7 @@
               AND RESPONSE IS NOT NULL
             ORDER BY AI_CREATED_AT DESC
         )
-        WHERE ROWNUM &lt;= 10
+        WHERE ROWNUM &lt;= 5
         ORDER BY AI_CREATED_AT ASC
     </select>
 
