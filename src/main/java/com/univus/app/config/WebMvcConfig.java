@@ -31,7 +31,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "http://localhost:9090",
                         "http://192.168.0.108",
                         "http://192.168.0.108:3000",
-                        "http://192.168.0.108:9090"
+                        "http://192.168.0.108:9090",
+                        "https://www.univus.com",       // TLS-A(self-signed) 대비
+                        "https://univus.com",           // TLS-A 대비
+                        "https://happyjob.iptime.org"   // TLS-B(Let's Encrypt) 대비
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                 .allowedHeaders("*")
