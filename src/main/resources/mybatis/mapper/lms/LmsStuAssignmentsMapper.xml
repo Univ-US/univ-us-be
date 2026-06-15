@@ -179,6 +179,14 @@
           AND LEC_ASN_SBM_STATUS = 'SBM'
     </update>
 
+    <update id="updateSubmissionAsNotSubmitted">
+        UPDATE LECTURE_ASSIGNMENT_SUBMISSION
+        SET LEC_ASN_SBM_STATUS = 'NSB',
+            LEC_ASN_SBM_MEMO = NULL
+        WHERE LEC_ASN_SBM_ID = #{submissionId}
+          AND LEC_ASN_SBM_STATUS = 'SBM'
+    </update>
+
     <insert id="insertSubmissionAttachment">
         INSERT INTO ASSIGNMENT_SUBMISSION_ATTACHMENT (
             ASN_SBM_ATT_ID, LEC_ASN_SBM_ID, ASN_SBM_ATT_REG_DATE,

@@ -151,6 +151,20 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
         if (hasNewFile) {
             validateFile(file);
         }
+
+        boolean removeExistingFile = request != null && Boolean.TRUE.equals(request.getRemoveExistingFile());
+        if (removeExistingFile && !hasNewFile) {
+            lmsStuAssignmentsMapper.invalidateSubmissionAttachments(submissionId);
+            int updated = lmsStuAssignmentsMapper.updateSubmissionAsNotSubmitted(submissionId);
+            if (updated == 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "수정할 수 없는 제출 상태입니다.");
+            }
+
+            log.info("학생 과제 제출 미제출 전환 memberId={} lmsPrfId={} submissionId={}",
+                    memberId, lmsPrfId, submissionId);
+            return;
+        }
+
         String memo = normalizeMemo(request == null ? null : request.getMemo());
 
         int updated = lmsStuAssignmentsMapper.updateSubmissionMemo(submissionId, memo);
@@ -158,7 +172,6 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "수정할 수 없는 제출 상태입니다.");
         }
 
-        boolean removeExistingFile = request != null && Boolean.TRUE.equals(request.getRemoveExistingFile());
         if (removeExistingFile || hasNewFile) {
             lmsStuAssignmentsMapper.invalidateSubmissionAttachments(submissionId);
         }
