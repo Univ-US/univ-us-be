@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.util.Map;
+
 @Component
 public class PortOnePaymentClient {
 
@@ -32,6 +34,41 @@ public class PortOnePaymentClient {
         }
 
         return response;
+    }
+
+    public PortOneCancellation cancelPayment(
+            String paymentId,
+            Long amount,
+            String reason
+    ) {
+        CancelPaymentResponse response = restClient.post()
+                .uri("/payments/{paymentId}/cancel", paymentId)
+                .header("Authorization", "PortOne " + apiSecret)
+                .body(Map.of(
+                        "amount", amount,
+                        "reason", reason
+                ))
+                .retrieve()
+                .body(CancelPaymentResponse.class);
+
+        if (response == null
+                || response.getCancellation() == null
+                || response.getCancellation().getId() == null) {
+            throw new IllegalStateException("PortOne cancellation response is invalid.");
+        }
+        return response.getCancellation();
+    }
+
+    @Getter
+    public static class CancelPaymentResponse {
+        private PortOneCancellation cancellation;
+    }
+
+    @Getter
+    public static class PortOneCancellation {
+        private String id;
+        private String status;
+        private String cancelledAt;
     }
 
     @Getter
