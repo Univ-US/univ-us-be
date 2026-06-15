@@ -44,7 +44,7 @@ public final class LmsStuAttendanceDto {
     public static class RecordRow {
         private Long enrollmentId;
         private String statusCode;
-        private String date;
+        private String attendanceDate;
     }
 
     @Getter
