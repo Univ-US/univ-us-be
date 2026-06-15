@@ -28,8 +28,4 @@ public interface LmsProfProfileMapper {
                            @Param("trnFileName") String trnFileName,
                            @Param("orgUrl") String orgUrl,
                            @Param("extType") String extType);
-
-    /* 탈퇴 요청 insert (LMS_USER_SECESSION_REQUEST). status는 공통코드 SecReqStatusCode에서 전달받음 */
-    void insertSecessionRequest(@Param("lmsPrfId") Long lmsPrfId,
-                                @Param("status") String status);
 }

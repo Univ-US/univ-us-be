@@ -2,7 +2,6 @@ package com.univus.app.lms.service;
 
 import com.univus.app.common.StorageService;
 import com.univus.app.commoncode.code.RoleCode;
-import com.univus.app.lms.code.LmsUsrSecReqStatusCode;
 import com.univus.app.lms.dto.LmsStuProfileDto;
 import com.univus.app.lms.mapper.LmsStuProfileMapper;
 import com.univus.app.lms.support.LmsProfileImageValidator;
@@ -64,15 +63,6 @@ public class LmsStuProfileServiceImpl implements LmsStuProfileService {
         }
 
         return findWithRoleLabel(memberId); // 최신 재조회
-    }
-
-    // SLM-001/012 탈퇴 요청 (하드삭제 아님 → LMS_USER_SECESSION_REQUEST insert)
-    @Override
-    @Transactional
-    public void requestDeleteLmsStudentProfile(Long memberId) {
-        Long lmsPrfId = ensureLmsProfile(memberId);
-        // 탈퇴 요청 상태값 = "REQ" (공통코드 LMS_USR_SEC_REQ_STATUS)
-        lmsStuProfileMapper.insertSecessionRequest(lmsPrfId, LmsUsrSecReqStatusCode.REQUESTED.getCode());
     }
 
     /* 매핑 DTO 조회 → ResDto 변환 (역할 코드→한글 라벨, 학번은 매퍼가 LOGIN_ID로 내려줌) */

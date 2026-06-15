@@ -7,6 +7,4 @@ public interface LmsProfProfileService {
     LmsProfProfileDto.ResDto requestGetLmsProfessorProfile(Long memberId);
     // PLM-001 profile update
     LmsProfProfileDto.ResDto requestUpdateLmsProfessorProfile(Long memberId, LmsProfProfileDto.ReqDto lmsProfessorProfileUpdateDto);
-    // PLM-001 + PLM-012 request Withdrawal
-    void requestDeleteLmsProfessorProfile(Long memberId);
 }
