@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.univus.app.lms.mapper.LmsStuAssignmentsMapper">
+
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID
+        FROM LMS_PROFILE
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <sql id="latestSubmissionAttachment">
+        SELECT *
+        FROM (
+            SELECT att.*,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY att.LEC_ASN_SBM_ID
+                       ORDER BY att.ASN_SBM_ATT_REG_DATE DESC
+                   ) AS rn
+            FROM ASSIGNMENT_SUBMISSION_ATTACHMENT att
+            WHERE att.ATT_VAL_STATUS = 'ACT'
+        )
+        WHERE rn = 1
+    </sql>
+
+    <select id="selectAssignmentRows" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$AssignmentFlatRow">
+        SELECT s.SEM_YEAR AS year,
+               s.SEM_TERM AS termCode,
+               a.LEC_ASN_ID AS assignmentId,
+               lc.LEC_COD_NAME AS courseName,
+               l.LEC_SECTION AS lecSection,
+               pm.MEMBER_NAME AS professor,
+               a.LEC_ASN_TITLE AS title,
+               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS content,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS dueDate,
+               CASE
+                   WHEN a.LEC_ASN_DUE_DATE &lt; SYSTIMESTAMP
+                        OR a.LEC_ASN_VAL_STATUS IN ('CLS', 'NOP') THEN 1
+                   ELSE 0
+               END AS overdueFlag,
+               sb.LEC_ASN_SBM_ID AS submissionId,
+               sb.LEC_ASN_SBM_STATUS AS submissionStatus,
+               TO_CHAR(sb.LEC_ASN_SBM_REG_DATE, 'YYYY.MM.DD HH24:MI') AS submittedAt,
+               sb.LEC_ASN_SBM_MEMO AS submissionMemo,
+               att.ASN_SBM_ATT_ORG_FIL_NAME AS fileName,
+               att.ASN_SBM_ATT_FIL_SIZE AS fileSize,
+               att.ASN_SBM_ATT_EXT_TYPE AS fileExt,
+               ev.ASN_SBM_EVL_SCORE AS score,
+               ev.ASN_SBM_EVL_FEEDBACK AS feedback
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID
+        JOIN LECTURE_ASSIGNMENT a ON a.LEC_ID = l.LEC_ID
+        JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
+        JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
+        LEFT JOIN LECTURE_ASSIGNMENT_SUBMISSION sb
+               ON sb.LEC_ASN_ID = a.LEC_ASN_ID
+              AND sb.LMS_PRF_ID = e.LMS_PRF_ID
+        LEFT JOIN ( <include refid="latestSubmissionAttachment"/> ) att
+               ON att.LEC_ASN_SBM_ID = sb.LEC_ASN_SBM_ID
+        LEFT JOIN ASSIGNMENT_SUBMISSION_EVALUATION ev
+               ON ev.LEC_ASN_SBM_ID = sb.LEC_ASN_SBM_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+        ORDER BY s.SEM_YEAR DESC,
+                 s.SEM_ID DESC,
+                 a.LEC_ASN_DUE_DATE DESC,
+                 a.LEC_ASN_ID DESC
+    </select>
+
+    <select id="selectSubmittableRows" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmittableRow">
+        SELECT a.LEC_ASN_ID AS assignmentId,
+               lc.LEC_COD_NAME AS courseName,
+               pm.MEMBER_NAME AS professor,
+               a.LEC_ASN_TITLE AS title,
+               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS content,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY.MM.DD HH24:MI') AS dueLabel,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS dueIso,
+               a.LEC_ASN_VAL_STATUS AS valStatus
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN LECTURE_ASSIGNMENT a ON a.LEC_ID = l.LEC_ID
+        JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
+        JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
+        LEFT JOIN LECTURE_ASSIGNMENT_SUBMISSION sb
+               ON sb.LEC_ASN_ID = a.LEC_ASN_ID
+              AND sb.LMS_PRF_ID = e.LMS_PRF_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND a.LEC_ASN_VAL_STATUS IN ('AVL', 'MOD', 'LAT')
+          AND (a.LEC_ASN_DUE_DATE &gt;= SYSTIMESTAMP OR a.LEC_ASN_VAL_STATUS = 'LAT')
+          AND (sb.LEC_ASN_SBM_ID IS NULL OR sb.LEC_ASN_SBM_STATUS = 'NSB')
+        ORDER BY a.LEC_ASN_DUE_DATE,
+                 a.LEC_ASN_ID
+    </select>
+
+    <select id="selectSubmitAccess" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmitAccessRow">
+        SELECT a.LEC_ASN_ID AS assignmentId,
+               a.LEC_ASN_VAL_STATUS AS valStatus,
+               CASE
+                   WHEN a.LEC_ASN_DUE_DATE &lt; SYSTIMESTAMP THEN 1
+                   ELSE 0
+               END AS overdueFlag,
+               sb.LEC_ASN_SBM_ID AS submissionId,
+               sb.LEC_ASN_SBM_STATUS AS submissionStatus
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        JOIN LECTURE_ASSIGNMENT a ON a.LEC_ID = l.LEC_ID
+        LEFT JOIN LECTURE_ASSIGNMENT_SUBMISSION sb
+               ON sb.LEC_ASN_ID = a.LEC_ASN_ID
+              AND sb.LMS_PRF_ID = e.LMS_PRF_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND a.LEC_ASN_ID = #{assignmentId}
+    </select>
+
+    <select id="selectSubmissionAccess" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmitAccessRow">
+        SELECT a.LEC_ASN_ID AS assignmentId,
+               a.LEC_ASN_VAL_STATUS AS valStatus,
+               CASE
+                   WHEN a.LEC_ASN_DUE_DATE &lt; SYSTIMESTAMP THEN 1
+                   ELSE 0
+               END AS overdueFlag,
+               sb.LEC_ASN_SBM_ID AS submissionId,
+               sb.LEC_ASN_SBM_STATUS AS submissionStatus
+        FROM LECTURE_ASSIGNMENT_SUBMISSION sb
+        JOIN LECTURE_ASSIGNMENT a ON a.LEC_ASN_ID = sb.LEC_ASN_ID
+        JOIN LECTURE l ON l.LEC_ID = a.LEC_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = l.LEC_ID
+            AND e.LMS_PRF_ID = sb.LMS_PRF_ID
+        WHERE sb.LEC_ASN_SBM_ID = #{submissionId}
+          AND e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+    </select>
+
+    <select id="selectSubmissionFiles" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$FileRow">
+        SELECT att.LEC_ASN_SBM_ID AS submissionId,
+               att.ASN_SBM_ATT_ORG_FIL_NAME AS fileName,
+               att.ASN_SBM_ATT_FIL_SIZE AS fileSize,
+               att.ASN_SBM_ATT_EXT_TYPE AS contentType,
+               att.ASN_SBM_ATT_TRN_FIL_NAME AS trnFileName,
+               att.ASN_SBM_ATT_ORG_URL AS orgUrl
+        FROM ASSIGNMENT_SUBMISSION_ATTACHMENT att
+        WHERE att.LEC_ASN_SBM_ID = #{submissionId}
+          AND att.ATT_VAL_STATUS = 'ACT'
+        ORDER BY att.ASN_SBM_ATT_REG_DATE DESC
+    </select>
+
+    <insert id="insertSubmission" parameterType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmitParam">
+        <selectKey keyProperty="submissionId" resultType="long" order="BEFORE">
+            SELECT SEQ_LECTURE_ASSIGNMENT_SUBMISSION.NEXTVAL FROM dual
+        </selectKey>
+        INSERT INTO LECTURE_ASSIGNMENT_SUBMISSION (
+            LEC_ASN_SBM_ID, LEC_ASN_ID, LMS_PRF_ID,
+            LEC_ASN_SBM_REG_DATE, LEC_ASN_SBM_STATUS, LEC_ASN_SBM_MEMO
+        ) VALUES (
+            #{submissionId}, #{assignmentId}, #{lmsPrfId},
+            SYSTIMESTAMP, 'SBM', #{memo}
+        )
+    </insert>
+
+    <update id="updateSubmissionAsSubmitted">
+        UPDATE LECTURE_ASSIGNMENT_SUBMISSION
+        SET LEC_ASN_SBM_REG_DATE = SYSTIMESTAMP,
+            LEC_ASN_SBM_STATUS = 'SBM',
+            LEC_ASN_SBM_MEMO = #{memo}
+        WHERE LEC_ASN_SBM_ID = #{submissionId}
+          AND LEC_ASN_SBM_STATUS = 'NSB'
+    </update>
+
+    <update id="updateSubmissionMemo">
+        UPDATE LECTURE_ASSIGNMENT_SUBMISSION
+        SET LEC_ASN_SBM_REG_DATE = SYSTIMESTAMP,
+            LEC_ASN_SBM_MEMO = #{memo}
+        WHERE LEC_ASN_SBM_ID = #{submissionId}
+          AND LEC_ASN_SBM_STATUS = 'SBM'
+    </update>
+
+    <insert id="insertSubmissionAttachment">
+        INSERT INTO ASSIGNMENT_SUBMISSION_ATTACHMENT (
+            ASN_SBM_ATT_ID, LEC_ASN_SBM_ID, ASN_SBM_ATT_REG_DATE,
+            ASN_SBM_ATT_ORG_FIL_NAME, ASN_SBM_ATT_TRN_FIL_NAME, ASN_SBM_ATT_ORG_URL,
+            ASN_SBM_ATT_FIL_SIZE, ASN_SBM_ATT_EXT_TYPE, ATT_VAL_STATUS
+        ) VALUES (
+            SEQ_ASSIGNMENT_SUBMISSION_ATTACHMENT.NEXTVAL, #{submissionId}, SYSTIMESTAMP,
+            #{orgFileName}, #{trnFileName}, #{orgUrl},
+            #{fileSize}, #{extType}, 'ACT'
+        )
+    </insert>
+
+    <update id="invalidateSubmissionAttachments">
+        UPDATE ASSIGNMENT_SUBMISSION_ATTACHMENT
+        SET ATT_VAL_STATUS = 'DEL'
+        WHERE LEC_ASN_SBM_ID = #{submissionId}
+          AND ATT_VAL_STATUS = 'ACT'
+    </update>
+
+</mapper>
