@@ -35,13 +35,4 @@ public class LmsStuProfileController {
         Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsStuProfileService.requestUpdateLmsStudentProfile(memberId, dto)); // 200
     }
-
-    /** SLM-001/012 학생 회원 탈퇴 요청 */
-    // DELETE /api/lms/student/profile
-    @DeleteMapping("/profile")
-    public ResponseEntity<Void> requestDeleteLmsStudentProfile(Authentication authentication) {
-        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
-        lmsStuProfileService.requestDeleteLmsStudentProfile(memberId);
-        return ResponseEntity.noContent().build(); // 204 No Content
-    }
 }

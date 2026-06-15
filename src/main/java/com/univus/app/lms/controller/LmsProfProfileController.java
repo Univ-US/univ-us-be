@@ -36,13 +36,4 @@ public class LmsProfProfileController {
         return ResponseEntity.ok(
                 lmsProfProfileService.requestUpdateLmsProfessorProfile(memberId, lmsProfessorProfileUpdateDto)); // 200
     }
-
-    /** PLM-001/012 교수 회원 탈퇴 요청 */
-    // DELETE /api/lms/professor/profile
-    @DeleteMapping("/profile")
-    public ResponseEntity<Void> requestDeleteLmsProfessorProfile(Authentication authentication) {
-        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
-        lmsProfProfileService.requestDeleteLmsProfessorProfile(memberId);
-        return ResponseEntity.noContent().build(); // 204 No Content
-    }
 }

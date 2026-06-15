@@ -7,6 +7,4 @@ public interface LmsStuProfileService {
     LmsStuProfileDto.ResDto requestGetLmsStudentProfile(Long memberId);
     // SLM-001 수정
     LmsStuProfileDto.ResDto requestUpdateLmsStudentProfile(Long memberId, LmsStuProfileDto.ReqDto dto);
-    // SLM-001 + SLM-012 탈퇴 요청
-    void requestDeleteLmsStudentProfile(Long memberId);
 }

@@ -69,13 +69,4 @@
         )
     </insert>
 
-    <!-- 탈퇴 요청 INSERT (PK는 SEQ 시퀀스, status는 공통코드 SecReqStatusCode.REQ 전달) -->
-    <insert id="insertSecessionRequest">
-        INSERT INTO LMS_USER_SECESSION_REQUEST (
-            LMS_USR_SEC_REQ_ID, LMS_PRF_ID, LMS_USR_SEC_REQ_REG_DATE, LMS_USR_SEC_REQ_STATUS
-        ) VALUES (
-            SEQ_LMS_USER_SECESSION_REQUEST.NEXTVAL, #{lmsPrfId}, SYSTIMESTAMP, #{status}
-        )
-    </insert>
-
 </mapper>

@@ -29,8 +29,4 @@ public interface LmsStuProfileMapper {
                             @Param("trnFileName") String trnFileName,
                             @Param("orgUrl") String orgUrl,
                             @Param("extType") String extType);
-
-    // 탈퇴 요청 insert (LMS_USER_SECESSION_REQUEST)
-    void insertSecessionRequest(@Param("lmsPrfId") Long lmsPrfId,
-                                @Param("status") String status);
 }
