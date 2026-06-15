@@ -323,6 +323,7 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
         return LmsStuAssignmentsDto.StudentAssignmentResDto.builder()
                 .id(row.getAssignmentId())
                 .submissionId(row.getSubmissionId())
+                .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
                 .title(row.getTitle())

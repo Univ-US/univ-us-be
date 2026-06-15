@@ -25,6 +25,7 @@ public final class LmsStuAssignmentsDto {
         private Integer year;
         private String termCode;
         private Long assignmentId;
+        private Long lecId;
         private String courseName;
         private Integer lecSection;
         private String professor;
@@ -127,6 +128,7 @@ public final class LmsStuAssignmentsDto {
     public static class StudentAssignmentResDto {
         private Long id;
         private Long submissionId;
+        private Long lecId;
         private String courseName;
         private Integer lecSection;
         private String title;
