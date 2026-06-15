@@ -67,8 +67,12 @@ public class AdminController {
     // 회원 일괄 등록
     @PostMapping("/members/bulk")
     @ResponseStatus(HttpStatus.CREATED)
-    public void registerBulkMembers(@RequestBody AdminDto.MemberBulkRequestDto request) {
-        adminService.registerBulkMembers(request.getMembers());
+    public void registerBulkMembers(
+            @RequestBody AdminDto.MemberBulkRequestDto request,
+            Authentication authentication
+    ) {
+        Long requesterId = Long.valueOf(authentication.getPrincipal().toString());
+        adminService.registerBulkMembers(request.getMembers(), requesterId);
     }
 
     // 회원 상태 변경 (정지 / 탈퇴)

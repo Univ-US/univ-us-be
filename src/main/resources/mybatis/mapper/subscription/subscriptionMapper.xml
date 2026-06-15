@@ -177,7 +177,8 @@
         PORTONE_PAYMENT_ID,
         PAID_AT,
         FAIL_REASON,
-        AMOUNT
+        AMOUNT,
+        PLAN_NAME
         ) VALUES (
         #{historyId},
         #{subscriptionId},
@@ -189,7 +190,8 @@
         #{portonePaymentId},
         #{paidAt},
         #{failReason},
-        #{amount}
+        #{amount},
+        #{planName}
         )
     </insert>
 

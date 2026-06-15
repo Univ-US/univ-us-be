@@ -171,6 +171,7 @@ public class ServiceAdminPaymentDto {
         private String merchantUid;
         private String portoneScheduleId;
         private Long amount;
+        private String planName;
     }
 
     @Getter

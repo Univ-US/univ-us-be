@@ -12,7 +12,7 @@
         H.MEMBER_ID,
         H.BILLINGKEY_ID,
         S.PLAN_ID,
-        P.PLAN_NAME,
+        COALESCE(H.PLAN_NAME, P.PLAN_NAME) AS PLAN_NAME,
         P.BILLING_CYCLE,
         H.AMOUNT,
         H.STATUS,
@@ -171,7 +171,7 @@
             H.BILLINGKEY_ID,
             B.SUBSCRIPTION_BILLING_KEY_VALUE AS PORTONE_BILLING_KEY,
             B.STATUS AS BILLING_KEY_STATUS,
-            P.PLAN_NAME,
+            COALESCE(H.PLAN_NAME, P.PLAN_NAME) AS PLAN_NAME,
             P.BILLING_CYCLE,
             H.AMOUNT,
             H.STATUS,
@@ -222,7 +222,8 @@
             BILLINGKEY_ID,
             STATUS,
             MERCHANT_UID,
-            AMOUNT
+            AMOUNT,
+            PLAN_NAME
         ) VALUES (
             #{historyId},
             #{subscriptionId},
@@ -231,7 +232,8 @@
             #{billingKeyId},
             'READY',
             #{merchantUid},
-            #{amount}
+            #{amount},
+            #{planName}
         )
     </insert>
 
@@ -278,7 +280,8 @@
             BILLINGKEY_ID,
             STATUS,
             MERCHANT_UID,
-            AMOUNT
+            AMOUNT,
+            PLAN_NAME
         ) VALUES (
             #{historyId},
             #{subscriptionId},
@@ -287,7 +290,8 @@
             #{billingKeyId},
             'READY',
             #{merchantUid},
-            #{amount}
+            #{amount},
+            #{planName}
         )
     </insert>
 

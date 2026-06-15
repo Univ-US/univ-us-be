@@ -171,6 +171,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                         .paidAt(null)
                         .failReason(null)
                         .amount(plan.getPrice())
+                        .planName(plan.getPlanName())
                         .build();
 
         requireSingleRow(

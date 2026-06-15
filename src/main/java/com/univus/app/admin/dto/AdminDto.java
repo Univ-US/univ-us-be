@@ -37,6 +37,7 @@ public class AdminDto {
     @Data
     public static class MemberItemDto {
         private Long memberId;
+        private Long univId;
         private String password;
         private String memberName;
         private String role;

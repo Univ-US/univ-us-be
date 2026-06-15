@@ -4,6 +4,7 @@ import com.univus.app.admin.dto.AdminDto;
 import com.univus.app.admin.mapper.AdminMapper;
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
+import com.univus.app.subscription.service.SubscriptionMemberLimitService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +22,7 @@ public class AdminService {
     private final AdminMapper adminMapper;
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
+    private final SubscriptionMemberLimitService subscriptionMemberLimitService;
 
     public Map<String, Object> getMemberList(AdminDto.MemberSearchDto search, Long requesterId) {
         if (search.getSize() <= 0) search.setSize(10);
@@ -38,13 +40,52 @@ public class AdminService {
     }
 
     @Transactional
-    public void registerBulkMembers(List<AdminDto.MemberItemDto> members) {
-        members.forEach(m -> m.setPassword(passwordEncoder.encode(m.getPassword())));
+    public void registerBulkMembers(
+            List<AdminDto.MemberItemDto> members,
+            Long requesterId
+    ) {
+        MemberDto requester = memberMapper.findByMemberId(requesterId);
+        if (requester == null || requester.getUnivId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "회원 등록 대상 대학을 확인할 수 없습니다."
+            );
+        }
+        if (members == null || members.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "등록할 회원이 없습니다."
+            );
+        }
+
+        subscriptionMemberLimitService.validateAdditionalMembers(
+                requester.getUnivId(),
+                members.size()
+        );
+        members.forEach(member -> {
+            member.setUnivId(requester.getUnivId());
+            member.setPassword(passwordEncoder.encode(member.getPassword()));
+        });
         adminMapper.insertMemberBulk(members);
         adminMapper.insertMemberDetailBulk(members);
     }
 
+    @Transactional
     public void updateMemberStatus(AdminDto.MemberStatusDto memberStatusDto) {
+        MemberDto member = memberMapper.findByMemberId(memberStatusDto.getMemberId());
+        if (member == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "회원을 찾을 수 없습니다."
+            );
+        }
+        if ("WITHDRAWN".equals(member.getStatus())
+                && !"WITHDRAWN".equals(memberStatusDto.getStatus())) {
+            subscriptionMemberLimitService.validateAdditionalMembers(
+                    member.getUnivId(),
+                    1
+            );
+        }
         adminMapper.updateMemberStatus(memberStatusDto);
     }
 

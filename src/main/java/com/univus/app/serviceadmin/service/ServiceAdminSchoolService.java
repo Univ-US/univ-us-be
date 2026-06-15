@@ -152,6 +152,7 @@ public class ServiceAdminSchoolService {
                                 .merchantUid(newMerchantUid)
                                 .portoneScheduleId(scheduleId)
                                 .amount(plan.getPrice())
+                                .planName(plan.getPlanName())
                                 .build();
                 requireSingleRow(
                         serviceAdminSchoolMapper.insertScheduledPayment(payment),

@@ -290,6 +290,7 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
                         .status(PAYMENT_STATUS_READY)
                         .merchantUid(createMerchantUid())
                         .amount(amount)
+                        .planName(planName)
                         .build();
 
         requireSingleRow(

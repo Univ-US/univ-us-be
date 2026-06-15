@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.subscription.mapper.SubscriptionMemberLimitMapper">
+
+    <select id="selectMaxMemberCount" resultType="long">
+        SELECT MAX_MEMBER_COUNT
+        FROM (
+            SELECT P.MAX_MEMBER_COUNT
+            FROM SUBSCRIPTIONS S
+            JOIN SUBSCRIPTION_PLANS P
+              ON P.PLAN_ID = S.PLAN_ID
+            WHERE S.UNIV_ID = #{univId}
+              AND S.STATUS = 'ACTIVE'
+              AND S.ENDED_AT IS NULL
+            ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+        )
+        WHERE ROWNUM = 1
+    </select>
+
+    <select id="countBillableMembers" resultType="long">
+        SELECT COUNT(*)
+        FROM MEMBER
+        WHERE UNIV_ID = #{univId}
+          AND STATUS IN ('ACTIVE', 'SUSPENDED')
+    </select>
+</mapper>
