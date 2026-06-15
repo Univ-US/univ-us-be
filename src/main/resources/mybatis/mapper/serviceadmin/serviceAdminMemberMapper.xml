@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminMemberMapper">
+
+    <sql id="memberFilters">
+        WHERE M.ROLE = 'ADM'
+          AND M.UNIV_ID IS NOT NULL
+        <if test="keyword != null and keyword != ''">
+            AND (
+                LOWER(U.UNIV_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(M.MEMBER_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(M.LOGIN_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+            )
+        </if>
+        <if test="status != null and status != ''">
+            AND M.STATUS = #{status}
+        </if>
+    </sql>
+
+    <select id="selectMembers"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$Member">
+        SELECT
+            M.MEMBER_ID,
+            M.UNIV_ID,
+            U.UNIV_NAME,
+            M.LOGIN_ID,
+            M.MEMBER_NAME,
+            M.PHONE_NUMBER,
+            M.STATUS,
+            M.CREATED_AT,
+            M.LOGTIME_AT
+        FROM MEMBER M
+        JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
+        <include refid="memberFilters"/>
+        ORDER BY
+        <choose>
+            <when test="sort == 'NAME_ASC'">
+                M.MEMBER_NAME ASC, U.UNIV_NAME ASC, M.MEMBER_ID ASC
+            </when>
+            <when test="sort == 'JOINED_DESC'">
+                M.CREATED_AT DESC, M.MEMBER_ID DESC
+            </when>
+            <otherwise>
+                U.UNIV_NAME ASC, M.MEMBER_NAME ASC, M.MEMBER_ID ASC
+            </otherwise>
+        </choose>
+        OFFSET #{offset} ROWS FETCH NEXT 10 ROWS ONLY
+    </select>
+
+    <select id="countMembers" resultType="long">
+        SELECT COUNT(*)
+        FROM MEMBER M
+        JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
+        <include refid="memberFilters"/>
+    </select>
+
+    <select id="selectMemberStats"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$Stats">
+        SELECT
+            COUNT(*) AS TOTAL_COUNT,
+            NVL(SUM(CASE WHEN M.STATUS = 'ACTIVE' THEN 1 ELSE 0 END), 0)
+                AS ACTIVE_COUNT,
+            NVL(SUM(CASE WHEN M.STATUS = 'SUSPENDED' THEN 1 ELSE 0 END), 0)
+                AS SUSPENDED_COUNT
+        FROM MEMBER M
+        WHERE M.ROLE = 'ADM'
+          AND M.UNIV_ID IS NOT NULL
+    </select>
+
+    <select id="selectMemberById"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$Member">
+        SELECT
+            M.MEMBER_ID,
+            M.UNIV_ID,
+            U.UNIV_NAME,
+            M.LOGIN_ID,
+            M.MEMBER_NAME,
+            M.PHONE_NUMBER,
+            M.STATUS,
+            M.CREATED_AT,
+            M.LOGTIME_AT
+        FROM MEMBER M
+        JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
+        WHERE M.MEMBER_ID = #{memberId}
+          AND M.ROLE = 'ADM'
+          AND M.UNIV_ID IS NOT NULL
+    </select>
+
+    <update id="updateMemberStatus">
+        UPDATE MEMBER
+        SET STATUS = #{status}
+        WHERE MEMBER_ID = #{memberId}
+          AND ROLE = 'ADM'
+          AND UNIV_ID IS NOT NULL
+    </update>
+</mapper>

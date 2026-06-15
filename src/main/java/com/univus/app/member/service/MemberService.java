@@ -117,6 +117,11 @@ public class MemberService {
       throw new InvalidLoginException("허용되지 않은 로그인 유형입니다.");
     }
 
+    if (!DEFAULT_STATUS.equals(member.getStatus())) {
+      insertLoginFailLog(member.getMemberId(), "ACCOUNT_NOT_ACTIVE");
+      throw new InvalidLoginException("정지되었거나 탈퇴한 계정입니다.");
+    }
+
     String accessToken = jwtTokenProvider.createAccessToken(member.getMemberId(), member.getRole());
     String refreshToken = jwtTokenProvider.createRefreshToken(member.getMemberId());
 
@@ -202,6 +207,10 @@ public class MemberService {
 
     if (member == null) {
       throw new InvalidRefreshTokenException("유효하지 않은 refresh token입니다.");
+    }
+
+    if (!DEFAULT_STATUS.equals(member.getStatus())) {
+      throw new InvalidRefreshTokenException("정지되었거나 탈퇴한 계정입니다.");
     }
 
     String accessToken = jwtTokenProvider.createAccessToken(member.getMemberId(), member.getRole());
