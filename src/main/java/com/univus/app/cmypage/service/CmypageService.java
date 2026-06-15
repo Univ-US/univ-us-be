@@ -41,6 +41,7 @@ public class CmypageService {
 
     public Map<String, Object> getMyPosts(Long memberId, PostDto postDto) {
         postDto.setMemberId(memberId);
+        postDto.setViewerMemberId(memberId);
         return postService.getPostList(postDto);
     }
 

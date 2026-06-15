@@ -153,6 +153,7 @@ public class MarketDto {
         private String keyword;
         private String category;
         private String productStatus;
+        private Long viewerMemberId;
         private Long univId;
         private int page;
         private int size;

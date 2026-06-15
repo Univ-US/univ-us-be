@@ -113,7 +113,10 @@
         <if test="productStatus == null or productStatus == ''">
             AND P.PRODUCT_STATUS != 'DONE'
         </if>
-        AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+        AND (
+            (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+            OR P.MEMBER_ID = #{viewerMemberId}
+        )
         ORDER BY P.CREATED_AT DESC
         OFFSET #{page} * #{size} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
@@ -140,7 +143,10 @@
         <if test="productStatus == null or productStatus == ''">
             AND P.PRODUCT_STATUS != 'DONE'
         </if>
-        AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+        AND (
+            (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+            OR P.MEMBER_ID = #{viewerMemberId}
+        )
     </select>
 
     <!-- ── 상품 상세 조회 ─────────────────────────────────── -->
