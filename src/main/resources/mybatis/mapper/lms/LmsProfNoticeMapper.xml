@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+PLM-007 교수 공지사항 관리 SQL (PLM-005 강의 업로드 미러)
+· 본체: LECTURE_ANNOUNCEMENT (LEC_ANN_ID PK / LEC_ID FK / LEC_ANN_REG_DATE [DEFAULT SYSTIMESTAMP]
+        / LEC_ANN_TITLE VARCHAR2(200 CHAR) / LEC_ANN_CONTENT CLOB NULL — 에디터 HTML)
+· 첨부: LECTURE_ANNOUNCEMENT_ATTACHMENT — 1:N 다중 첨부(추가/개별 제거).
+        유효 첨부 = ATT_VAL_STATUS='ACT', 제거 = 'DEL' 소프트 무효화
+· ⚠️ PK는 IDENTITY 아닌 시퀀스 채번 → SEQ_LECTURE_ANNOUNCEMENT / SEQ_LECTURE_ANNOUNCEMENT_ATTACHMENT .NEXTVAL
+· 소유권: LECTURE.LMS_PRF_ID = 교수 LMS_PRF_ID. 작성자=강의 담당교수(LMS_PROFILE→MEMBER.MEMBER_NAME)
+· 페이지네이션 없음 — 선택 강의(lecId)의 공지 전체를 최신순 반환(FE가 Notice[] 소비)
+-->
+<mapper namespace="com.univus.app.lms.mapper.LmsProfNoticeMapper">
+
+    <!-- 교수 본인 LMS_PRF_ID -->
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <!-- 공지 작성 대상 = 담당 강의 전체(폐강 포함). 학기 라벨은 FE 공통코드 매핑 -->
+    <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsProfNoticeDto$LectureRow">
+        SELECT l.LEC_ID        AS lecId,
+               lc.LEC_COD_NAME AS courseName,
+               l.LEC_SECTION   AS lecSection,
+               s.SEM_YEAR      AS year,
+               s.SEM_TERM      AS termCode
+        FROM LECTURE l
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
+        WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+        ORDER BY s.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
+    </select>
+
+    <!-- 소유권: 본인 담당 강의 여부 -->
+    <select id="countOwnedLecture" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE
+        WHERE LEC_ID = #{lecId}
+          AND LMS_PRF_ID = #{professorLmsPrfId}
+    </select>
+
+    <!-- 소유권: 본인 강의의 공지 여부 -->
+    <select id="countOwnedNotice" resultType="int">
+        SELECT COUNT(*)
+        FROM LECTURE_ANNOUNCEMENT a
+        JOIN LECTURE l ON l.LEC_ID = a.LEC_ID
+        WHERE a.LEC_ANN_ID = #{noticeId}
+          AND l.LMS_PRF_ID = #{professorLmsPrfId}
+    </select>
+
+    <!-- 공지 본체 공용 SELECT (첨부는 별도 쿼리 후 서비스에서 그룹핑)
+         작성자=담당교수 MEMBER_NAME / regDate·listDate = REG_DATE 2포맷('date'는 Oracle 예약어라 alias 회피) -->
+    <sql id="selectNoticeColumns">
+        SELECT a.LEC_ANN_ID      AS noticeId,
+               a.LEC_ID          AS lecId,
+               lc.LEC_COD_NAME   AS courseName,
+               l.LEC_SECTION     AS lecSection,
+               s.SEM_YEAR        AS year,
+               s.SEM_TERM        AS termCode,
+               a.LEC_ANN_TITLE   AS title,
+               a.LEC_ANN_CONTENT AS content,
+               mb.MEMBER_NAME    AS author,
+               TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS regDate,
+               TO_CHAR(a.LEC_ANN_REG_DATE, 'MM.DD')              AS listDate
+        FROM LECTURE_ANNOUNCEMENT a
+        JOIN LECTURE l       ON l.LEC_ID       = a.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
+        JOIN LMS_PROFILE pr  ON pr.LMS_PRF_ID  = l.LMS_PRF_ID
+        JOIN MEMBER mb       ON mb.MEMBER_ID   = pr.MEMBER_ID
+    </sql>
+
+    <!-- 선택 강의의 공지 목록 (최신순) — 본인 강의로 스코프 -->
+    <select id="selectNoticesByLecture" resultType="com.univus.app.lms.dto.LmsProfNoticeDto$NoticeRow">
+        <include refid="selectNoticeColumns"/>
+        WHERE a.LEC_ID = #{lecId}
+          AND l.LMS_PRF_ID = #{professorLmsPrfId}
+        ORDER BY a.LEC_ANN_REG_DATE DESC, a.LEC_ANN_ID DESC
+    </select>
+
+    <!-- 공지 단건 (작성/수정 응답용) — 소유권은 서비스에서 선검증 -->
+    <select id="selectNoticeById" resultType="com.univus.app.lms.dto.LmsProfNoticeDto$NoticeRow">
+        <include refid="selectNoticeColumns"/>
+        WHERE a.LEC_ANN_ID = #{noticeId}
+    </select>
+
+    <!-- 유효(ACT) 첨부 목록 — 주어진 공지들(noticeId들)분 (서비스에서 noticeId로 그룹핑) -->
+    <select id="selectActiveAttachmentsByNoticeIds"
+            resultType="com.univus.app.lms.dto.LmsProfNoticeDto$AttachmentRow">
+        SELECT a.LEC_ANN_ID               AS noticeId,
+               a.LEC_ANN_ATT_ID           AS attachmentId,
+               a.LEC_ANN_ATT_ORG_FIL_NAME AS fileName,
+               a.LEC_ANN_ATT_FIL_SIZE     AS fileSize
+        FROM LECTURE_ANNOUNCEMENT_ATTACHMENT a
+        WHERE a.LEC_ANN_ID IN
+        <foreach item="id" collection="noticeIds" open="(" separator="," close=")">#{id}</foreach>
+          AND a.ATT_VAL_STATUS = 'ACT'
+        ORDER BY a.LEC_ANN_ID, a.LEC_ANN_ATT_REG_DATE, a.LEC_ANN_ATT_ID
+    </select>
+
+    <!-- 유효(ACT) 첨부 목록 — 공지 1건분 -->
+    <select id="selectActiveAttachmentsByNoticeId"
+            resultType="com.univus.app.lms.dto.LmsProfNoticeDto$AttachmentRow">
+        SELECT a.LEC_ANN_ID               AS noticeId,
+               a.LEC_ANN_ATT_ID           AS attachmentId,
+               a.LEC_ANN_ATT_ORG_FIL_NAME AS fileName,
+               a.LEC_ANN_ATT_FIL_SIZE     AS fileSize
+        FROM LECTURE_ANNOUNCEMENT_ATTACHMENT a
+        WHERE a.LEC_ANN_ID = #{noticeId}
+          AND a.ATT_VAL_STATUS = 'ACT'
+        ORDER BY a.LEC_ANN_ATT_REG_DATE, a.LEC_ANN_ATT_ID
+    </select>
+
+    <!-- 다운로드용: 소유권(본인 강의)+유효(ACT) 검증된 첨부 1건 (없으면 null → 404). 디스크명+원본명만 -->
+    <select id="selectOwnedActiveAttachment" resultType="com.univus.app.lms.dto.LmsProfNoticeDto$AttachmentDownloadRow">
+        SELECT att.LEC_ANN_ATT_TRN_FIL_NAME AS trnFileName,
+               att.LEC_ANN_ATT_ORG_FIL_NAME AS fileName
+        FROM LECTURE_ANNOUNCEMENT_ATTACHMENT att
+        JOIN LECTURE_ANNOUNCEMENT a ON a.LEC_ANN_ID = att.LEC_ANN_ID
+        JOIN LECTURE l              ON l.LEC_ID      = a.LEC_ID
+        WHERE att.LEC_ANN_ATT_ID = #{attachmentId}
+          AND att.ATT_VAL_STATUS = 'ACT'
+          AND l.LMS_PRF_ID = #{professorLmsPrfId}
+    </select>
+
+    <!-- 공지 본체 INSERT — PK는 시퀀스 채번(BEFORE selectKey)으로 param.noticeId에 채워 첨부 FK·응답 재조회에 사용 -->
+    <insert id="insertNotice" parameterType="com.univus.app.lms.dto.LmsProfNoticeDto$InsertParam">
+        <selectKey keyProperty="noticeId" resultType="long" order="BEFORE">
+            SELECT SEQ_LECTURE_ANNOUNCEMENT.NEXTVAL FROM dual
+        </selectKey>
+        INSERT INTO LECTURE_ANNOUNCEMENT (LEC_ANN_ID, LEC_ID, LEC_ANN_REG_DATE, LEC_ANN_TITLE, LEC_ANN_CONTENT)
+        VALUES (#{noticeId}, #{lecId}, SYSTIMESTAMP, #{title}, #{content, jdbcType=CLOB})
+    </insert>
+
+    <!-- 첨부 INSERT (신규 = 유효 ACT, 다중 허용) -->
+    <insert id="insertAttachment">
+        INSERT INTO LECTURE_ANNOUNCEMENT_ATTACHMENT (
+            LEC_ANN_ATT_ID, LEC_ANN_ID, LEC_ANN_ATT_REG_DATE,
+            LEC_ANN_ATT_ORG_FIL_NAME, LEC_ANN_ATT_TRN_FIL_NAME, LEC_ANN_ATT_ORG_URL,
+            LEC_ANN_ATT_FIL_SIZE, LEC_ANN_ATT_EXT_TYPE, ATT_VAL_STATUS
+        ) VALUES (
+            SEQ_LECTURE_ANNOUNCEMENT_ATTACHMENT.NEXTVAL, #{noticeId}, SYSTIMESTAMP,
+            #{orgFileName}, #{trnFileName}, #{orgUrl},
+            #{fileSize}, #{extType}, 'ACT'
+        )
+    </insert>
+
+    <!-- 공지 본체 수정 (제목·내용) -->
+    <update id="updateNotice">
+        UPDATE LECTURE_ANNOUNCEMENT
+        SET LEC_ANN_TITLE   = #{title},
+            LEC_ANN_CONTENT = #{content, jdbcType=CLOB}
+        WHERE LEC_ANN_ID = #{noticeId}
+    </update>
+
+    <!-- 기존 첨부 1건 무효화 — noticeId 조건으로 "그 공지의 첨부"만 제거 가능(소유권 체인) -->
+    <update id="invalidateAttachmentById">
+        UPDATE LECTURE_ANNOUNCEMENT_ATTACHMENT
+        SET ATT_VAL_STATUS = 'DEL'
+        WHERE LEC_ANN_ATT_ID = #{attachmentId}
+          AND LEC_ANN_ID = #{noticeId}
+          AND ATT_VAL_STATUS = 'ACT'
+    </update>
+
+    <!-- 삭제 시 디스크 파일 정리용 첨부 전체 조회 -->
+    <select id="selectAttachmentsByNoticeId" resultType="com.univus.app.lms.dto.LmsProfNoticeDto$AttachmentDiskRow">
+        SELECT LEC_ANN_ATT_ID           AS attachmentId,
+               LEC_ANN_ATT_TRN_FIL_NAME AS trnFileName
+        FROM LECTURE_ANNOUNCEMENT_ATTACHMENT
+        WHERE LEC_ANN_ID = #{noticeId}
+    </select>
+
+    <!-- 물리 삭제 (첨부 → 본체 순서: FK) -->
+    <delete id="deleteAttachments">
+        DELETE FROM LECTURE_ANNOUNCEMENT_ATTACHMENT WHERE LEC_ANN_ID = #{noticeId}
+    </delete>
+
+    <delete id="deleteNotice">
+        DELETE FROM LECTURE_ANNOUNCEMENT WHERE LEC_ANN_ID = #{noticeId}
+    </delete>
+
+</mapper>
