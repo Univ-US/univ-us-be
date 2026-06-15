@@ -2,6 +2,7 @@ package com.univus.app.subscription.controller;
 
 import com.univus.app.subscription.dto.*;
 import com.univus.app.subscription.service.SubscriptionBillingService;
+import com.univus.app.subscription.service.SubscriptionAccessService;
 import com.univus.app.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,14 @@ public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
     private final SubscriptionBillingService subscriptionBillingService;
+    private final SubscriptionAccessService subscriptionAccessService;
+
+    @GetMapping("/status")
+    public ResponseEntity<SubscriptionAccessStatusDto> getSubscriptionStatus(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        return ResponseEntity.ok(subscriptionAccessService.getStatus(memberId));
+    }
 
     // 구독 플랜 목록 조회 API입니다.
     // 로그인하지 않은 사용자도 결제 전 플랜을 볼 수 있어야 하므로,
