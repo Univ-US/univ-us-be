@@ -132,7 +132,11 @@ public class MarketService {
     // 상품 삭제
     @Transactional
     public int deleteProduct(Long productId) {
-        return marketMapper.deleteProduct(productId);
+        int rows = marketMapper.deleteProduct(productId);
+        if (rows > 0) {
+            closeActiveTradeChatRoomsByProduct(productId);
+        }
+        return rows;
     }
 
     // ── 이미지 ────────────────────────────────────────────────
@@ -294,6 +298,9 @@ public class MarketService {
         marketMapper.insertProductReport(reportDto);
         marketMapper.updateProductReportStatus(reportDto.getProductId());
         int reportCount = marketMapper.selectProductTotalReportCount(reportDto.getProductId());
+        if (reportCount >= 5) {
+            closeActiveTradeChatRoomsByProduct(reportDto.getProductId());
+        }
         result.put("success", true);
         result.put("reportCount", reportCount);
         result.put("blind", reportCount >= 5);
@@ -333,6 +340,9 @@ public class MarketService {
         }
         if ("DONE".equals(product.getProductStatus())) {
             throw new IllegalStateException("Completed product cannot start a chat.");
+        }
+        if (isBlindProduct(product)) {
+            throw new IllegalStateException("Blind product cannot start a chat.");
         }
 
         MarketDto.TradeChatRoomDto existingRoom =
@@ -730,6 +740,15 @@ public class MarketService {
         if (marketMapper.selectActiveTradeChatRoomCountByProduct(productId) == 0) {
             marketMapper.updateProductStatus(productId, "SALE");
         }
+    }
+
+    private int closeActiveTradeChatRoomsByProduct(Long productId) {
+        return marketMapper.updateActiveTradeChatStatusByProduct(productId, CLOSED_TRADE_CHAT_STATUS);
+    }
+
+    private boolean isBlindProduct(MarketDto.ProductDto product) {
+        return Integer.valueOf(1).equals(product.getIsBlind())
+                || (product.getReportCount() != null && product.getReportCount() >= 5);
     }
 
     private void validateProductImage(MultipartFile image) {
