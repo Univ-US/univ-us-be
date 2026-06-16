@@ -85,7 +85,7 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
 
     private LmsStuAttendanceDto.AttendanceRecordResDto toRecord(LmsStuAttendanceDto.RecordRow row) {
         return LmsStuAttendanceDto.AttendanceRecordResDto.builder()
-                .date(row.getAttendanceDate())
+                .date(row.getDate())
                 .build();
     }
 
