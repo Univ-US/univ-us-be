@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- SLM-006 학생 강의 자료 SQL (수강 강의 LECTURE_STUDENT_ENROLLMENT 기준) -->
+<mapper namespace="com.univus.app.lms.mapper.LmsStuMaterialsMapper">
+
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID
+        FROM LMS_PROFILE
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectMaterialRows" resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$MaterialFlatRow">
+        SELECT s.SEM_YEAR AS year,
+               s.SEM_TERM AS termCode,
+               l.LEC_ID AS lecId,
+               lc.LEC_COD_NAME AS courseName,
+               l.LEC_SECTION AS lecSection,
+               u.LEC_UPL_ID AS uploadId,
+               u.LEC_UPL_TITLE AS title,
+               u.LEC_UPL_CONTENT AS content,
+               TO_CHAR(u.LEC_UPL_REG_DATE, 'YYYY-MM-DD') AS uploadedAt
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID
+        LEFT JOIN LECTURE_UPLOADING u ON u.LEC_ID = l.LEC_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+        ORDER BY s.SEM_YEAR DESC,
+                 CASE s.SEM_TERM
+                     WHEN 'WNT' THEN 4
+                     WHEN 'SM2' THEN 3
+                     WHEN 'SMR' THEN 2
+                     WHEN 'SM1' THEN 1
+                     ELSE 0
+                 END DESC,
+                 lc.LEC_COD_NAME,
+                 l.LEC_SECTION,
+                 l.LEC_ID,
+                 u.LEC_UPL_REG_DATE DESC NULLS LAST,
+                 u.LEC_UPL_ID DESC NULLS LAST
+    </select>
+
+    <select id="selectActiveAttachmentsByUploadIds"
+            resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$AttachmentRow">
+        SELECT a.LEC_UPL_ID AS uploadId,
+               a.LEC_UPL_ATT_ID AS attachmentId,
+               a.LEC_UPL_ATT_ORG_FIL_NAME AS fileName,
+               a.LEC_UPL_ATT_EXT_TYPE AS fileExt,
+               a.LEC_UPL_ATT_FIL_SIZE AS fileSize
+        FROM LECTURE_UPLOADING_ATTACHMENT a
+        WHERE a.LEC_UPL_ID IN
+        <foreach item="id" collection="uploadIds" open="(" separator="," close=")">#{id}</foreach>
+          AND a.ATT_VAL_STATUS = 'ACT'
+        ORDER BY a.LEC_UPL_ID, a.LEC_UPL_ATT_REG_DATE, a.LEC_UPL_ATT_ID
+    </select>
+
+    <select id="selectDownloadAttachment"
+            resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$AttachmentDownloadRow">
+        SELECT a.LEC_UPL_ATT_ID AS attachmentId,
+               a.LEC_UPL_ATT_ORG_FIL_NAME AS fileName,
+               a.LEC_UPL_ATT_TRN_FIL_NAME AS trnFileName
+        FROM LECTURE_UPLOADING_ATTACHMENT a
+        JOIN LECTURE_UPLOADING u ON u.LEC_UPL_ID = a.LEC_UPL_ID
+        JOIN LECTURE l ON l.LEC_ID = u.LEC_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = l.LEC_ID
+            AND e.LMS_PRF_ID = #{lmsPrfId}
+        WHERE a.LEC_UPL_ATT_ID = #{attachmentId}
+          AND a.ATT_VAL_STATUS = 'ACT'
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+    </select>
+
+</mapper>
