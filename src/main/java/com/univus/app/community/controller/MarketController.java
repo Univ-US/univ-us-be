@@ -99,6 +99,22 @@ public class MarketController {
         return ResponseEntity.ok(result);
     }
 
+    // 무료 나눔 완료
+    // PATCH /api/market/products/{productId}/free-complete
+    @PatchMapping("/products/{productId}/free-complete")
+    public ResponseEntity<Map<String, Object>> completeFreeProduct(
+            @PathVariable("productId") Long productId,
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication) {
+
+        assertCanManageProduct(productId, requireMemberId(memberId), authentication);
+        MarketDto.ProductDto product = marketService.completeFreeProduct(productId, requireMemberId(memberId));
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("product", product);
+        return ResponseEntity.ok(result);
+    }
     // 상품 삭제
     // DELETE /api/market/products/{productId}
     @DeleteMapping("/products/{productId}")
@@ -358,6 +374,13 @@ public class MarketController {
                 request));
     }
 
+    // PATCH /api/market/chats/{roomId}/free-complete
+    @PatchMapping("/chats/{roomId}/free-complete")
+    public ResponseEntity<MarketDto.TradeChatRoomDto> completeFreeTradeChat(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId) {
+        return ResponseEntity.ok(marketService.completeFreeTradeChat(requireMemberId(memberId), roomId));
+    }
     // PATCH /api/market/chats/{roomId}/close
     @PatchMapping("/chats/{roomId}/close")
     public ResponseEntity<MarketDto.TradeChatRoomDto> closeTradeChatRoom(
