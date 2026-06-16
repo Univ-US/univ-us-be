@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminPaymentMapper">
+
+    <sql id="paymentColumns">
+        H.HISTORY_ID,
+        H.SUBSCRIPTION_ID,
+        H.UNIV_ID,
+        COALESCE(U.UNIV_NAME, A.UNIV_NAME) AS UNIV_NAME,
+        H.MEMBER_ID,
+        H.BILLINGKEY_ID,
+        S.PLAN_ID,
+        COALESCE(H.PLAN_NAME, P.PLAN_NAME) AS PLAN_NAME,
+        P.BILLING_CYCLE,
+        H.AMOUNT,
+        H.STATUS,
+        CASE
+            WHEN LOWER(B.PG_PROVIDER) = 'kakaopay' THEN 'KAKAO_PAY'
+            ELSE 'CARD'
+        END AS PAYMENT_METHOD,
+        CASE
+            WHEN H.MERCHANT_UID LIKE 'sub_renew_%' THEN 'RECURRING'
+            ELSE 'INITIAL'
+        END AS PAYMENT_TYPE,
+        H.MERCHANT_UID,
+        H.PORTONE_PAYMENT_ID,
+        H.PORTONE_SCHEDULE_ID,
+        H.CREATED_AT,
+        H.PAID_AT,
+        H.FAIL_REASON,
+        S.NEXT_BILLING_AT,
+        S.STATUS AS SUBSCRIPTION_STATUS,
+        S.PENDING_ACTION,
+        S.CANCELLATION_EFFECTIVE_AT,
+        H.REFUNDED_AT,
+        H.REFUND_AMOUNT,
+        H.REFUND_REASON,
+        H.PORTONE_CANCELLATION_ID
+    </sql>
+
+    <sql id="paymentFrom">
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+        LEFT JOIN SUBSCRIPTIONS S
+          ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+        LEFT JOIN SUBSCRIPTION_PLANS P
+          ON P.PLAN_ID = S.PLAN_ID
+        LEFT JOIN UNIVERSITY U
+          ON U.UNIV_ID = H.UNIV_ID
+        LEFT JOIN SUBSCRIPTION_APPLICATIONS A
+          ON A.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+        LEFT JOIN SUBSCRIPTION_BILLING_KEY B
+          ON B.SUBSCRIPTION_BILLING_KEY_ID = H.BILLINGKEY_ID
+    </sql>
+
+    <sql id="paymentFilters">
+        WHERE 1 = 1
+        <if test="keyword != null and keyword != ''">
+            AND (
+                LOWER(COALESCE(U.UNIV_NAME, A.UNIV_NAME))
+                    LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(H.MERCHANT_UID) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(H.PORTONE_PAYMENT_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(H.PORTONE_SCHEDULE_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+            )
+        </if>
+        <if test="status != null and status != ''">
+            AND H.STATUS = #{status}
+        </if>
+        <if test="planId != null">
+            AND S.PLAN_ID = #{planId}
+        </if>
+        <if test="method != null and method != ''">
+            AND CASE
+                    WHEN LOWER(B.PG_PROVIDER) = 'kakaopay' THEN 'KAKAO_PAY'
+                    ELSE 'CARD'
+                END = #{method}
+        </if>
+    </sql>
+
+    <select id="selectPayments"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPaymentDto$Payment">
+        SELECT
+            <include refid="paymentColumns"/>
+        <include refid="paymentFrom"/>
+        <include refid="paymentFilters"/>
+        ORDER BY
+        <choose>
+            <when test="sort == 'AMOUNT_DESC'">
+                H.AMOUNT DESC, H.HISTORY_ID DESC
+            </when>
+            <when test="sort == 'AMOUNT_ASC'">
+                H.AMOUNT ASC, H.HISTORY_ID DESC
+            </when>
+            <when test="sort == 'SCHOOL_ASC'">
+                COALESCE(U.UNIV_NAME, A.UNIV_NAME) ASC, H.HISTORY_ID DESC
+            </when>
+            <otherwise>
+                H.CREATED_AT DESC, H.HISTORY_ID DESC
+            </otherwise>
+        </choose>
+        OFFSET #{offset} ROWS FETCH NEXT 10 ROWS ONLY
+    </select>
+
+    <select id="countPayments" resultType="long">
+        SELECT COUNT(*)
+        <include refid="paymentFrom"/>
+        <include refid="paymentFilters"/>
+    </select>
+
+    <select id="selectPaymentSummary"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPaymentDto$Summary">
+        SELECT
+            NVL(SUM(
+                CASE
+                    WHEN H.STATUS = 'PAID'
+                     AND H.PAID_AT <![CDATA[ >= ]]> TRUNC(SYSDATE, 'MM')
+                     AND H.PAID_AT <![CDATA[ < ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+                    THEN H.AMOUNT
+                    ELSE 0
+                END
+            ), 0) AS CURRENT_MONTH_REVENUE,
+            NVL(SUM(
+                CASE
+                    WHEN H.STATUS = 'PAID'
+                     AND H.PAID_AT <![CDATA[ >= ]]> TRUNC(SYSDATE, 'MM')
+                     AND H.PAID_AT <![CDATA[ < ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+                    THEN 1
+                    ELSE 0
+                END
+            ), 0) AS CURRENT_MONTH_PAID_COUNT,
+            NVL(SUM(
+                CASE
+                    WHEN H.STATUS = 'FAILED'
+                     AND H.CREATED_AT <![CDATA[ >= ]]> TRUNC(SYSDATE, 'MM')
+                     AND H.CREATED_AT <![CDATA[ < ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+                    THEN 1
+                    ELSE 0
+                END
+            ), 0) AS CURRENT_MONTH_FAILED_COUNT,
+            NVL(SUM(CASE WHEN H.STATUS = 'READY' THEN 1 ELSE 0 END), 0)
+                AS CURRENT_MONTH_READY_COUNT,
+            NVL(SUM(CASE WHEN H.STATUS = 'READY' THEN H.AMOUNT ELSE 0 END), 0)
+                AS READY_PAYMENT_AMOUNT
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+    </select>
+
+    <select id="selectPlanOptions"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPaymentDto$PlanOption">
+        SELECT PLAN_ID, PLAN_NAME
+        FROM SUBSCRIPTION_PLANS
+        ORDER BY PLAN_NAME, PLAN_ID
+    </select>
+
+    <select id="selectPaymentById"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPaymentDto$Payment">
+        SELECT
+            <include refid="paymentColumns"/>
+        <include refid="paymentFrom"/>
+        WHERE H.HISTORY_ID = #{historyId}
+    </select>
+
+    <select id="selectOperationTarget"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPaymentDto$OperationTarget">
+        SELECT
+            H.HISTORY_ID,
+            H.SUBSCRIPTION_ID,
+            H.UNIV_ID,
+            H.MEMBER_ID,
+            H.BILLINGKEY_ID,
+            B.SUBSCRIPTION_BILLING_KEY_VALUE AS PORTONE_BILLING_KEY,
+            B.STATUS AS BILLING_KEY_STATUS,
+            COALESCE(H.PLAN_NAME, P.PLAN_NAME) AS PLAN_NAME,
+            P.BILLING_CYCLE,
+            H.AMOUNT,
+            H.STATUS,
+            H.MERCHANT_UID,
+            H.PORTONE_PAYMENT_ID,
+            H.PORTONE_SCHEDULE_ID,
+            S.STATUS AS SUBSCRIPTION_STATUS,
+            S.PENDING_ACTION,
+            (
+                SELECT MAX(R.HISTORY_ID) KEEP (
+                    DENSE_RANK LAST ORDER BY R.HISTORY_ID
+                )
+                FROM SUBSCRIPTION_PAYMENT_HISTORIES R
+                WHERE R.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+                  AND R.STATUS = 'READY'
+            ) AS CURRENT_READY_HISTORY_ID
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+        JOIN SUBSCRIPTIONS S
+          ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+        JOIN SUBSCRIPTION_PLANS P
+          ON P.PLAN_ID = S.PLAN_ID
+        LEFT JOIN SUBSCRIPTION_BILLING_KEY B
+          ON B.SUBSCRIPTION_BILLING_KEY_ID = H.BILLINGKEY_ID
+        WHERE H.HISTORY_ID = #{historyId}
+    </select>
+
+    <update id="markPaymentRefunded">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET STATUS = 'REFUNDED',
+            REFUNDED_AT = #{refundedAt},
+            REFUND_AMOUNT = #{refundAmount},
+            REFUND_REASON = #{refundReason},
+            PORTONE_CANCELLATION_ID = #{portoneCancellationId}
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'PAID'
+    </update>
+
+    <insert id="insertRetryPayment"
+            parameterType="com.univus.app.serviceadmin.dto.ServiceAdminPaymentDto$NewPayment">
+        <selectKey keyProperty="historyId" resultType="long" order="BEFORE">
+            SELECT SEQ_SUBSCRIPTION_PAYMENT_HISTORIES.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO SUBSCRIPTION_PAYMENT_HISTORIES (
+            HISTORY_ID,
+            SUBSCRIPTION_ID,
+            UNIV_ID,
+            MEMBER_ID,
+            BILLINGKEY_ID,
+            STATUS,
+            MERCHANT_UID,
+            AMOUNT,
+            PLAN_NAME
+        ) VALUES (
+            #{historyId},
+            #{subscriptionId},
+            #{univId},
+            #{memberId},
+            #{billingKeyId},
+            'READY',
+            #{merchantUid},
+            #{amount},
+            #{planName}
+        )
+    </insert>
+
+    <update id="markRetryPaymentPaid">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET STATUS = 'PAID',
+            PORTONE_PAYMENT_ID = #{portonePaymentId},
+            PAID_AT = #{paidAt},
+            FAIL_REASON = NULL
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+
+    <update id="markRetryPaymentFailed">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET STATUS = 'FAILED',
+            FAIL_REASON = #{failReason}
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+
+    <update id="updateSubscriptionNextBillingAt">
+        UPDATE SUBSCRIPTIONS
+        SET NEXT_BILLING_AT = #{nextBillingAt},
+            PENDING_ACTION =
+                CASE WHEN PENDING_ACTION = 'PLAN_CHANGE' THEN NULL ELSE PENDING_ACTION END,
+            PENDING_ACTION_AT =
+                CASE WHEN PENDING_ACTION = 'PLAN_CHANGE' THEN NULL ELSE PENDING_ACTION_AT END
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'ACTIVE'
+          AND ENDED_AT IS NULL
+    </update>
+
+    <insert id="insertScheduledPayment"
+            parameterType="com.univus.app.serviceadmin.dto.ServiceAdminPaymentDto$NewPayment">
+        <selectKey keyProperty="historyId" resultType="long" order="BEFORE">
+            SELECT SEQ_SUBSCRIPTION_PAYMENT_HISTORIES.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO SUBSCRIPTION_PAYMENT_HISTORIES (
+            HISTORY_ID,
+            SUBSCRIPTION_ID,
+            UNIV_ID,
+            MEMBER_ID,
+            BILLINGKEY_ID,
+            STATUS,
+            MERCHANT_UID,
+            AMOUNT,
+            PLAN_NAME
+        ) VALUES (
+            #{historyId},
+            #{subscriptionId},
+            #{univId},
+            #{memberId},
+            #{billingKeyId},
+            'READY',
+            #{merchantUid},
+            #{amount},
+            #{planName}
+        )
+    </insert>
+
+    <update id="updatePaymentScheduleId">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET PORTONE_SCHEDULE_ID = #{portoneScheduleId}
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+</mapper>

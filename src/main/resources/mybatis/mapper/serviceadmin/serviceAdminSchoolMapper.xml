@@ -300,7 +300,8 @@
             STATUS,
             MERCHANT_UID,
             PORTONE_SCHEDULE_ID,
-            AMOUNT
+            AMOUNT,
+            PLAN_NAME
         ) VALUES (
             #{historyId},
             #{subscriptionId},
@@ -310,7 +311,8 @@
             'READY',
             #{merchantUid},
             #{portoneScheduleId},
-            #{amount}
+            #{amount},
+            #{planName}
         )
     </insert>
 

@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminPlanMapper">
+
+    <select id="selectPlans"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPlanDto$Plan">
+        WITH ACTIVE_SUBSCRIBERS AS (
+            SELECT PLAN_ID, COUNT(DISTINCT UNIV_ID) AS SUBSCRIBER_COUNT
+            FROM SUBSCRIPTIONS
+            WHERE STATUS = 'ACTIVE'
+              AND ENDED_AT IS NULL
+              AND UNIV_ID IS NOT NULL
+            GROUP BY PLAN_ID
+        )
+        SELECT
+            P.PLAN_ID,
+            P.PLAN_NAME,
+            P.PRICE,
+            P.DESCRIPTION,
+            P.BILLING_CYCLE,
+            P.MAX_MEMBER_COUNT,
+            P.CREATED_AT,
+            P.UPDATE_AT,
+            P.DELETED_AT,
+            NVL(A.SUBSCRIBER_COUNT, 0) AS SUBSCRIBER_COUNT
+        FROM SUBSCRIPTION_PLANS P
+        LEFT JOIN ACTIVE_SUBSCRIBERS A
+          ON A.PLAN_ID = P.PLAN_ID
+        ORDER BY P.CREATED_AT DESC, P.PLAN_ID DESC
+    </select>
+
+    <select id="selectPlan"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPlanDto$Plan">
+        SELECT
+            P.PLAN_ID,
+            P.PLAN_NAME,
+            P.PRICE,
+            P.DESCRIPTION,
+            P.BILLING_CYCLE,
+            P.MAX_MEMBER_COUNT,
+            P.CREATED_AT,
+            P.UPDATE_AT,
+            P.DELETED_AT,
+            (
+                SELECT COUNT(DISTINCT S.UNIV_ID)
+                FROM SUBSCRIPTIONS S
+                WHERE S.PLAN_ID = P.PLAN_ID
+                  AND S.STATUS = 'ACTIVE'
+                  AND S.ENDED_AT IS NULL
+                  AND S.UNIV_ID IS NOT NULL
+            ) AS SUBSCRIBER_COUNT
+        FROM SUBSCRIPTION_PLANS P
+        WHERE P.PLAN_ID = #{planId}
+    </select>
+
+    <select id="selectCurrentMonthRevenue" resultType="long">
+        SELECT NVL(SUM(AMOUNT), 0)
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES
+        WHERE STATUS = 'PAID'
+          AND PAID_AT <![CDATA[ >= ]]> TRUNC(SYSDATE, 'MM')
+          AND PAID_AT <![CDATA[ < ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+    </select>
+
+    <select id="countDuplicateName" resultType="int">
+        SELECT COUNT(*)
+        FROM SUBSCRIPTION_PLANS
+        WHERE LOWER(PLAN_NAME) = LOWER(#{planName})
+        <if test="excludePlanId != null">
+            AND PLAN_ID != #{excludePlanId}
+        </if>
+    </select>
+
+    <insert id="insertPlan">
+        <selectKey keyProperty="planId" resultType="long" order="BEFORE">
+            SELECT SEQ_SUBSCRIPTION_PLANS.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO SUBSCRIPTION_PLANS (
+            PLAN_ID,
+            PLAN_NAME,
+            PRICE,
+            DESCRIPTION,
+            BILLING_CYCLE,
+            CREATED_AT,
+            UPDATE_AT,
+            DELETED_AT,
+            MAX_MEMBER_COUNT
+        ) VALUES (
+            #{planId},
+            #{planName},
+            #{price},
+            #{description},
+            'MONTHLY',
+            SYSTIMESTAMP,
+            SYSTIMESTAMP,
+            NULL,
+            #{maxMemberCount}
+        )
+    </insert>
+
+    <update id="updatePlan">
+        UPDATE SUBSCRIPTION_PLANS
+        SET PLAN_NAME = #{request.planName},
+            PRICE = #{request.price},
+            DESCRIPTION = #{request.description},
+            MAX_MEMBER_COUNT = #{request.maxMemberCount},
+            UPDATE_AT = SYSTIMESTAMP
+        WHERE PLAN_ID = #{planId}
+          AND DELETED_AT IS NULL
+    </update>
+
+    <update id="deactivatePlan">
+        UPDATE SUBSCRIPTION_PLANS
+        SET DELETED_AT = SYSTIMESTAMP,
+            UPDATE_AT = SYSTIMESTAMP
+        WHERE PLAN_ID = #{planId}
+          AND DELETED_AT IS NULL
+    </update>
+
+    <update id="activatePlan">
+        UPDATE SUBSCRIPTION_PLANS
+        SET DELETED_AT = NULL,
+            UPDATE_AT = SYSTIMESTAMP
+        WHERE PLAN_ID = #{planId}
+          AND DELETED_AT IS NOT NULL
+    </update>
+
+    <select id="selectReadyPayments"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminPlanDto$ReadyPaymentTarget">
+        SELECT
+            H.HISTORY_ID,
+            H.SUBSCRIPTION_ID,
+            H.MEMBER_ID,
+            H.BILLINGKEY_ID,
+            B.SUBSCRIPTION_BILLING_KEY_VALUE AS PORTONE_BILLING_KEY,
+            B.STATUS AS BILLING_KEY_STATUS,
+            H.MERCHANT_UID,
+            H.PORTONE_SCHEDULE_ID,
+            H.AMOUNT,
+            S.NEXT_BILLING_AT,
+            COALESCE(H.PLAN_NAME, P.PLAN_NAME) AS PLAN_NAME
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+        JOIN SUBSCRIPTIONS S
+          ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+        JOIN SUBSCRIPTION_PLANS P
+          ON P.PLAN_ID = S.PLAN_ID
+        LEFT JOIN SUBSCRIPTION_BILLING_KEY B
+          ON B.SUBSCRIPTION_BILLING_KEY_ID = H.BILLINGKEY_ID
+        WHERE S.PLAN_ID = #{planId}
+          AND S.STATUS = 'ACTIVE'
+          AND S.ENDED_AT IS NULL
+          AND H.STATUS = 'READY'
+          AND H.HISTORY_ID = (
+              SELECT MAX(R.HISTORY_ID)
+              FROM SUBSCRIPTION_PAYMENT_HISTORIES R
+              WHERE R.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+                AND R.STATUS = 'READY'
+          )
+        ORDER BY H.HISTORY_ID
+    </select>
+
+    <update id="replaceReadyPaymentSchedule">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET MERCHANT_UID = #{merchantUid},
+            PORTONE_SCHEDULE_ID = #{portoneScheduleId},
+            AMOUNT = #{amount},
+            PLAN_NAME = #{planName},
+            FAIL_REASON = NULL
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
+    </update>
+</mapper>

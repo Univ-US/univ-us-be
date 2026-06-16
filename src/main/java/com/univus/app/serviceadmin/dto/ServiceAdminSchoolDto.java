@@ -120,6 +120,7 @@ public class ServiceAdminSchoolDto {
         private String merchantUid;
         private String portoneScheduleId;
         private Long amount;
+        private String planName;
     }
 
     @Getter
