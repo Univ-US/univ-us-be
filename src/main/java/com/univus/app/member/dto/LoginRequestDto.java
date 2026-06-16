@@ -10,5 +10,6 @@ public class LoginRequestDto {
     private String loginId;
     private Long univId;
     private String password;
+    private Boolean forceLogin;
 
 }

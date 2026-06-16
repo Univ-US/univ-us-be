@@ -51,6 +51,7 @@ public class SubscriptionAccessInterceptor implements HandlerInterceptor {
                 "success", false,
                 "code", "SUBSCRIPTION_EXPIRED",
                 "message", "The university subscription has ended.",
+                "role", status.getRole(),
                 "accessStatus", status.getAccessStatus(),
                 "resubscribeAvailable", status.isResubscribeAvailable()
         ));
