@@ -32,6 +32,65 @@
           AND DELETED_AT IS NULL
     </select>
 
+    <sql id="subscriptionUniversityOptionColumns">
+        U.UNIV_ID AS univId,
+        U.UNIV_NAME AS univName,
+        U.SIDO AS sido,
+        U.ADDRESS AS address,
+        U.SCHOOL_PHONE AS schoolPhone,
+        U.HOMEPAGE AS homepage,
+        CASE
+            WHEN S.STATUS = 'PENDING' THEN 'PENDING'
+            WHEN S.STATUS = 'ACTIVE'
+                 AND NOT (
+                     NVL(S.PENDING_ACTION, 'NONE') = 'CANCEL'
+                     AND NVL(
+                         S.CANCELLATION_EFFECTIVE_AT,
+                         TIMESTAMP '9999-12-31 23:59:59'
+                     ) <![CDATA[ <= ]]> CURRENT_TIMESTAMP
+                 )
+                THEN 'ACTIVE'
+            ELSE S.STATUS
+        END AS subscriptionStatus
+    </sql>
+
+    <sql id="subscriptionUniversityOptionFrom">
+        FROM UNIVERSITY U
+        LEFT JOIN (
+            SELECT
+                S.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY S.UNIV_ID
+                    ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTIONS S
+            WHERE S.UNIV_ID IS NOT NULL
+        ) S
+            ON S.UNIV_ID = U.UNIV_ID
+           AND S.RN = 1
+    </sql>
+
+    <select id="searchUniversities"
+            resultType="com.univus.app.subscription.dto.SubscriptionUniversityOptionDto">
+        SELECT
+            <include refid="subscriptionUniversityOptionColumns" />
+            <include refid="subscriptionUniversityOptionFrom" />
+        <where>
+            <if test="keyword != null and keyword != ''">
+                LOWER(U.UNIV_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+            </if>
+        </where>
+        ORDER BY U.UNIV_NAME ASC
+    </select>
+
+    <select id="findUniversityOptionById"
+            resultType="com.univus.app.subscription.dto.SubscriptionUniversityOptionDto">
+        SELECT
+            <include refid="subscriptionUniversityOptionColumns" />
+            <include refid="subscriptionUniversityOptionFrom" />
+        WHERE U.UNIV_ID = #{univId}
+    </select>
+
     <select id="findSubscriptionAccessStatus"
             resultType="com.univus.app.subscription.dto.SubscriptionAccessStatusDto">
         WITH LATEST_SUBSCRIPTION AS (
