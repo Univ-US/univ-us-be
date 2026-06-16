@@ -763,6 +763,13 @@
         WHERE ROOM_ID = #{roomId}
     </update>
 
+    <update id="updateActiveTradeChatStatusByProduct">
+        UPDATE TRADE_CHAT_ROOM
+        SET STATUS = #{status}
+        WHERE PRODUCT_ID = #{productId}
+          AND STATUS = 'ACTIVE'
+    </update>
+
     <select id="selectActiveTradeChatRoomCountByProduct" resultType="int">
         SELECT COUNT(*)
         FROM TRADE_CHAT_ROOM
