@@ -219,9 +219,10 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
                 .build();
     }
 
-    /* 미채점 = max(0, 제출 - 채점완료) (PLM-004 채점 현황과 동일 산식) — 변환 지점에서 계산 */
+    /* 미채점 = max(0, 총원 − 채점완료) = 채점 안 된 수강생 수 (2026-06-16 정의 통일 — PLM-004와 동일).
+       신규 과제는 제출 0이어도 총원 전체가 미채점으로 표시(제출 0·채점 0 → "채점완료" 오표시 해소). */
     private LmsProfAssignmentDto.AssignmentResDto toAssignmentResDto(LmsProfAssignmentDto.AssignmentRow row) {
-        int ungraded = Math.max(0, row.getSubmittedCount() - row.getGradedCount());
+        int ungraded = Math.max(0, row.getTotalStudents() - row.getGradedCount());
         return LmsProfAssignmentDto.AssignmentResDto.builder()
                 .assignmentId(row.getAssignmentId())
                 .lecId(row.getLecId())

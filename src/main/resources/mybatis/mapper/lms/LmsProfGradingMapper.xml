@@ -41,7 +41,9 @@
             (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb
                JOIN ASSIGNMENT_SUBMISSION_EVALUATION ev ON ev.LEC_ASN_SBM_ID = sb.LEC_ASN_SBM_ID
               WHERE sb.LEC_ASN_ID = asn.LEC_ASN_ID
-                AND ev.ASN_SBM_EVL_SCORE IS NOT NULL)    AS gradedCount
+                AND ev.ASN_SBM_EVL_SCORE IS NOT NULL)    AS gradedCount,
+            (SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e
+              WHERE e.LEC_ID = asn.LEC_ID AND e.LEC_STD_ENR_STATUS != 'DRP') AS totalStudents
         FROM LECTURE_ASSIGNMENT asn
         JOIN LECTURE l       ON l.LEC_ID       = asn.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
@@ -51,11 +53,11 @@
         <if test="termCode != null">AND s.SEM_TERM = #{termCode}</if>
     </sql>
 
-    <!-- 미채점(submitted-graded>0)/채점완료(<=0) 분리 필터 -->
+    <!-- 미채점(채점 안 된 수강생>0)/채점완료(전원 채점됨) 분리 필터 — 미채점=총원−채점완료 (2026-06-16 정의 통일) -->
     <sql id="gradingSplitFilter">
         <choose>
-            <when test="ungradedOnly">AND (base.submittedCount - base.gradedCount) &gt; 0</when>
-            <otherwise>AND <![CDATA[ (base.submittedCount - base.gradedCount) <= 0 ]]></otherwise>
+            <when test="ungradedOnly">AND (base.totalStudents - base.gradedCount) &gt; 0</when>
+            <otherwise>AND <![CDATA[ (base.totalStudents - base.gradedCount) <= 0 ]]></otherwise>
         </choose>
     </sql>
 
@@ -78,17 +80,17 @@
     <!-- 과목별 미채점 건수 (배너 byCourse — 미채점>0 과목만, 필터 범위) -->
     <select id="selectUngradedByCourse" resultType="com.univus.app.lms.dto.LmsProfGradingDto$CourseCountRow">
         SELECT base.courseName AS courseName,
-               SUM(GREATEST(base.submittedCount - base.gradedCount, 0)) AS "count"
+               SUM(GREATEST(base.totalStudents - base.gradedCount, 0)) AS "count"
         FROM ( <include refid="gradingAssignmentBase"/> ) base
         GROUP BY base.courseName
-        HAVING SUM(GREATEST(base.submittedCount - base.gradedCount, 0)) &gt; 0
+        HAVING SUM(GREATEST(base.totalStudents - base.gradedCount, 0)) &gt; 0
         ORDER BY base.courseName
     </select>
 
     <!-- 미채점 합계 (배너·사이드바 배지 공용). gradingAssignmentBase 재사용 →
          year/termCode null이면 전 학기 합(배지), 지정 시 그 범위 합(배너). Java max(0,...)를 SQL GREATEST로. -->
     <select id="sumUngraded" resultType="int">
-        SELECT NVL(SUM(GREATEST(base.submittedCount - base.gradedCount, 0)), 0)
+        SELECT NVL(SUM(GREATEST(base.totalStudents - base.gradedCount, 0)), 0)
         FROM ( <include refid="gradingAssignmentBase"/> ) base
     </select>
 
