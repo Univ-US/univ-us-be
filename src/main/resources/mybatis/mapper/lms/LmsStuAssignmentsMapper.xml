@@ -27,6 +27,7 @@
         SELECT s.SEM_YEAR AS year,
                s.SEM_TERM AS termCode,
                a.LEC_ASN_ID AS assignmentId,
+               l.LEC_ID AS lecId,
                lc.LEC_COD_NAME AS courseName,
                l.LEC_SECTION AS lecSection,
                pm.MEMBER_NAME AS professor,
