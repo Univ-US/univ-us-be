@@ -8,8 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -30,16 +32,24 @@ public class JwtTokenProvider {
     }
 
     public String createAccessToken(Long memberId, String role) {
+        return createAccessToken(memberId, role, null);
+    }
+
+    public String createAccessToken(Long memberId, String role, String sessionId) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + accessTokenValidityMs);
 
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .subject(String.valueOf(memberId))
                 .claim("role", role)
                 .issuedAt(now)
-                .expiration(expiration)
-                .signWith(secretKey)
-                .compact();
+                .expiration(expiration);
+
+        if (sessionId != null && !sessionId.isBlank()) {
+            builder.claim("sid", sessionId);
+        }
+
+        return builder.signWith(secretKey).compact();
     }
 
     public String createRefreshToken(Long memberId) {
@@ -48,6 +58,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .subject(String.valueOf(memberId))
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(secretKey)
@@ -56,6 +67,14 @@ public class JwtTokenProvider {
 
     public String getTokenType() {
         return TOKEN_TYPE;
+    }
+
+    public Duration getAccessTokenValidity() {
+        return Duration.ofMillis(accessTokenValidityMs);
+    }
+
+    public Duration getRefreshTokenValidity() {
+        return Duration.ofMillis(refreshTokenValidityMs);
     }
 
     // 토큰의 서명과 만료 시간을 검증한다.
@@ -92,6 +111,16 @@ public class JwtTokenProvider {
                 .getPayload();
 
         return claims.get("role", String.class);
+    }
+
+    public String getSessionId(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.get("sid", String.class);
     }
 
 }

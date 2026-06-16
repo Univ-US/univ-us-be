@@ -1,5 +1,6 @@
 package com.univus.app.subscription.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -56,9 +57,14 @@ public class SubscriptionPaymentVerifyResponseDto {
 
     // ADM 권한이 반영된 새 accessToken입니다.
     // 프론트는 기존 GUEST accessToken을 이 값으로 교체해야 합니다.
+    @JsonIgnore
     private String accessToken;
+
+    @JsonIgnore
+    private String refreshToken;
 
     // 토큰 타입입니다.
     // 일반적으로 Bearer입니다.
+    @JsonIgnore
     private String tokenType;
 }

@@ -1,9 +1,14 @@
 package com.univus.app.subscription.controller;
 
 import com.univus.app.subscription.dto.*;
+import com.univus.app.member.dto.RefreshTokenResponseDto;
+import com.univus.app.member.service.MemberService;
+import com.univus.app.security.AuthCookieUtil;
 import com.univus.app.subscription.service.SubscriptionBillingService;
 import com.univus.app.subscription.service.SubscriptionAccessService;
 import com.univus.app.subscription.service.SubscriptionService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +31,8 @@ public class SubscriptionController {
     private final SubscriptionService subscriptionService;
     private final SubscriptionBillingService subscriptionBillingService;
     private final SubscriptionAccessService subscriptionAccessService;
+    private final MemberService memberService;
+    private final AuthCookieUtil authCookieUtil;
 
     @GetMapping("/status")
     public ResponseEntity<SubscriptionAccessStatusDto> getSubscriptionStatus(
@@ -89,11 +96,21 @@ public class SubscriptionController {
     @PostMapping("/payments/verify")
     public ResponseEntity<?> verifySubscriptionPayment(
             @AuthenticationPrincipal Long memberId,
-            @RequestBody SubscriptionPaymentVerifyRequestDto request
+            @RequestBody SubscriptionPaymentVerifyRequestDto request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
     ) {
         try {
             SubscriptionPaymentVerifyResponseDto response =
                     subscriptionService.verifySubscriptionPayment(memberId, request);
+            RefreshTokenResponseDto auth = memberService.createAdminSession(
+                    memberId,
+                    httpServletRequest.getRemoteAddr(),
+                    httpServletRequest.getHeader("User-Agent")
+            );
+            response.setAccessToken(auth.getAccessToken());
+            response.setRefreshToken(auth.getRefreshToken());
+            addAuthCookies(httpServletResponse, auth);
 
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
@@ -110,12 +127,22 @@ public class SubscriptionController {
     @PostMapping("/payments/billing")
     public ResponseEntity<?> completeInitialBillingPayment(
             @AuthenticationPrincipal Long memberId,
-            @RequestBody SubscriptionBillingPaymentRequestDto request
+            @RequestBody SubscriptionBillingPaymentRequestDto request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
     ) {
         try {
-            return ResponseEntity.ok(
-                    subscriptionBillingService.completeInitialBillingPayment(memberId, request)
+            SubscriptionPaymentVerifyResponseDto response =
+                    subscriptionBillingService.completeInitialBillingPayment(memberId, request);
+            RefreshTokenResponseDto auth = memberService.createAdminSession(
+                    memberId,
+                    httpServletRequest.getRemoteAddr(),
+                    httpServletRequest.getHeader("User-Agent")
             );
+            response.setAccessToken(auth.getAccessToken());
+            response.setRefreshToken(auth.getRefreshToken());
+            addAuthCookies(httpServletResponse, auth);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest()
                     .body(Map.of("success", false, "message", ex.getMessage()));
@@ -148,5 +175,10 @@ public class SubscriptionController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("success", false, "message", ex.getMessage()));
         }
+    }
+
+    private void addAuthCookies(HttpServletResponse response, RefreshTokenResponseDto auth) {
+        authCookieUtil.addAccessTokenSessionCookie(response, auth.getAccessToken());
+        authCookieUtil.addRefreshTokenSessionCookie(response, auth.getRefreshToken());
     }
 }
