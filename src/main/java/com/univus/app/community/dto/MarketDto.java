@@ -155,8 +155,8 @@ public class MarketDto {
         private String productStatus;
         private Long viewerMemberId;
         private Long univId;
-        private int page;
-        private int size;
+        private Integer page;
+        private Integer size;
     }
     @Getter @Setter
     @NoArgsConstructor

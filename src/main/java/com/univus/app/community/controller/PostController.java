@@ -79,6 +79,7 @@ public class PostController {
             @RequestParam("title") String title,
             @RequestParam("content") String content,
             @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "univId", required = false) Long univId,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @AuthenticationPrincipal Long memberId,
             Authentication authentication) {
@@ -92,6 +93,7 @@ public class PostController {
         postDto.setTitle(title);
         postDto.setContent(content);
         postDto.setCategory(category);
+        postDto.setUnivId(univId);
 
         int result = postService.writePost(postDto);
         if (result <= 0) {
@@ -214,7 +216,10 @@ public class PostController {
 	 public ResponseEntity<Map<String, Object>> modifyComment(
 	         @PathVariable("postId") Long postId,
 	         @PathVariable("commentId") Long commentId,
+             @AuthenticationPrincipal Long memberId,
+             Authentication authentication,
 	         @RequestBody PostCommentDto commentDto) {
+         assertCanManageComment(commentId, requireMemberId(memberId), authentication);
 	     commentDto.setCommentId(commentId);
 	     commentDto.setPostId(postId);
 	
