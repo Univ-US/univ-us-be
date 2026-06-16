@@ -129,8 +129,33 @@ public class MarketService {
         return marketMapper.updateProduct(updateDto);
     }
 
-    // 상품 삭제
+    // 무료 나눔 완료
     @Transactional
+    public MarketDto.ProductDto completeFreeProduct(Long productId, Long memberId) {
+        validateMember(memberId);
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
+        if (!product.getMemberId().equals(memberId)) {
+            throw new IllegalStateException("Only seller can complete free sharing.");
+        }
+        if (product.getPrice() == null || product.getPrice() > 0) {
+            throw new IllegalStateException("Only free sharing products can be completed without payment.");
+        }
+        if ("DONE".equals(product.getProductStatus())) {
+            return product;
+        }
+        if (isBlindProduct(product)) {
+            throw new IllegalStateException("Blind product cannot be completed.");
+        }
+
+        marketMapper.updateProductStatus(productId, "DONE");
+        marketMapper.updateActiveTradeChatStatusByProduct(productId, DONE_TRADE_CHAT_STATUS);
+        return marketMapper.selectProductDetail(productId);
+    }
+
     public int deleteProduct(Long productId) {
         int rows = marketMapper.deleteProduct(productId);
         if (rows > 0) {
@@ -432,6 +457,49 @@ public class MarketService {
     }
 
     @Transactional
+    public MarketDto.TradeChatRoomDto completeFreeTradeChat(Long memberId, Long roomId) {
+        MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
+        if (!room.getSellerId().equals(memberId)) {
+            throw new IllegalStateException("Only seller can complete free sharing.");
+        }
+        if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus()) || "DONE".equals(room.getProductStatus())) {
+            throw new IllegalStateException("Trade is already completed.");
+        }
+        if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            throw new IllegalStateException("Closed trade chat cannot be completed.");
+        }
+
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(room.getProductId());
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        if (!product.getMemberId().equals(room.getSellerId())) {
+            throw new IllegalStateException("Product seller does not match chat seller.");
+        }
+        if (product.getPrice() == null || product.getPrice() > 0) {
+            throw new IllegalStateException("Only free sharing products can be completed without payment.");
+        }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
+
+        MarketDto.TradeDto tradeDto = MarketDto.TradeDto.builder()
+                .productId(product.getProductId())
+                .sellerId(room.getSellerId())
+                .buyerId(room.getBuyerId())
+                .tradeStatus("DONE")
+                .price(0L)
+                .build();
+        marketMapper.insertTrade(tradeDto);
+        marketMapper.updateProductStatus(product.getProductId(), "DONE");
+        marketMapper.updateTradeChatStatus(room.getRoomId(), DONE_TRADE_CHAT_STATUS);
+
+        MarketDto.TradeChatRoomDto updatedRoom =
+                marketMapper.selectTradeChatRoomForMember(roomId, memberId);
+        runAfterCommit(() -> messagingTemplate.convertAndSend(
+                MARKET_CHAT_TOPIC_PREFIX + roomId + "/room",
+                updatedRoom));
+        return updatedRoom;
+    }
+    @Transactional
     public MarketDto.TradeChatRoomDto closeTradeChatRoom(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
         if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())) {
@@ -453,13 +521,18 @@ public class MarketService {
     @Transactional
     public Map<String, Object> deleteTradeChatRoom(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
-        if (!CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
-            throw new IllegalStateException("Only closed trade chat can be deleted.");
+        boolean deletableStatus = CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || "DONE".equals(room.getProductStatus());
+        if (!deletableStatus) {
+            throw new IllegalStateException("Only closed or completed trade chat can be deleted.");
         }
 
         marketMapper.deleteTradeChatMessages(roomId);
         int rows = marketMapper.deleteTradeChatRoom(roomId);
-        restoreReservableProductIfNoActiveChats(room.getProductId());
+        if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            restoreReservableProductIfNoActiveChats(room.getProductId());
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", rows > 0);
