@@ -3,7 +3,6 @@ package com.univus.app.lms.service;
 import com.univus.app.common.PaginateUtilRestApi;
 import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.common.StorageService;
-import com.univus.app.lms.code.LecAsnSbmStatusCode;
 import com.univus.app.lms.dto.LmsProfGradingDto;
 import com.univus.app.lms.mapper.LmsProfGradingMapper;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +35,6 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
     // TODO maxScore: LECTURE_ASSIGNMENT에 만점 컬럼이 없어 100 고정(잠정). 추후 재검토(컬럼 추가 vs 고정).
     private static final int DEFAULT_MAX_SCORE = 100;
 
-    private static final String SUBMITTED_NONE = LecAsnSbmStatusCode.NOT_SUBMITTED.getCode(); // 미제출 상태코드
     private static final String UPLOAD_WEB_PREFIX = "/uploads"; // ORG_URL 웹 접두어 (프로필 이미지와 동일 관례)
     private static final String FILE_DOWNLOAD_PATH = "/api/lms/professor/grading/submissions/%d/file";
 
@@ -85,7 +83,7 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
                     .dueDate(row.getDueDate())
                     .submittedCount(row.getSubmittedCount())
                     .gradedCount(row.getGradedCount())
-                    .ungradedCount(Math.max(0, row.getSubmittedCount() - row.getGradedCount()))
+                    .ungradedCount(Math.max(0, row.getTotalStudents() - row.getGradedCount())) // 미채점=총원−채점(2026-06-16 통일)
                     .maxScore(DEFAULT_MAX_SCORE)
                     .build());
         }
@@ -119,7 +117,6 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
                 latestFilesBySubmission(gradingMapper.selectAssignmentFiles(assignmentId));
 
         int gradedCount = 0;
-        int ungradedCount = 0;
         List<LmsProfGradingDto.SubmissionResDto> submissions = new ArrayList<>(rows.size());
         for (LmsProfGradingDto.SubmissionRow row : rows) {
             LmsProfGradingDto.SubmissionResDto submission =
@@ -127,10 +124,10 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
             submissions.add(submission);
             if (submission.isGraded()) {
                 gradedCount++;
-            } else if (isSubmitted(row)) {
-                ungradedCount++; // 제출했으나 미채점
             }
         }
+        // 미채점 = 채점 안 된 수강생 수(총원 − 채점완료). rows = 수강생 전체(미제출 포함, selectAssignmentSubmissions) → rows.size() = 총원 (2026-06-16 정의 통일)
+        int ungradedCount = Math.max(0, rows.size() - gradedCount);
 
         return LmsProfGradingDto.DetailResDto.builder()
                 .assignmentId(header.getAssignmentId())
@@ -196,12 +193,6 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "교수 LMS 프로필이 없습니다.");
         }
         return professorLmsPrfId;
-    }
-
-    /* 제출했고(미제출 아님) 아직 채점 안 된 경우 판정용 */
-    private boolean isSubmitted(LmsProfGradingDto.SubmissionRow row) {
-        return row.getSubmissionId() != null
-                && !SUBMITTED_NONE.equals(row.getSubmissionStatus());
     }
 
     /* 제출별 최신 첨부 1건 맵 (selectAssignmentFiles가 제출별·등록일 DESC 정렬이라 첫 행이 최신) */

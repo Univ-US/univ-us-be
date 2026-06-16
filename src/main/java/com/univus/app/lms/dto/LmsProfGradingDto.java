@@ -41,6 +41,7 @@ public final class LmsProfGradingDto {
         private String dueDate;        // "YYYY.MM.DD" (TO_CHAR)
         private int submittedCount;    // 제출 학생 수 (LEC_ASN_SBM_STATUS != 'NSB')
         private int gradedCount;       // 채점완료 수 (평가 점수 not null)
+        private int totalStudents;     // 수강생 수 (LEC_STD_ENR_STATUS != 'DRP') — 미채점=총원−채점 계산용
     }
 
     /** 과목별 미채점 건수 매핑 (selectUngradedByCourse) */
@@ -108,8 +109,8 @@ public final class LmsProfGradingDto {
     @AllArgsConstructor
     @Builder
     public static class OverviewResDto {
-        private int totalUngraded;              // 미채점 제출 건수 합 (선택 필터 범위)
-        private List<CourseCountResDto> byCourse; // 과목별 미채점 제출 건수 (배너용)
+        private int totalUngraded;              // 미채점 수강생 수 합(총원−채점, 선택 필터 범위) — 2026-06-16 정의 통일
+        private List<CourseCountResDto> byCourse; // 과목별 미채점 수강생 수 (배너용)
     }
 
     /** 과목별 미채점 건수 응답 (byCourse) */
@@ -137,7 +138,7 @@ public final class LmsProfGradingDto {
         private String dueDate;        // "YYYY.MM.DD"
         private int submittedCount;
         private int gradedCount;
-        private int ungradedCount;     // submittedCount - gradedCount (service 계산)
+        private int ungradedCount;     // 미채점 = 총원 − 채점완료 (채점 안 된 수강생 수, service 계산)
         private Integer maxScore;      // 과제 만점 (현재 100 고정 — service)
     }
 
