@@ -13,6 +13,7 @@ public class SubscriptionPrepareRequestDto {
 
     // 사용자가 선택한 구독 플랜 ID입니다.
     private Long planId;
+    private Long univId;
 
     // 결제 성공 후 ADM 계정과 연결될 학교 정보입니다.
     private String univName;

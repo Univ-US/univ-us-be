@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -43,6 +44,13 @@ public class SubscriptionController {
 
     // PortOne 결제창 호출에 필요한 공개 식별값만 반환합니다.
     // API secret은 서버 내부에서만 사용하며 응답에 포함하지 않습니다.
+    @GetMapping("/universities")
+    public ResponseEntity<List<SubscriptionUniversityOptionDto>> searchUniversities(
+            @RequestParam(required = false) String keyword
+    ) {
+        return ResponseEntity.ok(subscriptionService.searchUniversities(keyword));
+    }
+
     @GetMapping("/payments/config")
     public ResponseEntity<SubscriptionPaymentConfigResponseDto> getPaymentConfig() {
         return ResponseEntity.ok(subscriptionService.getPaymentConfig());

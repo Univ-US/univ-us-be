@@ -18,6 +18,10 @@ public interface SubscriptionMapper {
     // 결제 금액은 프론트 요청값이 아니라 DB의 플랜 가격을 신뢰해야 합니다.
     SubscriptionPlanResponseDto findActivePlanById(@Param("planId") Long planId);
 
+    List<SubscriptionUniversityOptionDto> searchUniversities(@Param("keyword") String keyword);
+
+    SubscriptionUniversityOptionDto findUniversityOptionById(@Param("univId") Long univId);
+
     SubscriptionAccessStatusDto findSubscriptionAccessStatus(
             @Param("memberId") Long memberId
     );

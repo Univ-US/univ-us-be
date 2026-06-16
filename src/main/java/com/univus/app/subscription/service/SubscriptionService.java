@@ -10,6 +10,8 @@ public interface SubscriptionService {
     // 로그인하지 않은 사용자도 플랜을 볼 수 있게 할지 여부는 SecurityConfig에서 결정합니다.
     List<SubscriptionPlanResponseDto> getActivePlans();
 
+    List<SubscriptionUniversityOptionDto> searchUniversities(String keyword);
+
     // 프론트가 PortOne 결제창을 호출할 때 필요한 공개 설정을 조회합니다.
     SubscriptionPaymentConfigResponseDto getPaymentConfig();
 
