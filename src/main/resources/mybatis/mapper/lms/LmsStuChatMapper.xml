@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.univus.app.lms.mapper.LmsStuChatMapper">
+
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID
+        FROM LMS_PROFILE
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <insert id="insertMissingRooms">
+        INSERT INTO CHAT_ROOM (
+            CHT_ROM_ID,
+            LEC_ID,
+            LMS_PRF_ID,
+            CHT_ROM_REG_DATE,
+            CHT_ROM_VAL_STATUS
+        )
+        SELECT SEQ_CHAT_ROOM.NEXTVAL,
+               e.LEC_ID,
+               #{lmsPrfId},
+               SYSTIMESTAMP,
+               'ACT'
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM CHAT_ROOM cr
+              WHERE cr.LEC_ID = e.LEC_ID
+                AND cr.LMS_PRF_ID = #{lmsPrfId}
+                AND cr.CHT_ROM_VAL_STATUS = 'ACT'
+          )
+    </insert>
+
+    <sql id="roomColumns">
+        cr.CHT_ROM_ID AS roomId,
+        cr.LEC_ID AS lecId,
+        cr.LMS_PRF_ID AS studentLmsPrfId,
+        l.LMS_PRF_ID AS professorLmsPrfId,
+        pm.MEMBER_NAME AS professorName,
+        lc.LEC_COD_NAME AS courseName,
+        l.LEC_SECTION AS lecSection,
+        COALESCE(
+            (
+                SELECT lm.CHT_ROM_MSG_CONTENT
+                FROM CHAT_ROOM_MESSAGES lm
+                WHERE lm.CHT_ROM_ID = cr.CHT_ROM_ID
+                  AND lm.CHT_ROM_MSG_STATUS != 'DEL'
+                ORDER BY lm.CHT_ROM_MSG_DATE DESC, lm.CHT_ROM_MSG_ID DESC
+                FETCH FIRST 1 ROW ONLY
+            ),
+            '아직 메시지가 없습니다.'
+        ) AS lastMessage,
+        COALESCE(
+            (
+                SELECT TO_CHAR(lm.CHT_ROM_MSG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS')
+                FROM CHAT_ROOM_MESSAGES lm
+                WHERE lm.CHT_ROM_ID = cr.CHT_ROM_ID
+                  AND lm.CHT_ROM_MSG_STATUS != 'DEL'
+                ORDER BY lm.CHT_ROM_MSG_DATE DESC, lm.CHT_ROM_MSG_ID DESC
+                FETCH FIRST 1 ROW ONLY
+            ),
+            TO_CHAR(cr.CHT_ROM_REG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS')
+        ) AS lastAt,
+        (
+            SELECT COUNT(*)
+            FROM CHAT_ROOM_MESSAGES um
+            LEFT JOIN ROOM_MESSAGES_READ rr ON rr.CHT_ROM_MSG_ID = um.CHT_ROM_MSG_ID
+            WHERE um.CHT_ROM_ID = cr.CHT_ROM_ID
+              AND um.LMS_PRF_ID != #{lmsPrfId}
+              AND um.CHT_ROM_MSG_STATUS != 'DEL'
+              AND NVL(rr.ROM_MSG_RED_YN, 0) = 0
+        ) AS unread
+    </sql>
+
+    <select id="selectChatRooms"
+            resultType="com.univus.app.lms.dto.LmsStuChatDto$ChatRoomResDto">
+        SELECT
+            <include refid="roomColumns"/>
+        FROM CHAT_ROOM cr
+        JOIN LECTURE l ON l.LEC_ID = cr.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
+        JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = cr.LEC_ID
+            AND e.LMS_PRF_ID = cr.LMS_PRF_ID
+        WHERE cr.LMS_PRF_ID = #{lmsPrfId}
+          AND cr.CHT_ROM_VAL_STATUS = 'ACT'
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+        ORDER BY lastAt DESC, cr.CHT_ROM_ID DESC
+    </select>
+
+    <select id="selectChatRoomForStudent"
+            resultType="com.univus.app.lms.dto.LmsStuChatDto$ChatRoomResDto">
+        SELECT
+            <include refid="roomColumns"/>
+        FROM CHAT_ROOM cr
+        JOIN LECTURE l ON l.LEC_ID = cr.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
+        JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = cr.LEC_ID
+            AND e.LMS_PRF_ID = cr.LMS_PRF_ID
+        WHERE cr.CHT_ROM_ID = #{roomId}
+          AND cr.LMS_PRF_ID = #{lmsPrfId}
+          AND cr.CHT_ROM_VAL_STATUS = 'ACT'
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+    </select>
+
+    <select id="selectChatMessages"
+            resultType="com.univus.app.lms.dto.LmsStuChatDto$ChatMessageResDto">
+        SELECT m.CHT_ROM_MSG_ID AS id,
+               m.CHT_ROM_ID AS roomId,
+               m.LMS_PRF_ID AS senderLmsPrfId,
+               CASE WHEN m.LMS_PRF_ID = #{lmsPrfId} THEN 'me' ELSE 'professor' END AS sender,
+               m.CHT_ROM_MSG_CONTENT AS text,
+               TO_CHAR(m.CHT_ROM_MSG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS sentAt,
+               CASE WHEN NVL(rr.ROM_MSG_RED_YN, 0) = 1 THEN 1 ELSE 0 END AS read
+        FROM CHAT_ROOM_MESSAGES m
+        LEFT JOIN ROOM_MESSAGES_READ rr ON rr.CHT_ROM_MSG_ID = m.CHT_ROM_MSG_ID
+        WHERE m.CHT_ROM_ID = #{roomId}
+          AND m.CHT_ROM_MSG_STATUS != 'DEL'
+        ORDER BY m.CHT_ROM_MSG_DATE ASC, m.CHT_ROM_MSG_ID ASC
+    </select>
+
+    <update id="markIncomingMessagesRead">
+        MERGE INTO ROOM_MESSAGES_READ rr
+        USING (
+            SELECT m.CHT_ROM_MSG_ID
+            FROM CHAT_ROOM_MESSAGES m
+            WHERE m.CHT_ROM_ID = #{roomId}
+              AND m.LMS_PRF_ID != #{lmsPrfId}
+              AND m.CHT_ROM_MSG_STATUS != 'DEL'
+        ) src
+        ON (rr.CHT_ROM_MSG_ID = src.CHT_ROM_MSG_ID)
+        WHEN MATCHED THEN
+            UPDATE SET rr.ROM_MSG_RED_YN = 1,
+                       rr.ROM_MSG_RED_REG_DATE = COALESCE(rr.ROM_MSG_RED_REG_DATE, SYSTIMESTAMP)
+            WHERE rr.ROM_MSG_RED_YN = 0
+        WHEN NOT MATCHED THEN
+            INSERT (
+                ROM_MSG_RED_ID,
+                CHT_ROM_MSG_ID,
+                ROM_MSG_RED_REG_DATE,
+                ROM_MSG_RED_YN
+            ) VALUES (
+                SEQ_ROOM_MESSAGES_READ.NEXTVAL,
+                src.CHT_ROM_MSG_ID,
+                SYSTIMESTAMP,
+                1
+            )
+    </update>
+
+    <insert id="insertChatMessage"
+            parameterType="com.univus.app.lms.dto.LmsStuChatDto$ChatMessageResDto">
+        <selectKey keyProperty="id" resultType="long" order="BEFORE">
+            SELECT SEQ_CHAT_ROOM_MESSAGES.NEXTVAL FROM DUAL
+        </selectKey>
+        INSERT INTO CHAT_ROOM_MESSAGES (
+            CHT_ROM_MSG_ID,
+            CHT_ROM_ID,
+            LMS_PRF_ID,
+            CHT_ROM_MSG_DATE,
+            CHT_ROM_MSG_CONTENT,
+            CHT_ROM_MSG_STATUS
+        ) VALUES (
+            #{id},
+            #{roomId},
+            #{senderLmsPrfId},
+            SYSTIMESTAMP,
+            #{text},
+            'SNT'
+        )
+    </insert>
+
+    <insert id="insertUnreadReceipt">
+        INSERT INTO ROOM_MESSAGES_READ (
+            ROM_MSG_RED_ID,
+            CHT_ROM_MSG_ID,
+            ROM_MSG_RED_REG_DATE,
+            ROM_MSG_RED_YN
+        ) VALUES (
+            SEQ_ROOM_MESSAGES_READ.NEXTVAL,
+            #{messageId},
+            NULL,
+            0
+        )
+    </insert>
+
+    <select id="selectChatMessage"
+            resultType="com.univus.app.lms.dto.LmsStuChatDto$ChatMessageResDto">
+        SELECT m.CHT_ROM_MSG_ID AS id,
+               m.CHT_ROM_ID AS roomId,
+               m.LMS_PRF_ID AS senderLmsPrfId,
+               CASE WHEN m.LMS_PRF_ID = #{lmsPrfId} THEN 'me' ELSE 'professor' END AS sender,
+               m.CHT_ROM_MSG_CONTENT AS text,
+               TO_CHAR(m.CHT_ROM_MSG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS sentAt,
+               CASE WHEN NVL(rr.ROM_MSG_RED_YN, 0) = 1 THEN 1 ELSE 0 END AS read
+        FROM CHAT_ROOM_MESSAGES m
+        LEFT JOIN ROOM_MESSAGES_READ rr ON rr.CHT_ROM_MSG_ID = m.CHT_ROM_MSG_ID
+        WHERE m.CHT_ROM_MSG_ID = #{messageId}
+    </select>
+
+    <select id="selectUnreadCount" resultType="int">
+        SELECT COUNT(*)
+        FROM CHAT_ROOM cr
+        JOIN CHAT_ROOM_MESSAGES m ON m.CHT_ROM_ID = cr.CHT_ROM_ID
+        LEFT JOIN ROOM_MESSAGES_READ rr ON rr.CHT_ROM_MSG_ID = m.CHT_ROM_MSG_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = cr.LEC_ID
+            AND e.LMS_PRF_ID = cr.LMS_PRF_ID
+        WHERE cr.LMS_PRF_ID = #{lmsPrfId}
+          AND cr.CHT_ROM_VAL_STATUS = 'ACT'
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND m.LMS_PRF_ID != #{lmsPrfId}
+          AND m.CHT_ROM_MSG_STATUS != 'DEL'
+          AND NVL(rr.ROM_MSG_RED_YN, 0) = 0
+    </select>
+
+</mapper>
