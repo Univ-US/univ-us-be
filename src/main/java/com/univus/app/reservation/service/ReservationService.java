@@ -10,6 +10,12 @@ public interface ReservationService {
 
     ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days);
 
+    ReservationDto.ReservationPenaltyStatusDto getReservationPenaltyStatus(Long memberId);
+
+    ReservationDto.ReservationPenaltyStatusDto pledgeReservationPenalty(
+            Long memberId,
+            ReservationDto.ReservationPenaltyPledgeRequestDto request);
+
     List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
             Long memberId,
             LocalDateTime startTime,

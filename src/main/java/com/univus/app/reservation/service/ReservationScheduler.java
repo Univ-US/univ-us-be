@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 public class ReservationScheduler {
 
     private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
+    private static final String NO_SHOW_PENALTY_TYPE = "NO_SHOW";
+    private static final String NO_SHOW_PENALTY_REASON = "예약 시작 후 20분 이내 입실하지 않아 자동 취소되었습니다.";
 
     private final ReservationMapper reservationMapper;
     private final SimpMessagingTemplate messagingTemplate;
@@ -32,7 +34,7 @@ public class ReservationScheduler {
     @Scheduled(cron = "0 * * * * *") // 매 1분마다 실행
     @Transactional
     public void processExpiredAndNoShowReservations() {
-        // 1. 만료된 예약 (종료 시간이 지난 USING/RESERVED) -> COMPLETED 처리
+        // 1. 만료된 이용 예약 (종료 시간이 지난 USING) -> COMPLETED 처리
         List<ReservationDto.ReadingSeatReservationDto> expiredReservations = 
                 reservationMapper.selectExpiredReadingSeatReservations();
                 
@@ -53,6 +55,10 @@ public class ReservationScheduler {
             int updated = reservationMapper.updateReadingSeatReservationStatus(
                     reservation.getReservationId(), "CANCELLED");
             if (updated > 0) {
+                reservationMapper.insertReservationPenalty(
+                        reservation.getMemberId(),
+                        NO_SHOW_PENALTY_TYPE,
+                        NO_SHOW_PENALTY_REASON);
                 log.info("노쇼 좌석 예약 자동 취소 처리 (reservationId={})", reservation.getReservationId());
                 publishSeatRealtimeEventAfterCommit("CANCELLED", reservation);
             }
