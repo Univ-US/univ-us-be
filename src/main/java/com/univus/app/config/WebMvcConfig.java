@@ -34,6 +34,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "http://192.168.0.108:9090",
                         "https://www.univus.com",       // TLS-A(self-signed) 대비
                         "https://univus.com",           // TLS-A 대비
+                        "https://univus.duckdns.org",   // TLS prod(Let's Encrypt, LE) - 외부/webhook 도메인
                         "https://happyjob.iptime.org"   // TLS-B(Let's Encrypt) 대비
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
