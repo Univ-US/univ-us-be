@@ -27,6 +27,7 @@ public class MemberService {
 
   private static final String DEFAULT_ROLE = "GUEST";
   private static final String DEFAULT_STATUS = "ACTIVE";
+  private static final String STATUS_WITHDRAWN = "WITHDRAWN";
   private static final String ROLE_ADMIN = "ADM";
   private static final String ROLE_SUPER_ADMIN = "SUA";
 
@@ -123,7 +124,7 @@ public class MemberService {
       throw new InvalidLoginException("Login type is not allowed for this role.");
     }
 
-    if (!DEFAULT_STATUS.equals(member.getStatus())) {
+    if (STATUS_WITHDRAWN.equals(member.getStatus())) {
       insertLoginFailLog(member.getMemberId(), "ACCOUNT_NOT_ACTIVE");
       throw new InvalidLoginException("Account is not active.");
     }
@@ -182,7 +183,7 @@ public class MemberService {
   public AuthSessionResponseDto getSession(Long memberId) {
     MemberDto member = memberMapper.findByMemberId(memberId);
 
-    if (member == null || !DEFAULT_STATUS.equals(member.getStatus())) {
+    if (member == null || STATUS_WITHDRAWN.equals(member.getStatus())) {
       throw new InvalidRefreshTokenException("Invalid authentication session.");
     }
 
@@ -221,7 +222,7 @@ public class MemberService {
       throw new InvalidRefreshTokenException("Invalid refresh token.");
     }
 
-    if (!DEFAULT_STATUS.equals(member.getStatus())) {
+    if (STATUS_WITHDRAWN.equals(member.getStatus())) {
       refreshTokenRedisService.delete(refreshToken);
       throw new InvalidRefreshTokenException("Inactive account.");
     }
@@ -260,7 +261,7 @@ public class MemberService {
   public RefreshTokenResponseDto createAdminSession(Long memberId, String ipAddress, String userAgent) {
     MemberDto member = memberMapper.findByMemberId(memberId);
 
-    if (member == null || !DEFAULT_STATUS.equals(member.getStatus())) {
+    if (member == null || STATUS_WITHDRAWN.equals(member.getStatus())) {
       throw new InvalidRefreshTokenException("Invalid authentication session.");
     }
 

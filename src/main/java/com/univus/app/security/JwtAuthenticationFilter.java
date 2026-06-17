@@ -41,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             MemberDto member = memberMapper.findByMemberId(memberId);
 
             if (member != null
-                    && "ACTIVE".equals(member.getStatus())
+                    && !"WITHDRAWN".equals(member.getStatus())
                     && role != null
                     && role.equals(member.getRole())
                     && isSessionAllowed(memberId, role, sessionId)) {

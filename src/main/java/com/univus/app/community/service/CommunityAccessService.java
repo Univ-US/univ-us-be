@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class CommunityAccessService {
 
     private static final String ROLE_SUPER_ADMIN = "SUA";
+    private static final String STATUS_SUSPENDED = "SUSPENDED";
 
     private final MemberMapper memberMapper;
 
@@ -23,6 +24,10 @@ public class CommunityAccessService {
         MemberDto member = memberMapper.findByMemberId(memberId);
         if (member == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+
+        if (STATUS_SUSPENDED.equals(member.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "정지된 계정은 커뮤니티를 이용할 수 없습니다.");
         }
 
         if (ROLE_SUPER_ADMIN.equals(member.getRole())) {
