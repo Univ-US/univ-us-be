@@ -4,9 +4,74 @@
 
 <mapper namespace="com.univus.app.cmypage.mapper.CmypageMapper">
 
+    <select id="selectMyProfile" resultType="com.univus.app.cmypage.dto.CmypageProfileDto">
+        SELECT
+            M.MEMBER_ID AS memberId,
+            M.MEMBER_NAME AS memberName,
+            MD.COMMUNITY_NICKNAME AS communityNickname,
+            U.UNIV_NAME AS univName,
+            D.DEPT_NAME AS deptName,
+            M.STATUS AS status,
+            M.CREATED_AT AS createdAt
+        FROM MEMBER M
+        LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
+        LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID
+        LEFT JOIN DEPARTMENT D ON MD.DEPT_ID = D.DEPT_ID
+        WHERE M.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectMySummary" resultType="com.univus.app.cmypage.dto.CmypageSummaryDto">
+        SELECT
+            (
+                SELECT COUNT(*)
+                FROM POST P
+                WHERE P.MEMBER_ID = #{memberId}
+                  AND P.IS_DELETED = 0
+            ) AS postCount,
+            (
+                SELECT COUNT(*)
+                FROM POST_COMMENT C
+                JOIN POST P ON C.POST_ID = P.POST_ID
+                WHERE C.MEMBER_ID = #{memberId}
+                  AND C.IS_DELETED = 0
+                  AND P.IS_DELETED = 0
+                  AND P.IS_BLIND = 0
+            ) AS commentCount,
+            (
+                SELECT COUNT(*)
+                FROM POST_LIKE L
+                JOIN POST P ON L.POST_ID = P.POST_ID
+                WHERE L.MEMBER_ID = #{memberId}
+                  AND P.IS_DELETED = 0
+                  AND P.IS_BLIND = 0
+            ) AS likedPostCount,
+            (
+                SELECT COUNT(*)
+                FROM PRODUCT P
+                WHERE P.MEMBER_ID = #{memberId}
+                  AND P.IS_DELETED = 0
+            ) + (
+                SELECT COUNT(DISTINCT T.PRODUCT_ID)
+                FROM TRADE_CHAT_ROOM T
+                JOIN PRODUCT P ON T.PRODUCT_ID = P.PRODUCT_ID
+                WHERE T.BUYER_ID = #{memberId}
+                  AND P.IS_DELETED = 0
+            ) AS tradeCount,
+            (
+                SELECT COUNT(*)
+                FROM PRODUCT_LIKE L
+                JOIN PRODUCT P ON L.PRODUCT_ID = P.PRODUCT_ID
+                WHERE L.MEMBER_ID = #{memberId}
+                  AND P.IS_DELETED = 0
+                  AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+            ) AS wishlistCount
+        FROM DUAL
+    </select>
+
     <select id="selectMyComments" resultType="com.univus.app.cmypage.dto.CmypageCommentDto">
         SELECT 
             C.COMMENT_ID AS commentId,
+            P.POST_ID AS postId,
             C.CONTENT AS content,
             P.TITLE AS postTitle,
             P.BOARD_ID AS boardId,
@@ -37,5 +102,84 @@
           AND P.IS_BLIND = 0
         ORDER BY L.PRESSED_AT DESC
     </select>
+
+    <select id="selectMyTrades" resultType="com.univus.app.cmypage.dto.CmypageTradeDto">
+        SELECT * FROM (
+            SELECT 
+                P.PRODUCT_ID AS tradeId,
+                P.PRODUCT_ID AS productId,
+                NULL AS roomId,
+                P.PRODUCT_NAME AS productName,
+                P.PRICE AS price,
+                P.PRODUCT_STATUS AS status,
+                '판매' AS role,
+                (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS reportCount,
+                CASE
+                    WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
+                    ELSE 0
+                END AS isBlind,
+                P.CREATED_AT AS createdAt
+            FROM PRODUCT P
+            WHERE P.MEMBER_ID = #{memberId}
+              AND P.IS_DELETED = 0
+
+            UNION ALL
+
+            SELECT 
+                P.PRODUCT_ID AS tradeId,
+                P.PRODUCT_ID AS productId,
+                MIN(T.ROOM_ID) AS roomId,
+                P.PRODUCT_NAME AS productName,
+                P.PRICE AS price,
+                P.PRODUCT_STATUS AS status,
+                '구매' AS role,
+                (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS reportCount,
+                CASE
+                    WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
+                    ELSE 0
+                END AS isBlind,
+                MIN(T.CREATED_AT) AS createdAt
+            FROM TRADE_CHAT_ROOM T
+            JOIN PRODUCT P ON T.PRODUCT_ID = P.PRODUCT_ID
+            WHERE T.BUYER_ID = #{memberId}
+              AND P.IS_DELETED = 0
+            GROUP BY P.PRODUCT_ID, P.PRODUCT_NAME, P.PRICE, P.PRODUCT_STATUS
+        )
+        ORDER BY createdAt DESC
+    </select>
+
+    <select id="selectMyWishlist" resultType="com.univus.app.cmypage.dto.CmypageWishlistDto">
+        SELECT 
+            P.PRODUCT_ID AS productId,
+            P.PRODUCT_NAME AS productName,
+            P.PRICE AS price,
+            P.PLACE AS place,
+            P.PRODUCT_STATUS AS status
+        FROM PRODUCT_LIKE L
+        JOIN PRODUCT P ON L.PRODUCT_ID = P.PRODUCT_ID
+        WHERE L.MEMBER_ID = #{memberId}
+          AND P.IS_DELETED = 0
+          AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+        ORDER BY L.PRESSED_AT DESC
+    </select>
+
+    <select id="countCommunityNicknameForOthers" resultType="int">
+        SELECT COUNT(*)
+        FROM MEMBER_DETAIL
+        WHERE COMMUNITY_NICKNAME = #{communityNickname}
+          AND MEMBER_ID != #{memberId}
+    </select>
+
+    <update id="updateCommunityNickname">
+        UPDATE MEMBER_DETAIL
+        SET COMMUNITY_NICKNAME = #{communityNickname}
+        WHERE MEMBER_ID = #{memberId}
+    </update>
+
+    <update id="updateMemberStatus">
+        UPDATE MEMBER
+        SET STATUS = #{status}
+        WHERE MEMBER_ID = #{memberId}
+    </update>
 
 </mapper>

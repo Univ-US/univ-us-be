@@ -14,6 +14,7 @@ public class PostCommentDto {
     private Long commentId;            // COMMENT_ID
     private Long memberId;             // MEMBER_ID
     private Long postId;               // POST_ID
+    private Long univId;
     private Long parentId;             // PARENT_ID (NULL = 최상위 댓글)
     private String content;            // CONTENT VARCHAR2(2000)
     private Integer isAnonymous;       // IS_ANONYMOUS NUMBER(1)

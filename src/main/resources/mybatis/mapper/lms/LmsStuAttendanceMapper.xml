@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- SLM-005 학생 출석 내역 SQL (학생 전용 — 수강 강의 LECTURE_STUDENT_ENROLLMENT, status!='DRP') -->
+<mapper namespace="com.univus.app.lms.mapper.LmsStuAttendanceMapper">
+
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectCourseRows" resultType="com.univus.app.lms.dto.LmsStuAttendanceDto$CourseRow">
+        SELECT s.SEM_YEAR AS year,
+               s.SEM_TERM AS termCode,
+               CASE
+                   WHEN TRUNC(SYSDATE) BETWEEN TRUNC(s.SEM_STR_DATE) AND TRUNC(s.SEM_END_DATE) THEN 1
+                   ELSE 0
+               END AS inProgressFlag,
+               e.LEC_STD_ENR_ID AS enrollmentId,
+               l.LEC_ID AS lecId,
+               lc.LEC_COD_NAME AS courseName,
+               l.LEC_SECTION AS lecSection,
+               NVL(l.LEC_TOT_CLASSES, 0) AS totalSessions,
+               (SELECT COUNT(*)
+                  FROM STUDENT_ENROLLMENT_ATTENDANCE a
+                 WHERE a.LEC_STD_ENR_ID = e.LEC_STD_ENR_ID
+                   AND a.STD_ENR_ATD_STS_CODE = 'PRS') AS present,
+               (SELECT COUNT(*)
+                  FROM STUDENT_ENROLLMENT_ATTENDANCE a
+                 WHERE a.LEC_STD_ENR_ID = e.LEC_STD_ENR_ID
+                   AND a.STD_ENR_ATD_STS_CODE = 'LAT') AS late,
+               (SELECT COUNT(*)
+                  FROM STUDENT_ENROLLMENT_ATTENDANCE a
+                 WHERE a.LEC_STD_ENR_ID = e.LEC_STD_ENR_ID
+                   AND a.STD_ENR_ATD_STS_CODE = 'ABS') AS absent,
+               (SELECT COUNT(*)
+                  FROM STUDENT_ENROLLMENT_ATTENDANCE a
+                 WHERE a.LEC_STD_ENR_ID = e.LEC_STD_ENR_ID) AS attendanceTotal
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l       ON l.LEC_ID = e.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID = l.SEM_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND l.LEC_VAL_STATUS != 'CNCL'
+        ORDER BY s.SEM_YEAR DESC,
+                 CASE s.SEM_TERM
+                     WHEN 'WNT' THEN 4
+                     WHEN 'SM2' THEN 3
+                     WHEN 'SMR' THEN 2
+                     WHEN 'SM1' THEN 1
+                     ELSE 0
+                 END DESC,
+                 lc.LEC_COD_NAME,
+                 l.LEC_SECTION,
+                 l.LEC_ID
+    </select>
+
+    <select id="selectDetailRecords" resultType="com.univus.app.lms.dto.LmsStuAttendanceDto$RecordRow">
+        SELECT a.LEC_STD_ENR_ID AS enrollmentId,
+               a.STD_ENR_ATD_STS_CODE AS statusCode,
+               TO_CHAR(a.STD_ENR_ATD_REG_DATE, 'YYYY-MM-DD') AS attendanceDate
+        FROM STUDENT_ENROLLMENT_ATTENDANCE a
+        JOIN LECTURE_STUDENT_ENROLLMENT e ON e.LEC_STD_ENR_ID = a.LEC_STD_ENR_ID
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND l.LEC_VAL_STATUS != 'CNCL'
+          AND a.STD_ENR_ATD_STS_CODE IN ('LAT', 'ABS')
+        ORDER BY a.STD_ENR_ATD_REG_DATE
+    </select>
+
+</mapper>

@@ -98,13 +98,23 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
 
         LocalDateTime paidAt = toLocalDateTime(payment.getPaidAt());
         LocalDateTime nextBillingAt = calculateNextBillingAt(paidAt, target.getBillingCycle());
-        Long univId = createUniversity(target);
+        Long univId = resolveUniversityId(target);
         billingKey.setUnivId(univId);
 
-        requireSingleRow(
-                subscriptionMapper.insertBillingKey(billingKey),
-                "Failed to save the billing key."
-        );
+        Long existingBillingKeyId =
+                subscriptionMapper.findBillingKeyIdByMemberId(memberId);
+        if (existingBillingKeyId == null) {
+            requireSingleRow(
+                    subscriptionMapper.insertBillingKey(billingKey),
+                    "Failed to save the billing key."
+            );
+        } else {
+            billingKey.setBillingKeyId(existingBillingKeyId);
+            requireSingleRow(
+                    subscriptionMapper.updateBillingKeyForResubscription(billingKey),
+                    "Failed to update the billing key."
+            );
+        }
         requireSingleRow(
                 subscriptionMapper.attachSubscriptionBillingKey(
                         target.getSubscriptionId(),
@@ -141,10 +151,14 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
                 subscriptionMapper.updateMemberAsUniversityAdmin(memberId, univId),
                 "Failed to grant the university administrator role."
         );
-        requireSingleRow(
-                subscriptionMapper.completeSubscriptionApplication(target.getApplicationId()),
-                "Failed to complete the subscription application."
-        );
+        if (target.getApplicationId() != null) {
+            requireSingleRow(
+                    subscriptionMapper.completeSubscriptionApplication(
+                            target.getApplicationId()
+                    ),
+                    "Failed to complete the subscription application."
+            );
+        }
 
         createAndScheduleNextPayment(
                 target.getSubscriptionId(),
@@ -276,6 +290,7 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
                         .status(PAYMENT_STATUS_READY)
                         .merchantUid(createMerchantUid())
                         .amount(amount)
+                        .planName(planName)
                         .build();
 
         requireSingleRow(
@@ -284,8 +299,9 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
         );
 
         Runnable scheduleAction = () -> {
+            String scheduleId = null;
             try {
-                portOneBillingClient.schedulePayment(
+                scheduleId = portOneBillingClient.schedulePayment(
                         nextPayment.getMerchantUid(),
                         portoneBillingKey,
                         buildOrderName(planName),
@@ -293,7 +309,25 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
                         memberId,
                         nextBillingAt.atZone(SUBSCRIPTION_ZONE).toOffsetDateTime()
                 );
+                requireSingleRow(
+                        subscriptionMapper.updatePaymentScheduleId(
+                                nextPayment.getHistoryId(),
+                                scheduleId
+                        ),
+                        "Failed to save the PortOne payment schedule ID."
+                );
             } catch (RuntimeException ex) {
+                if (scheduleId != null) {
+                    try {
+                        portOneBillingClient.revokePaymentSchedule(scheduleId);
+                    } catch (RuntimeException revokeException) {
+                        log.error(
+                                "Failed to revoke an unrecorded subscription schedule. scheduleId={}",
+                                scheduleId,
+                                revokeException
+                        );
+                    }
+                }
                 log.error(
                         "Failed to schedule subscription payment. merchantUid={}",
                         nextPayment.getMerchantUid(),
@@ -316,7 +350,11 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
         }
     }
 
-    private Long createUniversity(SubscriptionPaymentVerifyTargetDto target) {
+    private Long resolveUniversityId(SubscriptionPaymentVerifyTargetDto target) {
+        if (target.getApplicationId() == null && target.getUnivId() != null) {
+            return target.getUnivId();
+        }
+
         if (target.getApplicationId() == null
                 || !APPLICATION_STATUS_PENDING.equals(target.getApplicationStatus())) {
             throw new IllegalStateException("The pending subscription application was not found.");
@@ -370,9 +408,17 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
         if (!memberId.equals(target.getMemberId())) {
             throw new IllegalArgumentException("The payment owner does not match.");
         }
+        boolean pendingApplication =
+                target.getApplicationId() != null
+                        && APPLICATION_STATUS_PENDING.equals(
+                                target.getApplicationStatus()
+                        );
+        boolean existingUniversity =
+                target.getApplicationId() == null && target.getUnivId() != null;
+
         if (!PAYMENT_STATUS_READY.equals(target.getPaymentStatus())
                 || !SUBSCRIPTION_STATUS_PENDING.equals(target.getSubscriptionStatus())
-                || !APPLICATION_STATUS_PENDING.equals(target.getApplicationStatus())) {
+                || (!pendingApplication && !existingUniversity)) {
             throw new IllegalStateException("The subscription is not ready for billing.");
         }
     }

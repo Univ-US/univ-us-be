@@ -1,0 +1,18 @@
+package com.univus.app.cmypage.dto;
+
+import lombok.Data;
+import java.util.Date;
+
+@Data
+public class CmypageTradeDto {
+    private Long tradeId;
+    private Long productId;
+    private Long roomId;
+    private String productName;
+    private Long price;
+    private String status;
+    private String role;
+    private Integer reportCount;
+    private Integer isBlind;
+    private Date createdAt;
+}

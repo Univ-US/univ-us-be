@@ -2,10 +2,12 @@ package com.univus.app.subscription.service;
 
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -55,7 +57,7 @@ public class PortOneBillingClient {
                 .toBodilessEntity();
     }
 
-    public void schedulePayment(
+    public String schedulePayment(
             String paymentId,
             String billingKey,
             String orderName,
@@ -63,7 +65,7 @@ public class PortOneBillingClient {
             Long memberId,
             OffsetDateTime timeToPay
     ) {
-        restClient.post()
+        CreatePaymentScheduleResponse response = restClient.post()
                 .uri("/payments/{paymentId}/schedule", paymentId)
                 .header("Authorization", "PortOne " + apiSecret)
                 .body(Map.of(
@@ -77,6 +79,31 @@ public class PortOneBillingClient {
                         "timeToPay", timeToPay.toString()
                 ))
                 .retrieve()
+                .body(CreatePaymentScheduleResponse.class);
+
+        if (response == null
+                || response.getSchedule() == null
+                || response.getSchedule().getId() == null
+                || response.getSchedule().getId().isBlank()) {
+            throw new IllegalStateException("PortOne payment schedule response is invalid.");
+        }
+        return response.getSchedule().getId();
+    }
+
+    public void revokePaymentSchedule(String scheduleId) {
+        revokePaymentSchedules(Map.of("scheduleIds", List.of(scheduleId)));
+    }
+
+    public void revokePaymentSchedulesByBillingKey(String billingKey) {
+        revokePaymentSchedules(Map.of("billingKey", billingKey));
+    }
+
+    private void revokePaymentSchedules(Map<String, Object> request) {
+        restClient.method(HttpMethod.DELETE)
+                .uri("/payment-schedules")
+                .header("Authorization", "PortOne " + apiSecret)
+                .body(request)
+                .retrieve()
                 .toBodilessEntity();
     }
 
@@ -85,5 +112,15 @@ public class PortOneBillingClient {
 
         private String billingKey;
         private String status;
+    }
+
+    @Getter
+    public static class CreatePaymentScheduleResponse {
+        private PaymentSchedule schedule;
+    }
+
+    @Getter
+    public static class PaymentSchedule {
+        private String id;
     }
 }

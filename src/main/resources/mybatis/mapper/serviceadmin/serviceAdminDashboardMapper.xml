@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminDashboardMapper">
+
+    <select id="selectDashboardSummary"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminDashboardDto$Summary">
+        WITH LATEST_SUBSCRIPTIONS AS (
+            SELECT
+                S.UNIV_ID,
+                S.STATUS,
+                S.ENDED_AT,
+                ROW_NUMBER() OVER (
+                    PARTITION BY S.UNIV_ID
+                    ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTIONS S
+            WHERE S.UNIV_ID IS NOT NULL
+        ),
+        LATEST_PAYMENTS AS (
+            SELECT
+                H.UNIV_ID,
+                H.STATUS,
+                ROW_NUMBER() OVER (
+                    PARTITION BY H.UNIV_ID
+                    ORDER BY H.HISTORY_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+            WHERE H.UNIV_ID IS NOT NULL
+        )
+        SELECT
+            (
+                SELECT NVL(SUM(H.AMOUNT), 0)
+                FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+                WHERE H.STATUS = 'PAID'
+                  AND H.PAID_AT <![CDATA[ >= ]]> TRUNC(SYSDATE, 'MM')
+                  AND H.PAID_AT <![CDATA[ < ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+            ) AS CURRENT_MONTH_REVENUE,
+            (
+                SELECT NVL(SUM(H.AMOUNT), 0)
+                FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+                WHERE H.STATUS = 'PAID'
+                  AND H.PAID_AT <![CDATA[ >= ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+                  AND H.PAID_AT <![CDATA[ < ]]> TRUNC(SYSDATE, 'MM')
+            ) AS PREVIOUS_MONTH_REVENUE,
+            (
+                SELECT COUNT(*)
+                FROM LATEST_SUBSCRIPTIONS LS
+                WHERE LS.RN = 1
+                  AND LS.STATUS = 'ACTIVE'
+                  AND LS.ENDED_AT IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM LATEST_PAYMENTS LP
+                      WHERE LP.UNIV_ID = LS.UNIV_ID
+                        AND LP.RN = 1
+                        AND LP.STATUS = 'FAILED'
+                  )
+            ) AS ACTIVE_SCHOOL_COUNT,
+            (
+                SELECT COUNT(*)
+                FROM UNIVERSITY U
+                WHERE EXISTS (
+                    SELECT 1
+                    FROM SUBSCRIPTIONS S
+                    WHERE S.UNIV_ID = U.UNIV_ID
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM MEMBER M
+                    WHERE M.UNIV_ID = U.UNIV_ID
+                )
+            ) AS TOTAL_SCHOOL_COUNT,
+            (
+                SELECT COUNT(*)
+                FROM MEMBER M
+                WHERE M.UNIV_ID IS NOT NULL
+            ) AS TOTAL_MEMBER_COUNT,
+            (
+                SELECT COUNT(*)
+                FROM MEMBER M
+                WHERE M.UNIV_ID IS NOT NULL
+                  AND M.CREATED_AT <![CDATA[ >= ]]> TRUNC(SYSDATE, 'MM')
+                  AND M.CREATED_AT <![CDATA[ < ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), 1)
+            ) AS CURRENT_MONTH_NEW_MEMBER_COUNT,
+            (
+                SELECT COUNT(*)
+                FROM MEMBER M
+                WHERE M.UNIV_ID IS NOT NULL
+                  AND M.CREATED_AT <![CDATA[ >= ]]> ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -1)
+                  AND M.CREATED_AT <![CDATA[ < ]]> TRUNC(SYSDATE, 'MM')
+            ) AS PREVIOUS_MONTH_NEW_MEMBER_COUNT,
+            (
+                SELECT COUNT(*)
+                FROM SUPPORT SP
+                WHERE NVL(SP.STATUS, 0) = 0
+            ) AS UNRESOLVED_INQUIRY_COUNT,
+            (
+                SELECT COUNT(*)
+                FROM LATEST_SUBSCRIPTIONS LS
+                WHERE LS.RN = 1
+                  AND LS.STATUS = 'PENDING'
+                  AND LS.ENDED_AT IS NULL
+            ) AS PENDING_SCHOOL_COUNT,
+            (
+                SELECT COUNT(*)
+                FROM LATEST_PAYMENTS LP
+                WHERE LP.RN = 1
+                  AND LP.STATUS = 'FAILED'
+            ) AS FAILED_PAYMENT_SCHOOL_COUNT
+        FROM DUAL
+    </select>
+
+    <select id="selectSchoolOverview"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminDashboardDto$SchoolOverview">
+        WITH LATEST_SUBSCRIPTIONS AS (
+            SELECT
+                S.SUBSCRIPTION_ID,
+                S.UNIV_ID,
+                S.PLAN_ID,
+                S.STATUS,
+                S.STARTED_AT,
+                S.ENDED_AT,
+                S.NEXT_BILLING_AT,
+                ROW_NUMBER() OVER (
+                    PARTITION BY S.UNIV_ID
+                    ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTIONS S
+            WHERE S.UNIV_ID IS NOT NULL
+        ),
+        LATEST_PAYMENTS AS (
+            SELECT
+                H.UNIV_ID,
+                H.STATUS,
+                ROW_NUMBER() OVER (
+                    PARTITION BY H.UNIV_ID
+                    ORDER BY H.HISTORY_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+            WHERE H.UNIV_ID IS NOT NULL
+        ),
+        MEMBER_COUNTS AS (
+            SELECT M.UNIV_ID, COUNT(*) AS MEMBER_COUNT
+            FROM MEMBER M
+            WHERE M.UNIV_ID IS NOT NULL
+            GROUP BY M.UNIV_ID
+        )
+        SELECT
+            U.UNIV_ID,
+            U.UNIV_NAME,
+            P.PLAN_NAME,
+            CASE
+                WHEN LS.SUBSCRIPTION_ID IS NULL THEN 'UNSUBSCRIBED'
+                WHEN LS.STATUS = 'ACTIVE' AND LP.STATUS = 'FAILED' THEN 'PAST_DUE'
+                ELSE LS.STATUS
+            END AS SUBSCRIPTION_STATUS,
+            LS.STARTED_AT,
+            LS.ENDED_AT,
+            LS.NEXT_BILLING_AT,
+            NVL(MC.MEMBER_COUNT, 0) AS MEMBER_COUNT
+        FROM UNIVERSITY U
+        LEFT JOIN LATEST_SUBSCRIPTIONS LS
+               ON LS.UNIV_ID = U.UNIV_ID
+              AND LS.RN = 1
+        LEFT JOIN SUBSCRIPTION_PLANS P
+               ON P.PLAN_ID = LS.PLAN_ID
+        LEFT JOIN LATEST_PAYMENTS LP
+               ON LP.UNIV_ID = U.UNIV_ID
+              AND LP.RN = 1
+        LEFT JOIN MEMBER_COUNTS MC
+               ON MC.UNIV_ID = U.UNIV_ID
+        WHERE LS.SUBSCRIPTION_ID IS NOT NULL
+           OR NVL(MC.MEMBER_COUNT, 0) > 0
+        ORDER BY
+            CASE
+                WHEN LS.STATUS = 'ACTIVE' AND LP.STATUS = 'FAILED' THEN 0
+                WHEN LS.STATUS = 'PENDING' THEN 1
+                WHEN LS.STATUS = 'ACTIVE' THEN 2
+                ELSE 3
+            END,
+            U.UNIV_NAME
+    </select>
+
+    <select id="selectRecentMembers"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminDashboardDto$RecentMember">
+        SELECT
+            M.MEMBER_ID,
+            M.UNIV_ID,
+            U.UNIV_NAME,
+            M.LOGIN_ID,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.STATUS,
+            M.CREATED_AT
+        FROM MEMBER M
+        JOIN UNIVERSITY U
+          ON U.UNIV_ID = M.UNIV_ID
+        WHERE M.ROLE IN ('STU', 'PROF', 'ALU')
+        ORDER BY M.CREATED_AT DESC, M.MEMBER_ID DESC
+        FETCH FIRST 18 ROWS ONLY
+    </select>
+
+</mapper>

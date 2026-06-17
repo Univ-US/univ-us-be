@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.univus.app.community.service.CommunityAccessService.CommunityAccessScope;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +34,7 @@ public class MarketService {
     private final RestTemplate restTemplate;
     private final StorageService storageService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CommunityAccessService communityAccessService;
 
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
@@ -66,7 +68,8 @@ public class MarketService {
     // ── 상품 ──────────────────────────────────────────────────
 
     // 상품 목록 조회
-    public List<MarketDto.ProductDto> getProductList(MarketDto.ProductSearchDto searchDto) {
+    public List<MarketDto.ProductDto> getProductList(MarketDto.ProductSearchDto searchDto, Long memberId) {
+        applySchoolScope(searchDto, memberId);
         List<MarketDto.ProductDto> products = marketMapper.selectProductList(searchDto);
         for (MarketDto.ProductDto product : products) {
             product.setImages(marketMapper.selectProductImageList(product.getProductId()));
@@ -75,15 +78,21 @@ public class MarketService {
     }
 
     // 상품 전체 개수 (페이징용)
-    public int getProductCount(MarketDto.ProductSearchDto searchDto) {
+    public int getProductCount(MarketDto.ProductSearchDto searchDto, Long memberId) {
+        applySchoolScope(searchDto, memberId);
         return marketMapper.selectProductCount(searchDto);
     }
 
     // 상품 상세 조회 + 조회수 증가
     @Transactional
-    public MarketDto.ProductDto getProductDetail(Long productId) {
-        marketMapper.updateViewCount(productId);
+    public MarketDto.ProductDto getProductDetail(Long productId, Long memberId) {
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null) {
+            return null;
+        }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
+        marketMapper.updateViewCount(productId);
+        product = marketMapper.selectProductDetail(productId);
         if (product != null) {
             product.setImages(marketMapper.selectProductImageList(productId));
         }
@@ -97,6 +106,14 @@ public class MarketService {
     // 상품 등록
     @Transactional
     public int createProduct(MarketDto.ProductCreateDto createDto) {
+        CommunityAccessScope scope = communityAccessService.getScope(createDto.getMemberId());
+        if (scope.isSuperAdmin()) {
+            if (createDto.getUnivId() == null) {
+                throw new IllegalArgumentException("University id is required.");
+            }
+        } else {
+            createDto.setUnivId(scope.getUnivId());
+        }
         createDto.setProductStatus("SALE");
         return marketMapper.insertProduct(createDto);
     }
@@ -112,10 +129,39 @@ public class MarketService {
         return marketMapper.updateProduct(updateDto);
     }
 
-    // 상품 삭제
+    // 무료 나눔 완료
     @Transactional
+    public MarketDto.ProductDto completeFreeProduct(Long productId, Long memberId) {
+        validateMember(memberId);
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
+        if (!product.getMemberId().equals(memberId)) {
+            throw new IllegalStateException("Only seller can complete free sharing.");
+        }
+        if (product.getPrice() == null || product.getPrice() > 0) {
+            throw new IllegalStateException("Only free sharing products can be completed without payment.");
+        }
+        if ("DONE".equals(product.getProductStatus())) {
+            return product;
+        }
+        if (isBlindProduct(product)) {
+            throw new IllegalStateException("Blind product cannot be completed.");
+        }
+
+        marketMapper.updateProductStatus(productId, "DONE");
+        marketMapper.updateActiveTradeChatStatusByProduct(productId, DONE_TRADE_CHAT_STATUS);
+        return marketMapper.selectProductDetail(productId);
+    }
+
     public int deleteProduct(Long productId) {
-        return marketMapper.deleteProduct(productId);
+        int rows = marketMapper.deleteProduct(productId);
+        if (rows > 0) {
+            closeActiveTradeChatRoomsByProduct(productId);
+        }
+        return rows;
     }
 
     // ── 이미지 ────────────────────────────────────────────────
@@ -191,14 +237,16 @@ public class MarketService {
         return uploadProductImages(productId, images);
     }
 
-    public List<MarketDto.ProductImageDto> getProductImageList(Long productId) {
+    public List<MarketDto.ProductImageDto> getProductImageList(Long productId, Long memberId) {
+        assertProductAccessible(productId, memberId);
         return marketMapper.selectProductImageList(productId);
     }
 
     // ── 댓글 ──────────────────────────────────────────────────
 
     // 댓글 목록 조회 (대댓글 포함해서 조립)
-    public List<MarketDto.ProductCommentDto> getProductCommentList(Long productId) {
+    public List<MarketDto.ProductCommentDto> getProductCommentList(Long productId, Long memberId) {
+        assertProductAccessible(productId, memberId);
         List<MarketDto.ProductCommentDto> comments = marketMapper.selectProductCommentList(productId);
         for (MarketDto.ProductCommentDto comment : comments) {
             comment.setReplies(marketMapper.selectProductReplyList(comment.getCommentId()));
@@ -213,6 +261,8 @@ public class MarketService {
     // 댓글 등록
     @Transactional
     public int createProductComment(MarketDto.ProductCommentCreateDto createDto) {
+        MarketDto.ProductDto product = requireAccessibleProduct(createDto.getProductId(), createDto.getMemberId());
+        createDto.setUnivId(product.getUnivId());
         return marketMapper.insertProductComment(createDto);
     }
 
@@ -227,6 +277,7 @@ public class MarketService {
     // 찜 토글 (찜 되어 있으면 취소, 없으면 추가)
     @Transactional
     public boolean toggleProductLike(MarketDto.ProductLikeDto likeDto) {
+        assertProductAccessible(likeDto.getProductId(), likeDto.getMemberId());
         int exists = marketMapper.selectProductLikeCount(likeDto);
         if (exists > 0) {
             marketMapper.deleteProductLike(likeDto);
@@ -238,10 +289,12 @@ public class MarketService {
     }
 
     public boolean isProductLiked(MarketDto.ProductLikeDto likeDto) {
+        assertProductAccessible(likeDto.getProductId(), likeDto.getMemberId());
         return marketMapper.selectProductLikeCount(likeDto) > 0;
     }
 
-    public int getProductLikeCount(Long productId) {
+    public int getProductLikeCount(Long productId, Long memberId) {
+        assertProductAccessible(productId, memberId);
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
         if (product == null) {
             throw new IllegalArgumentException("Product not found.");
@@ -259,6 +312,7 @@ public class MarketService {
         if (product.getMemberId().equals(reportDto.getMemberId())) {
             throw new IllegalStateException("Seller cannot report own product.");
         }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(reportDto.getMemberId()));
         int exists = marketMapper.selectProductReportCount(reportDto);
         if (exists > 0) {
             result.put("success", false);
@@ -269,6 +323,9 @@ public class MarketService {
         marketMapper.insertProductReport(reportDto);
         marketMapper.updateProductReportStatus(reportDto.getProductId());
         int reportCount = marketMapper.selectProductTotalReportCount(reportDto.getProductId());
+        if (reportCount >= 5) {
+            closeActiveTradeChatRoomsByProduct(reportDto.getProductId());
+        }
         result.put("success", true);
         result.put("reportCount", reportCount);
         result.put("blind", reportCount >= 5);
@@ -277,6 +334,7 @@ public class MarketService {
     }
 
     public boolean isProductReported(Long productId, Long memberId) {
+        assertProductAccessible(productId, memberId);
         MarketDto.ProductReportDto reportDto = new MarketDto.ProductReportDto();
         reportDto.setProductId(productId);
         reportDto.setMemberId(memberId);
@@ -301,11 +359,15 @@ public class MarketService {
         if (product == null || product.getIsDeleted() == 1) {
             throw new IllegalArgumentException("Product not found.");
         }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
         if (product.getMemberId().equals(memberId)) {
             throw new IllegalStateException("Seller cannot create a buyer chat for own product.");
         }
         if ("DONE".equals(product.getProductStatus())) {
             throw new IllegalStateException("Completed product cannot start a chat.");
+        }
+        if (isBlindProduct(product)) {
+            throw new IllegalStateException("Blind product cannot start a chat.");
         }
 
         MarketDto.TradeChatRoomDto existingRoom =
@@ -395,6 +457,49 @@ public class MarketService {
     }
 
     @Transactional
+    public MarketDto.TradeChatRoomDto completeFreeTradeChat(Long memberId, Long roomId) {
+        MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
+        if (!room.getSellerId().equals(memberId)) {
+            throw new IllegalStateException("Only seller can complete free sharing.");
+        }
+        if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus()) || "DONE".equals(room.getProductStatus())) {
+            throw new IllegalStateException("Trade is already completed.");
+        }
+        if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            throw new IllegalStateException("Closed trade chat cannot be completed.");
+        }
+
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(room.getProductId());
+        if (product == null || product.getIsDeleted() == 1) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        if (!product.getMemberId().equals(room.getSellerId())) {
+            throw new IllegalStateException("Product seller does not match chat seller.");
+        }
+        if (product.getPrice() == null || product.getPrice() > 0) {
+            throw new IllegalStateException("Only free sharing products can be completed without payment.");
+        }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
+
+        MarketDto.TradeDto tradeDto = MarketDto.TradeDto.builder()
+                .productId(product.getProductId())
+                .sellerId(room.getSellerId())
+                .buyerId(room.getBuyerId())
+                .tradeStatus("DONE")
+                .price(0L)
+                .build();
+        marketMapper.insertTrade(tradeDto);
+        marketMapper.updateProductStatus(product.getProductId(), "DONE");
+        marketMapper.updateTradeChatStatus(room.getRoomId(), DONE_TRADE_CHAT_STATUS);
+
+        MarketDto.TradeChatRoomDto updatedRoom =
+                marketMapper.selectTradeChatRoomForMember(roomId, memberId);
+        runAfterCommit(() -> messagingTemplate.convertAndSend(
+                MARKET_CHAT_TOPIC_PREFIX + roomId + "/room",
+                updatedRoom));
+        return updatedRoom;
+    }
+    @Transactional
     public MarketDto.TradeChatRoomDto closeTradeChatRoom(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
         if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())) {
@@ -416,13 +521,18 @@ public class MarketService {
     @Transactional
     public Map<String, Object> deleteTradeChatRoom(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
-        if (!CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
-            throw new IllegalStateException("Only closed trade chat can be deleted.");
+        boolean deletableStatus = CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || "DONE".equals(room.getProductStatus());
+        if (!deletableStatus) {
+            throw new IllegalStateException("Only closed or completed trade chat can be deleted.");
         }
 
         marketMapper.deleteTradeChatMessages(roomId);
         int rows = marketMapper.deleteTradeChatRoom(roomId);
-        restoreReservableProductIfNoActiveChats(room.getProductId());
+        if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
+            restoreReservableProductIfNoActiveChats(room.getProductId());
+        }
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", rows > 0);
@@ -433,7 +543,8 @@ public class MarketService {
 
     // 내 찜 목록
     public List<MarketDto.ProductDto> getMyLikeList(Long memberId) {
-        List<MarketDto.ProductDto> products = marketMapper.selectMyLikeList(memberId);
+        CommunityAccessScope scope = communityAccessService.getScope(memberId);
+        List<MarketDto.ProductDto> products = marketMapper.selectMyLikeList(memberId, scope.getQueryUnivId());
         for (MarketDto.ProductDto product : products) {
             product.setImages(marketMapper.selectProductImageList(product.getProductId()));
         }
@@ -461,6 +572,7 @@ public class MarketService {
         if (product.getMemberId().equals(buyerId)) {
             throw new IllegalStateException("Seller cannot buy own product.");
         }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(buyerId));
 
         verifyPortOnePayment(completeDto, product);
 
@@ -515,6 +627,7 @@ public class MarketService {
         if (!product.getMemberId().equals(room.getSellerId())) {
             throw new IllegalStateException("Product seller does not match chat seller.");
         }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(buyerId));
 
         Long paymentAmount = room.getNegotiatedPrice() == null
                 ? product.getPrice()
@@ -641,6 +754,31 @@ public class MarketService {
         }
     }
 
+    public void assertProductAccessible(Long productId, Long memberId) {
+        requireAccessibleProduct(productId, memberId);
+    }
+
+    private MarketDto.ProductDto requireAccessibleProduct(Long productId, Long memberId) {
+        MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
+        if (product == null) {
+            throw new IllegalArgumentException("Product not found.");
+        }
+        communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
+        return product;
+    }
+
+    private void applySchoolScope(MarketDto.ProductSearchDto searchDto, Long memberId) {
+        CommunityAccessScope scope = communityAccessService.getScope(memberId);
+        if (searchDto.getPage() == null || searchDto.getPage() < 0) {
+            searchDto.setPage(0);
+        }
+        if (searchDto.getSize() == null || searchDto.getSize() <= 0) {
+            searchDto.setSize(10);
+        }
+        searchDto.setViewerMemberId(memberId);
+        searchDto.setUnivId(scope.getQueryUnivId());
+    }
+
     private MarketDto.TradeChatRoomDto requireTradeChatRoom(Long roomId, Long memberId) {
         validateMember(memberId);
         if (roomId == null) {
@@ -681,6 +819,15 @@ public class MarketService {
         if (marketMapper.selectActiveTradeChatRoomCountByProduct(productId) == 0) {
             marketMapper.updateProductStatus(productId, "SALE");
         }
+    }
+
+    private int closeActiveTradeChatRoomsByProduct(Long productId) {
+        return marketMapper.updateActiveTradeChatStatusByProduct(productId, CLOSED_TRADE_CHAT_STATUS);
+    }
+
+    private boolean isBlindProduct(MarketDto.ProductDto product) {
+        return Integer.valueOf(1).equals(product.getIsBlind())
+                || (product.getReportCount() != null && product.getReportCount() >= 5);
     }
 
     private void validateProductImage(MultipartFile image) {

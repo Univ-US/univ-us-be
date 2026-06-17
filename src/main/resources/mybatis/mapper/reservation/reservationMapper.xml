@@ -117,6 +117,7 @@
               AND END_TIME <![CDATA[ > ]]> #{startTime}
         ) AR ON AR.SEAT_ID = S.SEAT_ID
         WHERE RR.IS_ACTIVE = 1
+          AND RR.UNIV_ID = (SELECT UNIV_ID FROM MEMBER WHERE MEMBER_ID = #{memberId})
         GROUP BY
             RR.READING_ROOM_ID,
             RR.ROOM_NAME,
@@ -161,6 +162,7 @@
         ) AR ON AR.SEAT_ID = S.SEAT_ID
         WHERE S.READING_ROOM_ID = #{readingRoomId}
           AND RR.IS_ACTIVE = 1
+          AND RR.UNIV_ID = (SELECT UNIV_ID FROM MEMBER WHERE MEMBER_ID = #{memberId})
         ORDER BY
             CASE
                 WHEN REGEXP_LIKE(S.SEAT_NUMBER, '^[0-9]+$') THEN TO_NUMBER(S.SEAT_NUMBER)
@@ -271,6 +273,13 @@
           AND STATUS IN ('USING', 'RESERVED')
     </update>
 
+    <update id="cancelAllPendingReadingSeatReservations">
+        UPDATE READING_SEAT_RESERVATIONS
+        SET STATUS = 'CANCELLED'
+        WHERE MEMBER_ID = #{memberId}
+          AND STATUS IN ('USING', 'RESERVED')
+    </update>
+
     <select id="selectActiveReservationRooms" resultMap="RoomAvailabilityResultMap">
         SELECT
             ROOM_ID,
@@ -284,6 +293,7 @@
             CAST(NULL AS TIMESTAMP) AS CREATED_AT
         FROM MEETING_ROOMS
         WHERE NVL(IS_AVAILABLE, 1) = 1
+          AND UNIV_ID = (SELECT UNIV_ID FROM MEMBER WHERE MEMBER_ID = #{memberId})
         ORDER BY ROOM_ID
     </select>
 
@@ -393,6 +403,13 @@
         SET STATUS = 'CANCELLED'
         WHERE RESERVATION_ID = #{reservationId}
           AND MEMBER_ID = #{memberId}
+          AND STATUS IN ('USING', 'RESERVED')
+    </update>
+
+    <update id="cancelAllPendingRoomReservations">
+        UPDATE MEETING_ROOM_RESERVATIONS
+        SET STATUS = 'CANCELLED'
+        WHERE MEMBER_ID = #{memberId}
           AND STATUS IN ('USING', 'RESERVED')
     </update>
 

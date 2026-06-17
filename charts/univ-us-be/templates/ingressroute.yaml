@@ -28,3 +28,55 @@ spec:
         - name: {{ $.Release.Name }}            # 트래픽을 보낼 Service 이름(= 릴리스명 univ-us-be)
           port: {{ $.Values.service.port }}     # 보낼 포트(9090)
     {{- end }}
+
+# =====================================================================
+# TLS(HTTPS·443) 라우트 — 듀얼 도메인(SNI 분리). 위 평문(web/80) 라우트는 그대로 유지.
+#   🔴 HTTP→HTTPS 301·HSTS 금지(www 자체서명이라 경고통과가 막혀 사이트 잠김) → 평문/TLS 공존.
+#   · www.univus.com·univus.com : 자체서명 Secret(univus-tls)         — LAN 데모
+#   · univus.duckdns.org        : Let's Encrypt(Traefik certResolver) — webhook·외부 신뢰접속
+#   (Secret·certResolver·websecure NodePort 는 Traefik helm 에 박힌 '차트 밖' 선행조건)
+#   ※ standalone IngressRoute(univus-tls-www/duckdns, /tmp kubectl apply)를 차트로 영구화한 것.
+#     컷오버: 본 차트(BE·FE 둘 다) 배포 후 standalone 2개 삭제(kubectl delete).
+# =====================================================================
+{{- if .Values.ingress.tls.enabled }}
+{{- if .Values.ingress.tls.selfSigned.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}-tls-www         # 자체서명 도메인 TLS 라우트(www.univus.com·univus.com)
+spec:
+  entryPoints:
+    - {{ .Values.ingress.tls.entryPoint }}   # websecure(443)
+  routes:
+    {{- range $path := .Values.ingress.pathPrefixes }}
+    - match: ({{ range $i, $h := $.Values.ingress.tls.selfSigned.hosts }}{{ if $i }} || {{ end }}Host(`{{ $h }}`){{ end }}) && PathPrefix(`{{ $path }}`)
+      kind: Rule
+      services:
+        - name: {{ $.Release.Name }}
+          port: {{ $.Values.service.port }}
+    {{- end }}
+  tls:
+    secretName: {{ .Values.ingress.tls.selfSigned.secretName }}   # kubernetes.io/tls Secret(수동 선생성)
+{{- end }}
+{{- if .Values.ingress.tls.letsEncrypt.enabled }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Release.Name }}-tls-duckdns     # Let's Encrypt 도메인 TLS 라우트(univus.duckdns.org)
+spec:
+  entryPoints:
+    - {{ .Values.ingress.tls.entryPoint }}   # websecure(443)
+  routes:
+    {{- range $path := .Values.ingress.pathPrefixes }}
+    - match: ({{ range $i, $h := $.Values.ingress.tls.letsEncrypt.hosts }}{{ if $i }} || {{ end }}Host(`{{ $h }}`){{ end }}) && PathPrefix(`{{ $path }}`)
+      kind: Rule
+      services:
+        - name: {{ $.Release.Name }}
+          port: {{ $.Values.service.port }}
+    {{- end }}
+  tls:
+    certResolver: {{ .Values.ingress.tls.letsEncrypt.certResolver }}   # Traefik ACME(le=prod)
+{{- end }}
+{{- end }}

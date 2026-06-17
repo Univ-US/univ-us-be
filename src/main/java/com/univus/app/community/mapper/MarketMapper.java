@@ -81,7 +81,9 @@ public interface MarketMapper {
     int updateProductReportStatus(Long productId);
 
     // 내 찜 목록
-    List<MarketDto.ProductDto> selectMyLikeList(Long memberId);
+    List<MarketDto.ProductDto> selectMyLikeList(
+            @Param("memberId") Long memberId,
+            @Param("univId") Long univId);
 
     int insertTrade(MarketDto.TradeDto tradeDto);
 
@@ -110,6 +112,8 @@ public interface MarketMapper {
     int updateTradeChatNegotiatedPrice(@Param("roomId") Long roomId, @Param("negotiatedPrice") Long negotiatedPrice);
 
     int updateTradeChatStatus(@Param("roomId") Long roomId, @Param("status") String status);
+
+    int updateActiveTradeChatStatusByProduct(@Param("productId") Long productId, @Param("status") String status);
 
     int selectActiveTradeChatRoomCountByProduct(@Param("productId") Long productId);
 

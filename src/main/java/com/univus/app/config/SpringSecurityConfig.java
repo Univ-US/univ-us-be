@@ -1,5 +1,6 @@
 package com.univus.app.config;
 
+import com.univus.app.commoncode.code.RoleCode;
 import com.univus.app.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -13,8 +14,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
 @Configuration
+
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SpringSecurityConfig {
@@ -103,7 +104,10 @@ public class SpringSecurityConfig {
 						"/uploads/lms/professor/image/**",
 						"/uploads/lms/student/image/**"
             	    ).permitAll()
+					.requestMatchers("/api/service-admin/**").hasRole("SUA")
 							.requestMatchers(HttpMethod.POST,  "/api/subscriptions/webhooks/portone").permitAll()
+							.requestMatchers("/api/lms/professor/**").hasAnyRole(RoleCode.PROF.getCode()) // 교수 lms는 교수만 (교수 및 강의 배정 등의 관리는 BO-학교 관리자측)
+							.requestMatchers("/api/lms/student/**").hasAnyRole(RoleCode.STU.getCode(), RoleCode.ALU.getCode()) // 학생 lms는 재학생과 졸업생만(학생 관리는 BO-학교 관리자측)
             	    .anyRequest().authenticated()
             )
 				// JWT 토큰 인증 필터 등록

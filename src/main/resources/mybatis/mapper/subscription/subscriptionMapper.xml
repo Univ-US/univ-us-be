@@ -32,6 +32,100 @@
           AND DELETED_AT IS NULL
     </select>
 
+    <sql id="subscriptionUniversityOptionColumns">
+        U.UNIV_ID AS univId,
+        U.UNIV_NAME AS univName,
+        U.SIDO AS sido,
+        U.ADDRESS AS address,
+        U.SCHOOL_PHONE AS schoolPhone,
+        U.HOMEPAGE AS homepage,
+        CASE
+            WHEN S.STATUS = 'PENDING' THEN 'PENDING'
+            WHEN S.STATUS = 'ACTIVE'
+                 AND NOT (
+                     NVL(S.PENDING_ACTION, 'NONE') = 'CANCEL'
+                     AND NVL(
+                         S.CANCELLATION_EFFECTIVE_AT,
+                         TIMESTAMP '9999-12-31 23:59:59'
+                     ) <![CDATA[ <= ]]> CURRENT_TIMESTAMP
+                 )
+                THEN 'ACTIVE'
+            ELSE S.STATUS
+        END AS subscriptionStatus
+    </sql>
+
+    <sql id="subscriptionUniversityOptionFrom">
+        FROM UNIVERSITY U
+        LEFT JOIN (
+            SELECT
+                S.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY S.UNIV_ID
+                    ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTIONS S
+            WHERE S.UNIV_ID IS NOT NULL
+        ) S
+            ON S.UNIV_ID = U.UNIV_ID
+           AND S.RN = 1
+    </sql>
+
+    <select id="searchUniversities"
+            resultType="com.univus.app.subscription.dto.SubscriptionUniversityOptionDto">
+        SELECT
+            <include refid="subscriptionUniversityOptionColumns" />
+            <include refid="subscriptionUniversityOptionFrom" />
+        <where>
+            <if test="keyword != null and keyword != ''">
+                LOWER(U.UNIV_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+            </if>
+        </where>
+        ORDER BY U.UNIV_NAME ASC
+    </select>
+
+    <select id="findUniversityOptionById"
+            resultType="com.univus.app.subscription.dto.SubscriptionUniversityOptionDto">
+        SELECT
+            <include refid="subscriptionUniversityOptionColumns" />
+            <include refid="subscriptionUniversityOptionFrom" />
+        WHERE U.UNIV_ID = #{univId}
+    </select>
+
+    <select id="findSubscriptionAccessStatus"
+            resultType="com.univus.app.subscription.dto.SubscriptionAccessStatusDto">
+        WITH LATEST_SUBSCRIPTION AS (
+            SELECT
+                S.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY S.UNIV_ID
+                    ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTIONS S
+            WHERE S.UNIV_ID IS NOT NULL
+        )
+        SELECT
+            M.MEMBER_ID,
+            M.ROLE,
+            M.UNIV_ID,
+            U.UNIV_NAME,
+            U.SIDO,
+            U.ADDRESS,
+            U.SCHOOL_PHONE,
+            U.HOMEPAGE,
+            S.SUBSCRIPTION_ID,
+            S.STATUS AS SUBSCRIPTION_STATUS,
+            S.PENDING_ACTION,
+            S.CANCELLATION_EFFECTIVE_AT,
+            S.ENDED_AT
+        FROM MEMBER M
+        LEFT JOIN UNIVERSITY U
+               ON U.UNIV_ID = M.UNIV_ID
+        LEFT JOIN LATEST_SUBSCRIPTION S
+               ON S.UNIV_ID = M.UNIV_ID
+              AND S.RN = 1
+        WHERE M.MEMBER_ID = #{memberId}
+    </select>
+
     <insert id="insertUniversity"
             parameterType="com.univus.app.subscription.dto.SubscriptionUniversityDto">
         <selectKey keyProperty="univId" resultType="long" order="BEFORE">
@@ -142,7 +236,8 @@
         PORTONE_PAYMENT_ID,
         PAID_AT,
         FAIL_REASON,
-        AMOUNT
+        AMOUNT,
+        PLAN_NAME
         ) VALUES (
         #{historyId},
         #{subscriptionId},
@@ -154,7 +249,8 @@
         #{portonePaymentId},
         #{paidAt},
         #{failReason},
-        #{amount}
+        #{amount},
+        #{planName}
         )
     </insert>
 
@@ -185,6 +281,25 @@
         )
     </insert>
 
+    <select id="findBillingKeyIdByMemberId" resultType="long">
+        SELECT SUBSCRIPTION_BILLING_KEY_ID
+        FROM SUBSCRIPTION_BILLING_KEY
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <update id="updateBillingKeyForResubscription"
+            parameterType="com.univus.app.subscription.dto.SubscriptionBillingKeyInsertDto">
+        UPDATE SUBSCRIPTION_BILLING_KEY
+        SET SUBSCRIPTION_BILLING_KEY_VALUE = #{billingKeyValue},
+            UNIV_ID = #{univId},
+            PG_PROVIDER = #{pgProvider},
+            STATUS = #{status},
+            DELETED_AT = NULL,
+            UPDATED_AT = CURRENT_TIMESTAMP
+        WHERE SUBSCRIPTION_BILLING_KEY_ID = #{billingKeyId}
+          AND MEMBER_ID = #{memberId}
+    </update>
+
     <update id="attachSubscriptionBillingKey">
         UPDATE SUBSCRIPTIONS
         SET BILLINGKEY_ID = #{billingKeyId}
@@ -205,8 +320,40 @@
         SELECT COUNT(*)
         FROM SUBSCRIPTIONS
         WHERE MEMBER_ID = #{memberId}
-          AND STATUS IN ('PENDING', 'ACTIVE')
           AND ENDED_AT IS NULL
+          AND (
+              STATUS = 'PENDING'
+              OR (
+                  STATUS = 'ACTIVE'
+                  AND NOT (
+                      NVL(PENDING_ACTION, 'NONE') = 'CANCEL'
+                      AND NVL(
+                          CANCELLATION_EFFECTIVE_AT,
+                          TIMESTAMP '9999-12-31 23:59:59'
+                      ) <![CDATA[ <= ]]> CURRENT_TIMESTAMP
+                  )
+              )
+          )
+    </select>
+
+    <select id="countPendingOrActiveSubscriptionByUnivId" resultType="int">
+        SELECT COUNT(*)
+        FROM SUBSCRIPTIONS
+        WHERE UNIV_ID = #{univId}
+          AND ENDED_AT IS NULL
+          AND (
+              STATUS = 'PENDING'
+              OR (
+                  STATUS = 'ACTIVE'
+                  AND NOT (
+                      NVL(PENDING_ACTION, 'NONE') = 'CANCEL'
+                      AND NVL(
+                          CANCELLATION_EFFECTIVE_AT,
+                          TIMESTAMP '9999-12-31 23:59:59'
+                      ) <![CDATA[ <= ]]> CURRENT_TIMESTAMP
+                  )
+              )
+          )
     </select>
 
     <select id="countPendingOrActiveSubscriptionByUnivName" resultType="int">
@@ -215,8 +362,20 @@
                  JOIN UNIVERSITY U
                       ON U.UNIV_ID = S.UNIV_ID
         WHERE U.UNIV_NAME = #{univName}
-          AND S.STATUS IN ('PENDING', 'ACTIVE')
           AND S.ENDED_AT IS NULL
+          AND (
+              S.STATUS = 'PENDING'
+              OR (
+                  S.STATUS = 'ACTIVE'
+                  AND NOT (
+                      NVL(S.PENDING_ACTION, 'NONE') = 'CANCEL'
+                      AND NVL(
+                          S.CANCELLATION_EFFECTIVE_AT,
+                          TIMESTAMP '9999-12-31 23:59:59'
+                      ) <![CDATA[ <= ]]> CURRENT_TIMESTAMP
+                  )
+              )
+          )
     </select>
 
     <select id="countPendingSubscriptionApplicationByUnivName" resultType="int">
@@ -331,9 +490,20 @@
     <update id="updateNextBillingAt">
         UPDATE SUBSCRIPTIONS
         SET STATUS = 'ACTIVE',
-            NEXT_BILLING_AT = #{nextBillingAt}
+            NEXT_BILLING_AT = #{nextBillingAt},
+            PENDING_ACTION =
+                CASE WHEN PENDING_ACTION = 'PLAN_CHANGE' THEN NULL ELSE PENDING_ACTION END,
+            PENDING_ACTION_AT =
+                CASE WHEN PENDING_ACTION = 'PLAN_CHANGE' THEN NULL ELSE PENDING_ACTION_AT END
         WHERE SUBSCRIPTION_ID = #{subscriptionId}
           AND STATUS = 'ACTIVE'
+    </update>
+
+    <update id="updatePaymentScheduleId">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET PORTONE_SCHEDULE_ID = #{portoneScheduleId}
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
     </update>
 
     <!--

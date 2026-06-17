@@ -18,6 +18,14 @@ public interface SubscriptionMapper {
     // 결제 금액은 프론트 요청값이 아니라 DB의 플랜 가격을 신뢰해야 합니다.
     SubscriptionPlanResponseDto findActivePlanById(@Param("planId") Long planId);
 
+    List<SubscriptionUniversityOptionDto> searchUniversities(@Param("keyword") String keyword);
+
+    SubscriptionUniversityOptionDto findUniversityOptionById(@Param("univId") Long univId);
+
+    SubscriptionAccessStatusDto findSubscriptionAccessStatus(
+            @Param("memberId") Long memberId
+    );
+
     // 같은 학교명이 이미 구독 진행 중이거나 구독 중인지 확인합니다.
     // 기존 방식으로 생성된 PENDING 학교와 현재 ACTIVE 학교의 중복을 막습니다.
     int countPendingOrActiveSubscriptionByUnivName(@Param("univName") String univName);
@@ -42,6 +50,10 @@ public interface SubscriptionMapper {
 
     int insertBillingKey(SubscriptionBillingKeyInsertDto billingKey);
 
+    Long findBillingKeyIdByMemberId(@Param("memberId") Long memberId);
+
+    int updateBillingKeyForResubscription(SubscriptionBillingKeyInsertDto billingKey);
+
     int attachSubscriptionBillingKey(
             @Param("subscriptionId") Long subscriptionId,
             @Param("billingKeyId") Long billingKeyId
@@ -55,6 +67,8 @@ public interface SubscriptionMapper {
     // 이미 활성 또는 결제 대기 중인 구독이 있는지 확인합니다.
     // 같은 계정으로 중복 구독 신청을 막기 위해 사용합니다.
     int countPendingOrActiveSubscriptionByMemberId(@Param("memberId") Long memberId);
+
+    int countPendingOrActiveSubscriptionByUnivId(@Param("univId") Long univId);
 
     // merchantUid로 결제 검증 대상 데이터를 조회합니다.
     // 결제 이력, 구독, 금액, 상태를 한 번에 가져와서 검증 로직에서 사용합니다.
@@ -91,6 +105,11 @@ public interface SubscriptionMapper {
     int updateNextBillingAt(
             @Param("subscriptionId") Long subscriptionId,
             @Param("nextBillingAt") LocalDateTime nextBillingAt
+    );
+
+    int updatePaymentScheduleId(
+            @Param("historyId") Long historyId,
+            @Param("portoneScheduleId") String portoneScheduleId
     );
 
     // 결제 검증 성공 시 구독을 ACTIVE 상태로 변경합니다.

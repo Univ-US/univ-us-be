@@ -159,6 +159,15 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             throw new IllegalArgumentException("연장할 수 있는 예약이 아닙니다. (현재 입실하여 사용 중인 좌석만 연장 가능)");
         }
 
+        // 만료 20분 전부터만 연장 가능하도록 검증 로직 추가
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime endTime = reservation.getEndTime();
+        java.time.Duration timeRemaining = java.time.Duration.between(now, endTime);
+        
+        if (timeRemaining.toMinutes() > 20 || timeRemaining.isNegative()) {
+            throw new IllegalStateException("좌석 연장은 만료 20분 전부터 가능합니다.");
+        }
+
         // 최대 예약 가능 시간 상한선 체크 (예: 최초 6시간 + 2회 연장 = 10시간)
         java.time.Duration duration = java.time.Duration.between(reservation.getStartTime(), reservation.getEndTime());
         if (duration.toHours() >= 10) {

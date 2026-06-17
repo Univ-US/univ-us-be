@@ -36,6 +36,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     private final SubscriptionMapper subscriptionMapper;
+    private final SubscriptionAccessService subscriptionAccessService;
     private final JwtTokenProvider jwtTokenProvider;
     private final PortOnePaymentClient portOnePaymentClient;
     private final SubscriptionPaymentFailureRecorder failureRecorder;
@@ -59,6 +60,13 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<SubscriptionUniversityOptionDto> searchUniversities(String keyword) {
+        String normalizedKeyword = keyword == null ? null : keyword.trim();
+        return subscriptionMapper.searchUniversities(normalizedKeyword);
+    }
+
+    @Override
     public SubscriptionPaymentConfigResponseDto getPaymentConfig() {
         return SubscriptionPaymentConfigResponseDto.builder()
                 .storeId(portOneStoreId)
@@ -75,6 +83,18 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             SubscriptionPrepareRequestDto request
     ) {
         validatePrepareRequest(memberId, request);
+        SubscriptionAccessStatusDto accessStatus =
+                subscriptionAccessService.getStatus(memberId);
+        boolean reuseUniversity =
+                "ADM".equals(accessStatus.getRole())
+                        && accessStatus.getUnivId() != null;
+        SubscriptionUniversityOptionDto selectedUniversity = null;
+        if (!reuseUniversity && request.getUnivId() != null) {
+            selectedUniversity = subscriptionMapper.findUniversityOptionById(request.getUnivId());
+            if (selectedUniversity == null) {
+                throw new IllegalArgumentException("선택한 학교 정보를 찾을 수 없습니다.");
+            }
+        }
 
         // 결제 금액은 프론트 요청값이 아니라 DB에 저장된 플랜 가격을 기준으로 사용합니다.
         SubscriptionPlanResponseDto plan =
@@ -89,15 +109,29 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             throw new IllegalStateException("이미 진행 중이거나 활성화된 구독이 있습니다.");
         }
 
-        String univName = request.getUnivName().trim();
+        Long targetUnivId = reuseUniversity
+                ? accessStatus.getUnivId()
+                : selectedUniversity == null ? null : selectedUniversity.getUnivId();
+        String univName = reuseUniversity
+                ? accessStatus.getUnivName()
+                : selectedUniversity == null ? request.getUnivName().trim() : selectedUniversity.getUnivName();
 
         // 기존 방식으로 생성된 학교에 PENDING/ACTIVE 구독이 있으면 중복 등록을 막습니다.
-        if (subscriptionMapper.countPendingOrActiveSubscriptionByUnivName(univName) > 0) {
+        if (targetUnivId != null
+                && subscriptionMapper.countPendingOrActiveSubscriptionByUnivId(targetUnivId) > 0) {
+            throw new IllegalStateException(
+                    "이미 구독 중인 학교입니다."
+            );
+        }
+
+        if (targetUnivId == null
+                && subscriptionMapper.countPendingOrActiveSubscriptionByUnivName(univName) > 0) {
             throw new IllegalStateException("이미 진행 중이거나 활성화된 학교 구독이 있습니다.");
         }
 
         // 아직 결제가 끝나지 않은 같은 학교 신청이 있으면 중복 신청을 막습니다.
-        if (subscriptionMapper.countPendingSubscriptionApplicationByUnivName(univName) > 0) {
+        if (targetUnivId == null
+                && subscriptionMapper.countPendingSubscriptionApplicationByUnivName(univName) > 0) {
             throw new IllegalStateException("이미 진행 중인 학교 구독 신청이 있습니다.");
         }
 
@@ -106,7 +140,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 .planId(plan.getPlanId())
                 .billingKeyId(null)
                 .memberId(memberId)
-                .univId(null)
+                .univId(targetUnivId)
                 .status(SUBSCRIPTION_STATUS_PENDING)
                 .startedAt(LocalDateTime.now())
                 .nextBillingAt(null)
@@ -119,6 +153,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         );
 
         // 결제 성공 전 학교 정보는 UNIVERSITY가 아닌 신청 테이블에 보관합니다.
+        if (targetUnivId == null) {
         SubscriptionApplicationDto application = SubscriptionApplicationDto.builder()
                 .memberId(memberId)
                 .subscriptionId(subscription.getSubscriptionId())
@@ -137,10 +172,12 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         );
 
         // 프론트가 PortOne 결제를 시작할 때 사용할 merchantUid를 먼저 저장합니다.
+        }
+
         SubscriptionPaymentHistoryInsertDto paymentHistory =
                 SubscriptionPaymentHistoryInsertDto.builder()
                         .subscriptionId(subscription.getSubscriptionId())
-                        .univId(null)
+                        .univId(targetUnivId)
                         .memberId(memberId)
                         .billingKeyId(null)
                         .status(PAYMENT_STATUS_READY)
@@ -149,6 +186,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                         .paidAt(null)
                         .failReason(null)
                         .amount(plan.getPrice())
+                        .planName(plan.getPlanName())
                         .build();
 
         requireSingleRow(
@@ -474,6 +512,21 @@ public class SubscriptionServiceImpl implements SubscriptionService {
 
         if (request.getPlanId() == null) {
             throw new IllegalArgumentException("구독 플랜 ID가 필요합니다.");
+        }
+
+        SubscriptionAccessStatusDto accessStatus =
+                subscriptionAccessService.getStatus(memberId);
+        if ("ADM".equals(accessStatus.getRole()) && accessStatus.getUnivId() != null) {
+            if (!accessStatus.isResubscribeAvailable()) {
+                throw new IllegalStateException(
+                        "The current university subscription cannot be renewed yet."
+                );
+            }
+            return;
+        }
+
+        if (request.getUnivId() != null) {
+            return;
         }
 
         if (request.getUnivName() == null || request.getUnivName().trim().isEmpty()) {

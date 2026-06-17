@@ -8,6 +8,7 @@
     <resultMap id="postResultMap" type="com.univus.app.community.dto.PostDto">
         <id     property="postId"          column="POST_ID"/>
         <result property="memberId"        column="MEMBER_ID"/>
+        <result property="univId"          column="UNIV_ID"/>
         <result property="boardId"         column="BOARD_ID"/>
         <result property="title"           column="TITLE"/>
         <result property="content"         column="CONTENT"/>
@@ -30,6 +31,7 @@
     <sql id="postSelectColumns">
         P.POST_ID,
         P.MEMBER_ID,
+        P.UNIV_ID,
         P.BOARD_ID,
         P.TITLE,
         P.CONTENT,
@@ -65,9 +67,12 @@
                     <include refid="postSelectColumns"/>
                 <include refid="postFromJoin"/>
                 WHERE P.IS_DELETED = 0
-                  AND P.IS_BLIND   = 0
+                  AND (P.IS_BLIND = 0 OR P.MEMBER_ID = #{viewerMemberId})
                 <if test="memberId != null">
                     AND P.MEMBER_ID = #{memberId}
+                </if>
+                <if test="univId != null">
+                    AND P.UNIV_ID = #{univId}
                 </if>
                 <if test="boardId != null">
                     AND P.BOARD_ID = #{boardId}
@@ -89,9 +94,12 @@
         SELECT COUNT(*)
         <include refid="postFromJoin"/>
         WHERE P.IS_DELETED = 0
-          AND P.IS_BLIND   = 0
+          AND (P.IS_BLIND = 0 OR P.MEMBER_ID = #{viewerMemberId})
         <if test="memberId != null">
             AND P.MEMBER_ID = #{memberId}
+        </if>
+        <if test="univId != null">
+            AND P.UNIV_ID = #{univId}
         </if>
         <if test="boardId != null">
             AND P.BOARD_ID = #{boardId}
@@ -107,10 +115,13 @@
         SELECT COUNT(*)
         <include refid="postFromJoin"/>
         WHERE P.IS_DELETED = 0
-          AND P.IS_BLIND = 0
+          AND (P.IS_BLIND = 0 OR P.MEMBER_ID = #{viewerMemberId})
           AND TRUNC(P.CREATED_AT) = TRUNC(SYSTIMESTAMP)
         <if test="memberId != null">
             AND P.MEMBER_ID = #{memberId}
+        </if>
+        <if test="univId != null">
+            AND P.UNIV_ID = #{univId}
         </if>
         <if test="boardId != null">
             AND P.BOARD_ID = #{boardId}
@@ -139,6 +150,7 @@
         INSERT INTO POST (
             POST_ID,
             MEMBER_ID,
+            UNIV_ID,
             BOARD_ID,
             TITLE,
             CONTENT,
@@ -151,6 +163,7 @@
         ) VALUES (
             #{postId},
             #{memberId},
+            #{univId},
             #{boardId},
             #{title},
             #{content},
@@ -259,6 +272,7 @@
 	    <id     property="commentId"      column="COMMENT_ID"/>
 	    <result property="memberId"       column="MEMBER_ID"/>
 	    <result property="postId"         column="POST_ID"/>
+	    <result property="univId"         column="UNIV_ID"/>
 	    <result property="parentId"       column="PARENT_ID"/>
 	    <result property="content"        column="CONTENT"/>
 	    <result property="isAnonymous"    column="IS_ANONYMOUS"/>
@@ -274,6 +288,7 @@
 	        C.COMMENT_ID,
 	        C.MEMBER_ID,
 	        C.POST_ID,
+	        C.UNIV_ID,
 	        C.PARENT_ID,
 	        C.CONTENT,
 	        C.IS_ANONYMOUS,
@@ -294,6 +309,7 @@
             C.COMMENT_ID,
             C.MEMBER_ID,
             C.POST_ID,
+            C.UNIV_ID,
             C.PARENT_ID,
             C.CONTENT,
             C.IS_ANONYMOUS,
@@ -317,6 +333,7 @@
 	        COMMENT_ID,
 	        MEMBER_ID,
 	        POST_ID,
+	        UNIV_ID,
 	        PARENT_ID,
 	        CONTENT,
 	        IS_ANONYMOUS,
@@ -326,6 +343,7 @@
 	        #{commentId},
 	        #{memberId},
 	        #{postId},
+	        #{univId},
 	        #{parentId},
 	        #{content},
 	        #{isAnonymous},

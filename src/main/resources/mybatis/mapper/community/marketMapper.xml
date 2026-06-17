@@ -8,6 +8,7 @@
     <resultMap id="ProductResultMap" type="com.univus.app.community.dto.MarketDto$ProductDto">
         <id     property="productId"     column="PRODUCT_ID"/>
         <result property="memberId"      column="MEMBER_ID"/>
+        <result property="univId"        column="UNIV_ID"/>
         <result property="productName"   column="PRODUCT_NAME"/>
         <result property="price"         column="PRICE"/>
         <result property="description"   column="DESCRIPTION"/>
@@ -30,6 +31,7 @@
         <id     property="commentId"      column="COMMENT_ID"/>
         <result property="memberId"       column="MEMBER_ID"/>
         <result property="productId"      column="PRODUCT_ID"/>
+        <result property="univId"         column="UNIV_ID"/>
         <result property="parentId"       column="PARENT_ID"/>
         <result property="content"        column="CONTENT"/>
         <result property="isAnonymous"    column="IS_ANONYMOUS"/>
@@ -72,6 +74,7 @@
         SELECT
             P.PRODUCT_ID,
             P.MEMBER_ID,
+            P.UNIV_ID,
             P.PRODUCT_NAME,
             P.PRICE,
             P.VIEW_COUNT,
@@ -94,6 +97,9 @@
         JOIN MEMBER M ON P.MEMBER_ID = M.MEMBER_ID
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
         WHERE P.IS_DELETED = 0
+        <if test="univId != null">
+            AND P.UNIV_ID = #{univId}
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (P.PRODUCT_NAME LIKE '%' || #{keyword} || '%'
               OR P.DESCRIPTION  LIKE '%' || #{keyword} || '%')
@@ -107,7 +113,10 @@
         <if test="productStatus == null or productStatus == ''">
             AND P.PRODUCT_STATUS != 'DONE'
         </if>
-        AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+        AND (
+            (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+            OR P.MEMBER_ID = #{viewerMemberId}
+        )
         ORDER BY P.CREATED_AT DESC
         OFFSET #{page} * #{size} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
@@ -118,6 +127,9 @@
         SELECT COUNT(*)
         FROM PRODUCT P
         WHERE P.IS_DELETED = 0
+        <if test="univId != null">
+            AND P.UNIV_ID = #{univId}
+        </if>
         <if test="keyword != null and keyword != ''">
             AND (P.PRODUCT_NAME LIKE '%' || #{keyword} || '%'
               OR P.DESCRIPTION  LIKE '%' || #{keyword} || '%')
@@ -131,7 +143,10 @@
         <if test="productStatus == null or productStatus == ''">
             AND P.PRODUCT_STATUS != 'DONE'
         </if>
-        AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+        AND (
+            (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
+            OR P.MEMBER_ID = #{viewerMemberId}
+        )
     </select>
 
     <!-- ── 상품 상세 조회 ─────────────────────────────────── -->
@@ -139,6 +154,7 @@
         SELECT
             P.PRODUCT_ID,
             P.MEMBER_ID,
+            P.UNIV_ID,
             P.PRODUCT_NAME,
             P.PRICE,
             P.DESCRIPTION,
@@ -173,6 +189,7 @@
         INSERT INTO PRODUCT (
             PRODUCT_ID,
             MEMBER_ID,
+            UNIV_ID,
             PRODUCT_NAME,
             PRICE,
             DESCRIPTION,
@@ -185,6 +202,7 @@
         ) VALUES (
             #{productId},
             #{memberId},
+            #{univId},
             #{productName},
             #{price},
             #{description},
@@ -287,13 +305,15 @@
             PC.COMMENT_ID,
             PC.MEMBER_ID,
             PC.PRODUCT_ID,
+            PC.UNIV_ID,
             PC.PARENT_ID,
             PC.CONTENT,
             PC.IS_ANONYMOUS,
             PC.IS_DELETED,
             PC.CREATED_AT,
             M.MEMBER_NAME        AS AUTHOR_NAME,
-            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME,
+            0 AS LIKE_COUNT
         FROM PRODUCT_COMMENT PC
         JOIN MEMBER M ON PC.MEMBER_ID = M.MEMBER_ID
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
@@ -309,13 +329,15 @@
             PC.COMMENT_ID,
             PC.MEMBER_ID,
             PC.PRODUCT_ID,
+            PC.UNIV_ID,
             PC.PARENT_ID,
             PC.CONTENT,
             PC.IS_ANONYMOUS,
             PC.IS_DELETED,
             PC.CREATED_AT,
             M.MEMBER_NAME        AS AUTHOR_NAME,
-            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME,
+            0 AS LIKE_COUNT
         FROM PRODUCT_COMMENT PC
         JOIN MEMBER M ON PC.MEMBER_ID = M.MEMBER_ID
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
@@ -330,13 +352,15 @@
             PC.COMMENT_ID,
             PC.MEMBER_ID,
             PC.PRODUCT_ID,
+            PC.UNIV_ID,
             PC.PARENT_ID,
             PC.CONTENT,
             PC.IS_ANONYMOUS,
             PC.IS_DELETED,
             PC.CREATED_AT,
             M.MEMBER_NAME        AS AUTHOR_NAME,
-            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME
+            MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME,
+            0 AS LIKE_COUNT
         FROM PRODUCT_COMMENT PC
         JOIN MEMBER M ON PC.MEMBER_ID = M.MEMBER_ID
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
@@ -352,6 +376,7 @@
             COMMENT_ID,
             MEMBER_ID,
             PRODUCT_ID,
+            UNIV_ID,
             PARENT_ID,
             CONTENT,
             IS_ANONYMOUS,
@@ -361,6 +386,7 @@
             SEQ_PRODUCT_COMMENT.NEXTVAL,
             #{memberId},
             #{productId},
+            #{univId},
             #{parentId},
             #{content},
             #{isAnonymous},
@@ -454,10 +480,11 @@
     </update>
 
     <!-- ── 내 찜 목록 ─────────────────────────────────────── -->
-    <select id="selectMyLikeList" parameterType="long" resultMap="ProductResultMap">
+    <select id="selectMyLikeList" resultMap="ProductResultMap">
         SELECT
             P.PRODUCT_ID,
             P.MEMBER_ID,
+            P.UNIV_ID,
             P.PRODUCT_NAME,
             P.PRICE,
             P.VIEW_COUNT,
@@ -482,6 +509,9 @@
         LEFT JOIN MEMBER_DETAIL MD ON M.MEMBER_ID = MD.MEMBER_ID
         WHERE PL.MEMBER_ID = #{memberId}
           AND P.IS_DELETED = 0
+        <if test="univId != null">
+          AND P.UNIV_ID = #{univId}
+        </if>
           AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
         ORDER BY PL.PRESSED_AT DESC
     </select>
@@ -734,6 +764,13 @@
         UPDATE TRADE_CHAT_ROOM
         SET STATUS = #{status}
         WHERE ROOM_ID = #{roomId}
+    </update>
+
+    <update id="updateActiveTradeChatStatusByProduct">
+        UPDATE TRADE_CHAT_ROOM
+        SET STATUS = #{status}
+        WHERE PRODUCT_ID = #{productId}
+          AND STATUS = 'ACTIVE'
     </update>
 
     <select id="selectActiveTradeChatRoomCountByProduct" resultType="int">

@@ -12,10 +12,12 @@ import com.univus.app.reservation.dto.ReservationDto;
 public interface ReservationMapper {
 
     List<ReservationDto.ReadingRoomAvailabilityDto> selectReadingRoomAvailability(
+            @Param("memberId") Long memberId,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
     List<ReservationDto.ReadingSeatAvailabilityDto> selectReadingSeatAvailability(
+            @Param("memberId") Long memberId,
             @Param("readingRoomId") Long readingRoomId,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
@@ -45,7 +47,9 @@ public interface ReservationMapper {
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
 
-    List<ReservationDto.RoomAvailabilityDto> selectActiveReservationRooms();
+    int cancelAllPendingReadingSeatReservations(@Param("memberId") Long memberId);
+
+    List<ReservationDto.RoomAvailabilityDto> selectActiveReservationRooms(@Param("memberId") Long memberId);
 
     List<ReservationDto.RoomReservationSlotDto> selectRoomReservationsBetween(
             @Param("startTime") LocalDateTime startTime,
@@ -70,6 +74,8 @@ public interface ReservationMapper {
     int cancelRoomReservation(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
+
+    int cancelAllPendingRoomReservations(@Param("memberId") Long memberId);
 
     List<ReservationDto.ReadingSeatReservationDto> selectExpiredReadingSeatReservations();
 
