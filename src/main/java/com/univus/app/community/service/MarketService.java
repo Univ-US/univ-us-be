@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.util.HashMap;
@@ -109,7 +111,7 @@ public class MarketService {
         CommunityAccessScope scope = communityAccessService.getScope(createDto.getMemberId());
         if (scope.isSuperAdmin()) {
             if (createDto.getUnivId() == null) {
-                throw new IllegalArgumentException("University id is required.");
+                throw badRequest("University id is required.");
             }
         } else {
             createDto.setUnivId(scope.getUnivId());
@@ -124,7 +126,7 @@ public class MarketService {
         validateEditableProductStatus(updateDto.getProductStatus());
         MarketDto.ProductDto product = marketMapper.selectProductDetail(updateDto.getProductId());
         if (product != null && "DONE".equals(product.getProductStatus())) {
-            throw new IllegalStateException("Completed product cannot be edited.");
+            throw conflict("Completed product cannot be edited.");
         }
         return marketMapper.updateProduct(updateDto);
     }
@@ -135,20 +137,20 @@ public class MarketService {
         validateMember(memberId);
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
         if (product == null || product.getIsDeleted() == 1) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
         if (!product.getMemberId().equals(memberId)) {
-            throw new IllegalStateException("Only seller can complete free sharing.");
+            throw forbidden("Only seller can complete free sharing.");
         }
         if (product.getPrice() == null || product.getPrice() > 0) {
-            throw new IllegalStateException("Only free sharing products can be completed without payment.");
+            throw conflict("Only free sharing products can be completed without payment.");
         }
         if ("DONE".equals(product.getProductStatus())) {
             return product;
         }
         if (isBlindProduct(product)) {
-            throw new IllegalStateException("Blind product cannot be completed.");
+            throw conflict("Blind product cannot be completed.");
         }
 
         marketMapper.updateProductStatus(productId, "DONE");
@@ -176,7 +178,7 @@ public class MarketService {
     public List<MarketDto.ProductImageDto> uploadProductImages(Long productId, List<MultipartFile> images) {
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
         if (product == null) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         if (images == null || images.isEmpty()) {
             return marketMapper.selectProductImageList(productId);
@@ -221,7 +223,7 @@ public class MarketService {
     public List<MarketDto.ProductImageDto> replaceProductImagesWithFiles(Long productId, List<MultipartFile> images) {
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
         if (product == null) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         marketMapper.deleteProductImageAll(productId);
         return uploadProductImages(productId, images);
@@ -231,7 +233,7 @@ public class MarketService {
     public List<MarketDto.ProductImageDto> updateProductImages(Long productId, List<Long> keepImageIds, List<MultipartFile> images) {
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
         if (product == null) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         marketMapper.deleteProductImagesExcept(productId, keepImageIds == null ? List.of() : keepImageIds);
         return uploadProductImages(productId, images);
@@ -297,7 +299,7 @@ public class MarketService {
         assertProductAccessible(productId, memberId);
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
         if (product == null) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         return product.getLikeCount() == null ? 0 : product.getLikeCount();
     }
@@ -307,10 +309,10 @@ public class MarketService {
         Map<String, Object> result = new HashMap<>();
         MarketDto.ProductDto product = marketMapper.selectProductDetail(reportDto.getProductId());
         if (product == null || product.getIsDeleted() == 1) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         if (product.getMemberId().equals(reportDto.getMemberId())) {
-            throw new IllegalStateException("Seller cannot report own product.");
+            throw forbidden("Seller cannot report own product.");
         }
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(reportDto.getMemberId()));
         int exists = marketMapper.selectProductReportCount(reportDto);
@@ -352,22 +354,22 @@ public class MarketService {
             MarketDto.TradeChatRoomRequestDto request) {
         validateMember(memberId);
         if (request == null || request.getProductId() == null) {
-            throw new IllegalArgumentException("Product id is required.");
+            throw badRequest("Product id is required.");
         }
 
         MarketDto.ProductDto product = marketMapper.selectProductDetail(request.getProductId());
         if (product == null || product.getIsDeleted() == 1) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
         if (product.getMemberId().equals(memberId)) {
-            throw new IllegalStateException("Seller cannot create a buyer chat for own product.");
+            throw forbidden("Seller cannot create a buyer chat for own product.");
         }
         if ("DONE".equals(product.getProductStatus())) {
-            throw new IllegalStateException("Completed product cannot start a chat.");
+            throw conflict("Completed product cannot start a chat.");
         }
         if (isBlindProduct(product)) {
-            throw new IllegalStateException("Blind product cannot start a chat.");
+            throw conflict("Blind product cannot start a chat.");
         }
 
         MarketDto.TradeChatRoomDto existingRoom =
@@ -407,7 +409,7 @@ public class MarketService {
         if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
                 || CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())
                 || "DONE".equals(room.getProductStatus())) {
-            throw new IllegalStateException("Closed trade chat cannot send messages.");
+            throw conflict("Closed trade chat cannot send messages.");
         }
 
         MarketDto.TradeChatMessageDto messageDto = MarketDto.TradeChatMessageDto.builder()
@@ -436,15 +438,15 @@ public class MarketService {
             MarketDto.TradeChatPriceRequestDto request) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
         if (!room.getSellerId().equals(memberId)) {
-            throw new IllegalStateException("Only seller can update negotiated price.");
+            throw forbidden("Only seller can update negotiated price.");
         }
         if (request == null || request.getNegotiatedPrice() == null || request.getNegotiatedPrice() < 0) {
-            throw new IllegalArgumentException("Negotiated price is required.");
+            throw badRequest("Negotiated price is required.");
         }
         if ("DONE".equals(room.getProductStatus())
                 || DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
                 || CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
-            throw new IllegalStateException("Completed trade chat cannot update price.");
+            throw conflict("Completed trade chat cannot update price.");
         }
 
         marketMapper.updateTradeChatNegotiatedPrice(roomId, request.getNegotiatedPrice());
@@ -460,24 +462,24 @@ public class MarketService {
     public MarketDto.TradeChatRoomDto completeFreeTradeChat(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
         if (!room.getSellerId().equals(memberId)) {
-            throw new IllegalStateException("Only seller can complete free sharing.");
+            throw forbidden("Only seller can complete free sharing.");
         }
         if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus()) || "DONE".equals(room.getProductStatus())) {
-            throw new IllegalStateException("Trade is already completed.");
+            throw conflict("Trade is already completed.");
         }
         if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
-            throw new IllegalStateException("Closed trade chat cannot be completed.");
+            throw conflict("Closed trade chat cannot be completed.");
         }
 
         MarketDto.ProductDto product = marketMapper.selectProductDetail(room.getProductId());
         if (product == null || product.getIsDeleted() == 1) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         if (!product.getMemberId().equals(room.getSellerId())) {
-            throw new IllegalStateException("Product seller does not match chat seller.");
+            throw conflict("Product seller does not match chat seller.");
         }
         if (product.getPrice() == null || product.getPrice() > 0) {
-            throw new IllegalStateException("Only free sharing products can be completed without payment.");
+            throw conflict("Only free sharing products can be completed without payment.");
         }
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
 
@@ -503,7 +505,7 @@ public class MarketService {
     public MarketDto.TradeChatRoomDto closeTradeChatRoom(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
         if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())) {
-            throw new IllegalStateException("Completed trade chat cannot be closed.");
+            throw conflict("Completed trade chat cannot be closed.");
         }
         if (!CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
             marketMapper.updateTradeChatStatus(roomId, CLOSED_TRADE_CHAT_STATUS);
@@ -525,7 +527,7 @@ public class MarketService {
                 || DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
                 || "DONE".equals(room.getProductStatus());
         if (!deletableStatus) {
-            throw new IllegalStateException("Only closed or completed trade chat can be deleted.");
+            throw conflict("Only closed or completed trade chat can be deleted.");
         }
 
         marketMapper.deleteTradeChatMessages(roomId);
@@ -564,13 +566,13 @@ public class MarketService {
         validatePaymentCompleteRequest(completeDto);
         MarketDto.ProductDto product = marketMapper.selectProductDetail(completeDto.getProductId());
         if (product == null || product.getIsDeleted() == 1) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         if (!"SALE".equals(product.getProductStatus())) {
-            throw new IllegalStateException("Product is not available for payment.");
+            throw conflict("Product is not available for payment.");
         }
         if (product.getMemberId().equals(buyerId)) {
-            throw new IllegalStateException("Seller cannot buy own product.");
+            throw forbidden("Seller cannot buy own product.");
         }
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(buyerId));
 
@@ -611,21 +613,21 @@ public class MarketService {
         MarketDto.TradeChatRoomDto room =
                 requireTradeChatRoom(completeDto.getRoomId(), buyerId);
         if (!room.getBuyerId().equals(buyerId)) {
-            throw new IllegalStateException("Only buyer can pay in trade chat.");
+            throw forbidden("Only buyer can pay in trade chat.");
         }
         if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus()) || "DONE".equals(room.getProductStatus())) {
-            throw new IllegalStateException("Trade is already completed.");
+            throw conflict("Trade is already completed.");
         }
         if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
-            throw new IllegalStateException("Closed trade chat cannot be paid.");
+            throw conflict("Closed trade chat cannot be paid.");
         }
 
         MarketDto.ProductDto product = marketMapper.selectProductDetail(room.getProductId());
         if (product == null || product.getIsDeleted() == 1) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         if (!product.getMemberId().equals(room.getSellerId())) {
-            throw new IllegalStateException("Product seller does not match chat seller.");
+            throw conflict("Product seller does not match chat seller.");
         }
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(buyerId));
 
@@ -668,7 +670,7 @@ public class MarketService {
 
     private void verifyPortOnePaymentAmount(String requestPaymentId, Long expectedAmount) {
         if (isBlank(portoneTradeApiSecret)) {
-            throw new IllegalStateException("PortOne API credentials are missing.");
+            throw badGateway("PortOne API credentials are missing.");
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -683,16 +685,16 @@ public class MarketService {
                     PortOneTradePaymentResponse.class
             );
         } catch (RestClientResponseException ex) {
-            throw new IllegalStateException(
+            throw badGateway(
                     "PortOne payment lookup failed. status=" + ex.getStatusCode().value()
             );
         } catch (RestClientException ex) {
-            throw new IllegalStateException("PortOne payment lookup failed.");
+            throw badGateway("PortOne payment lookup failed.");
         }
 
         PortOneTradePaymentResponse payment = response.getBody();
         if (payment == null) {
-            throw new IllegalStateException("Payment information not found.");
+            throw badGateway("Payment information not found.");
         }
 
         String paymentId = payment.id;
@@ -701,16 +703,16 @@ public class MarketService {
         String channelKey = payment.channel == null ? null : payment.channel.key;
 
         if (!requestPaymentId.equals(paymentId)) {
-            throw new IllegalStateException("Payment id does not match.");
+            throw conflict("Payment id does not match.");
         }
         if (!"PAID".equals(status)) {
-            throw new IllegalStateException("Payment is not paid.");
+            throw conflict("Payment is not paid.");
         }
         if (amount == null || !amount.equals(expectedAmount)) {
-            throw new IllegalStateException("Payment amount does not match.");
+            throw conflict("Payment amount does not match.");
         }
         if (!isAllowedTradeChannelKey(channelKey)) {
-            throw new IllegalStateException("Payment channel does not match.");
+            throw conflict("Payment channel does not match.");
         }
     }
 
@@ -726,31 +728,31 @@ public class MarketService {
 
     private void validatePaymentCompleteRequest(MarketDto.PaymentCompleteDto completeDto) {
         if (completeDto == null) {
-            throw new IllegalArgumentException("Payment request body is required.");
+            throw badRequest("Payment request body is required.");
         }
         if (completeDto.getProductId() == null) {
-            throw new IllegalArgumentException("Product id is required.");
+            throw badRequest("Product id is required.");
         }
         if (isBlank(completeDto.getPaymentId())) {
-            throw new IllegalArgumentException("paymentId is required.");
+            throw badRequest("paymentId is required.");
         }
     }
 
     private void validateChatPaymentCompleteRequest(MarketDto.ChatPaymentCompleteDto completeDto) {
         if (completeDto == null) {
-            throw new IllegalArgumentException("Payment request body is required.");
+            throw badRequest("Payment request body is required.");
         }
         if (completeDto.getRoomId() == null) {
-            throw new IllegalArgumentException("Chat room id is required.");
+            throw badRequest("Chat room id is required.");
         }
         if (isBlank(completeDto.getPaymentId())) {
-            throw new IllegalArgumentException("paymentId is required.");
+            throw badRequest("paymentId is required.");
         }
     }
 
     private void validateMember(Long memberId) {
         if (memberId == null) {
-            throw new IllegalArgumentException("Login is required.");
+            throw unauthorized("Login is required.");
         }
     }
 
@@ -761,7 +763,7 @@ public class MarketService {
     private MarketDto.ProductDto requireAccessibleProduct(Long productId, Long memberId) {
         MarketDto.ProductDto product = marketMapper.selectProductDetail(productId);
         if (product == null) {
-            throw new IllegalArgumentException("Product not found.");
+            throw notFound("Product not found.");
         }
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(memberId));
         return product;
@@ -782,29 +784,29 @@ public class MarketService {
     private MarketDto.TradeChatRoomDto requireTradeChatRoom(Long roomId, Long memberId) {
         validateMember(memberId);
         if (roomId == null) {
-            throw new IllegalArgumentException("Chat room id is required.");
+            throw badRequest("Chat room id is required.");
         }
 
         MarketDto.TradeChatRoomDto room =
                 marketMapper.selectTradeChatRoomForMember(roomId, memberId);
         if (room == null) {
-            throw new IllegalArgumentException("Trade chat room not found.");
+            throw notFound("Trade chat room not found.");
         }
         return room;
     }
 
     private void validateChatMessageRequest(MarketDto.TradeChatMessageRequestDto request) {
         if (request == null || request.getContent() == null || request.getContent().trim().isEmpty()) {
-            throw new IllegalArgumentException("Message content is required.");
+            throw badRequest("Message content is required.");
         }
         if (request.getContent().trim().length() > MAX_CHAT_MESSAGE_LENGTH) {
-            throw new IllegalArgumentException("Message content must be 2000 characters or less.");
+            throw badRequest("Message content must be 2000 characters or less.");
         }
     }
 
     private void validateEditableProductStatus(String productStatus) {
         if (!"SALE".equals(productStatus) && !"RESERVE".equals(productStatus)) {
-            throw new IllegalArgumentException("Product status can only be changed to SALE or RESERVE.");
+            throw badRequest("Product status can only be changed to SALE or RESERVE.");
         }
     }
 
@@ -833,11 +835,35 @@ public class MarketService {
     private void validateProductImage(MultipartFile image) {
         String contentType = image.getContentType();
         if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
-            throw new IllegalArgumentException("Only JPG, PNG, and WEBP images can be uploaded.");
+            throw badRequest("Only JPG, PNG, and WEBP images can be uploaded.");
         }
         if (image.getSize() > MAX_IMAGE_SIZE) {
-            throw new IllegalArgumentException("Image size must be 30MB or less.");
+            throw badRequest("Image size must be 30MB or less.");
         }
+    }
+
+    private ResponseStatusException badRequest(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    private ResponseStatusException unauthorized(String message) {
+        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, message);
+    }
+
+    private ResponseStatusException forbidden(String message) {
+        return new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+    }
+
+    private ResponseStatusException notFound(String message) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+    }
+
+    private ResponseStatusException conflict(String message) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, message);
+    }
+
+    private ResponseStatusException badGateway(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
     }
 
     private void runAfterCommit(Runnable action) {

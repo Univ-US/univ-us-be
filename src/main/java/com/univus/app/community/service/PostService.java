@@ -6,9 +6,11 @@ import com.univus.app.community.dto.PostImageDto;
 import com.univus.app.community.mapper.PostMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.util.HashMap;
@@ -105,7 +107,7 @@ public class PostService {
         CommunityAccessScope scope = communityAccessService.getScope(postDto.getMemberId());
         if (scope.isSuperAdmin()) {
             if (postDto.getUnivId() == null) {
-                throw new IllegalArgumentException("University id is required.");
+                throw badRequest("University id is required.");
             }
         } else {
             postDto.setUnivId(scope.getUnivId());
@@ -209,7 +211,7 @@ public class PostService {
     public List<PostImageDto> uploadPostImages(Long postId, List<MultipartFile> images) {
         PostDto post = postMapper.selectPostById(postId);
         if (post == null) {
-            throw new IllegalArgumentException("Post not found.");
+            throw notFound("Post not found.");
         }
         if (images == null || images.isEmpty()) {
             return postMapper.selectPostImageList(postId);
@@ -252,7 +254,7 @@ public class PostService {
     private PostDto requireAccessiblePost(Long postId, Long memberId) {
         PostDto post = postMapper.selectPostById(postId);
         if (post == null) {
-            throw new IllegalArgumentException("Post not found.");
+            throw notFound("Post not found.");
         }
         communityAccessService.assertAccessible(post.getUnivId(), communityAccessService.getScope(memberId));
         return post;
@@ -261,10 +263,18 @@ public class PostService {
     private void validatePostImage(MultipartFile image) {
         String contentType = image.getContentType();
         if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType)) {
-            throw new IllegalArgumentException("Only JPG, PNG, and WEBP images can be uploaded.");
+            throw badRequest("Only JPG, PNG, and WEBP images can be uploaded.");
         }
         if (image.getSize() > MAX_IMAGE_SIZE) {
-            throw new IllegalArgumentException("Image size must be 30MB or less.");
+            throw badRequest("Image size must be 30MB or less.");
         }
+    }
+
+    private ResponseStatusException badRequest(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    private ResponseStatusException notFound(String message) {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
     }
 }
