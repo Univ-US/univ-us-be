@@ -1,5 +1,9 @@
 package com.univus.app.reservation.service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +25,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private static final String ROOM_REALTIME_TOPIC = "/sub/reservations/rooms";
     private static final String REALTIME_ACTION_RESERVED = "RESERVED";
     private static final String REALTIME_ACTION_CANCELLED = "CANCELLED";
+    private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
 
     private final ReservationMapper reservationMapper;
     private final SimpMessagingTemplate messagingTemplate;
@@ -160,21 +165,21 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         }
 
         // 만료 20분 전부터만 연장 가능하도록 검증 로직 추가
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        java.time.LocalDateTime endTime = reservation.getEndTime();
-        java.time.Duration timeRemaining = java.time.Duration.between(now, endTime);
+        LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
+        LocalDateTime endTime = reservation.getEndTime();
+        Duration timeRemaining = Duration.between(now, endTime);
         
         if (timeRemaining.toMinutes() > 20 || timeRemaining.isNegative()) {
             throw new IllegalStateException("좌석 연장은 만료 20분 전부터 가능합니다.");
         }
 
         // 최대 예약 가능 시간 상한선 체크 (예: 최초 6시간 + 2회 연장 = 10시간)
-        java.time.Duration duration = java.time.Duration.between(reservation.getStartTime(), reservation.getEndTime());
+        Duration duration = Duration.between(reservation.getStartTime(), reservation.getEndTime());
         if (duration.toHours() >= 10) {
             throw new IllegalStateException("최대 이용 시간(10시간)을 초과하여 더 이상 연장할 수 없습니다.");
         }
 
-        java.time.LocalDateTime newEndTime = reservation.getEndTime().plusHours(2);
+        LocalDateTime newEndTime = reservation.getEndTime().plusHours(2);
 
         int overlapCount = reservationMapper.countOverlappingReadingSeatReservation(
                 reservation.getSeatId(),

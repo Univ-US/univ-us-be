@@ -8,6 +8,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.univus.app.reservation.dto.ReservationDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
@@ -39,7 +41,7 @@ public class ReservationScheduler {
                     reservation.getReservationId(), "COMPLETED");
             if (updated > 0) {
                 log.info("만료된 좌석 예약 자동 완료 처리 (reservationId={})", reservation.getReservationId());
-                publishSeatRealtimeEvent("COMPLETED", reservation);
+                publishSeatRealtimeEventAfterCommit("COMPLETED", reservation);
             }
         }
 
@@ -52,12 +54,12 @@ public class ReservationScheduler {
                     reservation.getReservationId(), "CANCELLED");
             if (updated > 0) {
                 log.info("노쇼 좌석 예약 자동 취소 처리 (reservationId={})", reservation.getReservationId());
-                publishSeatRealtimeEvent("CANCELLED", reservation);
+                publishSeatRealtimeEventAfterCommit("CANCELLED", reservation);
             }
         }
     }
 
-    private void publishSeatRealtimeEvent(String action, ReservationDto.ReadingSeatReservationDto reservation) {
+    private void publishSeatRealtimeEventAfterCommit(String action, ReservationDto.ReadingSeatReservationDto reservation) {
         ReservationDto.ReadingSeatRealtimeEventDto event =
                 ReservationDto.ReadingSeatRealtimeEventDto.builder()
                         .action(action)
@@ -68,6 +70,21 @@ public class ReservationScheduler {
                         .startTime(reservation.getStartTime())
                         .endTime(reservation.getEndTime())
                         .build();
-        messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event);
+        runAfterCommit(() -> messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event));
+    }
+
+    private void runAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                action.run();
+            }
+        });
     }
 }
