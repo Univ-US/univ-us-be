@@ -17,10 +17,11 @@ server:
     relaxed-query-chars: "[,]"
 
 spring:
-  datasource:                                  # hikari 중첩 → 표준 위치(그래야 env가 먹음)
+  datasource:                                  # ⚠️ application.yml과 동일 hikari 중첩 구조로 정합(2026-06-17). PR #158 PgVectorDataSourceConfig가 ${spring.datasource.hikari.username/password}를 직접 읽음(기본값 없음) → 평면이면 prod CrashLoop. ENV 변수명은 기존(SPRING_DATASOURCE_USERNAME/PASSWORD) 유지 → K8s 재주입 불필요
     url: ${SPRING_DATASOURCE_URL:jdbc:oracle:thin:@localhost:1521/XEPDB1}
-    username: ${SPRING_DATASOURCE_USERNAME:univus}
-    password: ${SPRING_DATASOURCE_PASSWORD:changeme}     # 진짜 비번은 K8s Secret(env)에서
+    hikari:
+      username: ${SPRING_DATASOURCE_USERNAME:univus}
+      password: ${SPRING_DATASOURCE_PASSWORD:changeme}   # 진짜 비번은 K8s Secret(env SPRING_DATASOURCE_PASSWORD)
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -63,6 +64,18 @@ mybatis:
 
 file:
   upload-root: ${FILE_UPLOAD_ROOT:/data/uploads}
+
+# AI RAG(PR #158) — PgVectorDataSourceConfig·EmbeddingService가 아래 값을 '기본값 없이' 읽음 → prod 필수(없으면 CrashLoop).
+# ⚠️ url은 파드 내부경로로 주입(application.yml의 happyjob.iptime.org는 팀원 로컬용 외부경로 — 파드는 Oracle처럼 VM 내부경로).
+# 값은 K8s ConfigMap(url·username·ollama)/Secret(PGVECTOR_PASSWORD) 주입. block 스타일 필수(인라인 {} 금지 — snakeyaml flow-map 충돌).
+pgvector:
+  datasource:
+    url: ${PGVECTOR_URL:}
+    username: ${PGVECTOR_USERNAME:}
+    password: ${PGVECTOR_PASSWORD:}          # 비번은 default 비움 → K8s Secret
+ollama:
+  base-url: ${OLLAMA_BASE_URL:}
+  embed-model: ${OLLAMA_EMBED_MODEL:nomic-embed-text}
 
 univus:
   api:
