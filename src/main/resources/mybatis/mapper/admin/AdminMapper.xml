@@ -93,8 +93,11 @@
 
     <!-- 공지 등록 -->
     <insert id="insertNotice" parameterType="com.univus.app.admin.dto.AdminDto$NoticeDto">
+        <selectKey keyProperty="noticeId" resultType="long" order="BEFORE">
+            SELECT SEQ_NOTICE.NEXTVAL FROM DUAL
+        </selectKey>
         INSERT INTO NOTICE (NOTICE_ID, MEMBER_ID, UNIV_ID, TITLE, CONTENT, TARGET, POSTED_AT, UPDATED_AT, IS_DELETED)
-        VALUES (SEQ_NOTICE.NEXTVAL, #{memberId}, #{univId}, #{title}, #{content}, #{target}, SYSTIMESTAMP, SYSTIMESTAMP, 0)
+        VALUES (#{noticeId}, #{memberId}, #{univId}, #{title}, #{content}, #{target}, SYSTIMESTAMP, SYSTIMESTAMP, 0)
     </insert>
 
     <!-- 공지 수정 -->

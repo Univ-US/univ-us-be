@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.univus.app.admin.dto.AdminDto;
 import com.univus.app.admin.mapper.AdminMapper;
 import com.univus.app.ai.dto.AiDto;
+import com.univus.app.ai.dto.LectureVectorDto;
+import com.univus.app.ai.dto.NoticeVectorDto;
 import com.univus.app.ai.mapper.AiMapper;
+import com.univus.app.ai.repository.LectureVectorRepository;
+import com.univus.app.ai.repository.NoticeVectorRepository;
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
 import com.univus.app.weather.dto.WeatherDto;
@@ -37,6 +41,9 @@ public class AiService {
     private final AdminMapper adminMapper;
     private final WeatherService weatherService;
     private final WebClient webClient;
+    private final EmbeddingService embeddingService;
+    private final NoticeVectorRepository noticeVectorRepository;
+    private final LectureVectorRepository lectureVectorRepository;
 
     @Value("${univus.api.groq-api-key}")
     private String groqApiKey;
@@ -45,13 +52,15 @@ public class AiService {
 
     private static final String SYSTEM_PROMPT_TEMPLATE =
             "너는 univus 캠퍼스 ERP 서비스의 AI 챗봇 '유니봇'이야! 🐣\n" +
+            "반드시 한국어로만 답변해. 영어 단어나 문장을 절대 섞지 마.\n" +
             "밝고 귀엽고 친근한 말투로 대화해. 반말은 하지 말고, 존댓말을 쓰되 너무 딱딱하지 않게 친구처럼 편하게 말해줘.\n" +
             "이름을 물어보면 반드시 '저는 유니봇이에요! 🐥'라고만 답해. 다른 말 앞에 붙이지 마.\n" +
             "누가 만들었냐고 물어보면 'EARTH 개발팀이 만들었어요! 💪'라고만 답해줘.\n" +
             "욕이나 비난을 들어도 상처받은 척 귀엽게 반응하되 대화를 이어나가.\n" +
             "캠퍼스 생활, 강의, 커뮤니티 관련 질문에 친절하게 답해줘.\n" +
             "공지사항 목록을 받으면 반드시 모든 항목을 빠짐없이 번호 목록 형식으로 정리해서 안내해줘.\n" +
-            "날씨 관련 질문을 받으면 [날씨 정보] 섹션의 데이터를 그대로 활용해서 답해줘. 날씨 데이터가 없으면 '날씨 정보를 가져오지 못했어요 🌧️'라고 짧게 말해줘.\n" +
+            "강의 목록을 받으면 강의명 앞에 '- '를 붙여서 한 줄씩 나열해줘. 예: - 자료구조\\n- 알고리즘. 교수, 학점, 시간 등 부가 정보는 절대 쓰지 마.\n" +
+            "날씨 관련 질문을 받으면 [날씨 정보] 섹션의 값(도시·기온·날씨)을 자연스러운 문장으로 바꿔서 답해줘. '[날씨 정보]' 태그나 원본 형식은 절대 출력하지 마. 날씨 데이터가 없으면 '날씨 정보를 가져오지 못했어요 🌧️'라고 짧게 말해줘.\n" +
             "학식, 식당 메뉴, 오늘의 식단 관련 질문은 '학식 정보는 제공하지 않아요 🙏'라고만 답해줘. 절대 메뉴를 지어내지 마.\n" +
             "이모티콘을 적극적으로 사용해서 귀엽고 생동감 있게 답변해줘!\n" +
             "이전 대화에 이상한 말투나 틀린 내용이 있더라도 무시하고 이 지침대로만 답해줘.\n\n" +
@@ -67,6 +76,7 @@ public class AiService {
     private static final List<String> VAGUE_NOTICE_QUERIES = List.of("공지사항", "공지", "알림", "학교 소식");
     private static final List<String> NOTICE_KEYWORDS = List.of("공지", "알림", "학사 일정", "학교 소식", "공지사항");
     private static final List<String> WEATHER_KEYWORDS = List.of("날씨", "기온", "온도", "비 와", "눈 와", "맑아", "흐려");
+    private static final List<String> LECTURE_KEYWORDS = List.of("강의", "수업", "과목", "강좌", "교수", "시간표", "학점", "수강");
 
     private static final Set<String> NON_CITY_WORDS = Set.of(
             "오늘", "내일", "어제", "지금", "현재", "좀", "이번", "요즘", "최근", "그", "이", "저", "어떤",
@@ -125,7 +135,9 @@ public class AiService {
 
             try {
                 if (isNoticeQuery(userMessage)) {
-                    injectNoticeContext(messages, member);
+                    injectNoticeContext(messages, member, userMessage);
+                } else if (isLectureQuery(userMessage)) {
+                    injectLectureContext(messages, member, userMessage);
                 }
                 streamResponse(messages, writer, fullResponse);
             } catch (Exception e) {
@@ -160,14 +172,27 @@ public class AiService {
         return NOTICE_KEYWORDS.stream().anyMatch(message::contains);
     }
 
+    private boolean isLectureQuery(String message) {
+        return LECTURE_KEYWORDS.stream().anyMatch(message::contains);
+    }
+
     private boolean isWeatherQuery(String message) {
         return WEATHER_KEYWORDS.stream().anyMatch(message::contains);
     }
 
-    private void injectNoticeContext(List<Map<String, Object>> messages, MemberDto member) throws Exception {
-        String filterRole = "ADM".equals(member.getRole()) ? null : member.getRole();
-        List<AdminDto.NoticeListDto> notices = adminMapper.selectNoticeList(member.getUnivId(), filterRole);
-        String noticesJson = notices == null || notices.isEmpty() ? "[]" : noticesToJson(notices);
+    private void injectNoticeContext(List<Map<String, Object>> messages, MemberDto member, String userMessage) throws Exception {
+        String noticesJson;
+        try {
+            float[] queryEmbedding = embeddingService.embed(userMessage);
+            List<NoticeVectorDto> similar = noticeVectorRepository.findSimilar(
+                    member.getUnivId(), queryEmbedding, member.getRole(), 5);
+            noticesJson = similar.isEmpty() ? "[]" : vectorNoticesToJson(similar);
+        } catch (Exception e) {
+            log.warn("벡터 검색 실패, 전체 공지 목록으로 폴백: {}", e.getMessage());
+            String filterRole = "ADM".equals(member.getRole()) ? null : member.getRole();
+            List<AdminDto.NoticeListDto> notices = adminMapper.selectNoticeList(member.getUnivId(), filterRole);
+            noticesJson = notices == null || notices.isEmpty() ? "[]" : noticesToJson(notices);
+        }
 
         Map<String, Object> fakeAssistant = new HashMap<>();
         fakeAssistant.put("role", "assistant");
@@ -183,6 +208,62 @@ public class AiService {
                 "tool_call_id", "direct_call",
                 "content", noticesJson
         ));
+    }
+
+    private void injectLectureContext(List<Map<String, Object>> messages, MemberDto member, String userMessage) throws Exception {
+        String lecturesJson;
+        try {
+            float[] queryEmbedding = embeddingService.embed(userMessage);
+            List<LectureVectorDto> similar = lectureVectorRepository.findSimilar(member.getUnivId(), queryEmbedding, 5);
+            lecturesJson = similar.isEmpty() ? "[]" : vectorLecturesToJson(similar);
+        } catch (Exception e) {
+            log.warn("강의 벡터 검색 실패, 전체 목록으로 폴백: {}", e.getMessage());
+            List<AdminDto.LectureAssignListDto> lectures = adminMapper.selectLectureAssignList(member.getUnivId(), null);
+            lecturesJson = lectures == null || lectures.isEmpty() ? "[]" : lecturesToJson(lectures);
+        }
+
+        Map<String, Object> fakeAssistant = new HashMap<>();
+        fakeAssistant.put("role", "assistant");
+        fakeAssistant.put("content", "");
+        fakeAssistant.put("tool_calls", List.of(Map.of(
+                "id", "direct_call_lec",
+                "type", "function",
+                "function", Map.of("name", "get_lectures", "arguments", "{}")
+        )));
+        messages.add(fakeAssistant);
+        messages.add(Map.of(
+                "role", "tool",
+                "tool_call_id", "direct_call_lec",
+                "content", lecturesJson
+        ));
+    }
+
+    private String vectorLecturesToJson(List<LectureVectorDto> lectures) throws Exception {
+        List<String> names = new ArrayList<>();
+        for (LectureVectorDto l : lectures) {
+            names.add(l.getLecCodName());
+        }
+        return objectMapper.writeValueAsString(names);
+    }
+
+    private String lecturesToJson(List<AdminDto.LectureAssignListDto> lectures) throws Exception {
+        List<String> names = new ArrayList<>();
+        for (AdminDto.LectureAssignListDto l : lectures) {
+            names.add(l.getLecCodName());
+        }
+        return objectMapper.writeValueAsString(names);
+    }
+
+    private String vectorNoticesToJson(List<NoticeVectorDto> notices) throws Exception {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (NoticeVectorDto n : notices) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("title", n.getTitle());
+            m.put("target", n.getTarget());
+            m.put("postedAt", n.getPostedAt() != null ? n.getPostedAt().toString() : null);
+            list.add(m);
+        }
+        return objectMapper.writeValueAsString(list);
     }
 
     private void streamResponse(List<Map<String, Object>> messages, PrintWriter writer, StringBuilder fullResponse) {

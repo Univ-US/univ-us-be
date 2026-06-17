@@ -2,6 +2,7 @@ package com.univus.app.admin.service;
 
 import com.univus.app.admin.dto.AdminDto;
 import com.univus.app.admin.mapper.AdminMapper;
+import com.univus.app.ai.service.AsyncEmbeddingService;
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
 import com.univus.app.subscription.service.SubscriptionMemberLimitService;
@@ -22,6 +23,7 @@ public class AdminService {
     private final AdminMapper adminMapper;
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AsyncEmbeddingService asyncEmbeddingService;
     private final SubscriptionMemberLimitService subscriptionMemberLimitService;
 
     public Map<String, Object> getMemberList(AdminDto.MemberSearchDto search, Long requesterId) {
@@ -95,6 +97,7 @@ public class AdminService {
         notice.setMemberId(requesterId);
         notice.setUnivId(requester.getUnivId());
         adminMapper.insertNotice(notice);
+        asyncEmbeddingService.embedNotice(notice);
     }
 
     @Transactional
@@ -241,7 +244,9 @@ public class AdminService {
                 adminMapper.insertLectureTime(dto.getLecId(), time);
             }
         }
-        return adminMapper.selectLectureAssignById(dto.getLecId());
+        AdminDto.LectureAssignListDto saved = adminMapper.selectLectureAssignById(dto.getLecId());
+        asyncEmbeddingService.embedLecture(saved);
+        return saved;
     }
 
     @Transactional
@@ -276,7 +281,9 @@ public class AdminService {
                 adminMapper.insertLectureTime(lecId, time);
             }
         }
-        return adminMapper.selectLectureAssignById(lecId);
+        AdminDto.LectureAssignListDto updated = adminMapper.selectLectureAssignById(lecId);
+        asyncEmbeddingService.embedLecture(updated);
+        return updated;
     }
 
     private void validateProfessorTimeConflicts(AdminDto.LectureAssignCreateDto dto, Long lmsPrfId, Long excludeLecId) {
