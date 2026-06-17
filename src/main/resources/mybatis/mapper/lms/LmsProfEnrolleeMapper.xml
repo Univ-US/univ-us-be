@@ -138,9 +138,9 @@
     <select id="selectAssignmentScores" resultType="com.univus.app.lms.dto.LmsProfEnrolleeDto$AssignmentScoreRow">
         SELECT
             asn.LEC_ASN_ID        AS assignmentId,
-            asn.LEC_ASN_TITLE     AS title,
-            sb.LEC_ASN_SBM_STATUS AS submissionStatusCode,
-            ev.ASN_SBM_EVL_SCORE  AS score
+            asn.LEC_ASN_TITLE     AS lecAsnTitle,
+            sb.LEC_ASN_SBM_STATUS AS lecAsnSbmStatus,
+            ev.ASN_SBM_EVL_SCORE  AS asnSbmEvlScore
         FROM LECTURE_ASSIGNMENT asn
         LEFT JOIN LECTURE_ASSIGNMENT_SUBMISSION sb
                ON sb.LEC_ASN_ID = asn.LEC_ASN_ID AND sb.LMS_PRF_ID = #{studentLmsPrfId}
