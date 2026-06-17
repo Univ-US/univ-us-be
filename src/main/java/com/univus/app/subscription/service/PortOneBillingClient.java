@@ -112,6 +112,22 @@ public class PortOneBillingClient {
 
         private String billingKey;
         private String status;
+        private PaymentMethod paymentMethod;
+    }
+
+    @Getter
+    public static class PaymentMethod {
+
+        private String type;
+        private String provider;
+        private Card card;
+    }
+
+    @Getter
+    public static class Card {
+
+        private String number;
+        private String issuer;
     }
 
     @Getter

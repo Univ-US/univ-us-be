@@ -22,6 +22,10 @@ public class SubscriptionAccessStatusDto {
     private String pendingAction;
     private LocalDateTime cancellationEffectiveAt;
     private LocalDateTime endedAt;
+    private Long planId;
+    private String planName;
+    private Long price;
+    private String billingCycle;
     private String accessStatus;
     private boolean serviceAccessible;
     private boolean resubscribeAvailable;
