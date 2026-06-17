@@ -352,6 +352,18 @@ public class MarketController {
                 marketService.getTradeChatMessages(requireMemberId(memberId), roomId));
     }
 
+    // PATCH /api/market/chats/{roomId}/read
+    @PatchMapping("/chats/{roomId}/read")
+    public ResponseEntity<Map<String, Object>> markTradeChatMessagesAsRead(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId) {
+        int readCount = marketService.markTradeChatMessagesAsRead(requireMemberId(memberId), roomId);
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "readCount", readCount
+        ));
+    }
+
     // POST /api/market/chats/{roomId}/messages
     @PostMapping("/chats/{roomId}/messages")
     public ResponseEntity<MarketDto.TradeChatMessageDto> sendTradeChatMessage(

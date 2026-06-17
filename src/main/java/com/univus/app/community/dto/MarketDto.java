@@ -40,6 +40,7 @@ public class MarketDto {
         private Integer chatCount;
         private Integer reportCount;
         private Integer isBlind;
+        private Boolean hasUnreadTradeChat;
 
         // PRODUCT_IMAGE JOIN
         private List<ProductImageDto> images;
@@ -235,6 +236,7 @@ public class MarketDto {
         private String buyerName;
         private String lastMessage;
         private LocalDateTime lastMessageAt;
+        private Integer unreadCount;
     }
 
     @Getter @Setter
