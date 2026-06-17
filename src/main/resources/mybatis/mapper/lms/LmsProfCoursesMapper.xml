@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  PLM-002 교수 "강의 내역" — 학기별 담당 강의 목록 + 상단 KPI 요약.
+  · 강의명/학수번호 : LECTURE_CODE(LEC_COD_NAME / LEC_CODE) JOIN
+  · schedule        : LECTURE_TIME LISTAGG(요일 한글 + 시작시각), 시간표 없으면 NULL → service가 "" 처리
+  · studentCount    : LECTURE_STUDENT_ENROLLMENT COUNT (LEC_STD_ENR_STATUS != 'DRP', PLM-003·004·008 공통)
+  · attendanceRate  : 강의 수강생별 출석률(PRS/전체)의 단순평균 (PLM-003 buildSummary와 동일 의미)
+  · ungradedCount   : Σ GREATEST(총원 - 채점완료, 0)  (PLM-004 미채점 정의 통일)
+  · inProgressFlag  : TRUNC(SYSDATE) BETWEEN TRUNC(SEM_STR_DATE) AND TRUNC(SEM_END_DATE) (클라 시계 비신뢰)
+  · 미래 학기 제외  : 아직 시작 안 한 학기(SEM_STR_DATE > SYSDATE)는 숨김 (2026-06-17 결정 — '예정'을 '마감'으로 오표시 방지)
+  · 정렬            : 진행중 학기 최상단 → 시작일 최신순(과거) → 같은 학기 내 LEC_ID  (⚠️ SEM_ID 비시간순 함정 회피)
+  · 강의 상태       : 무관 전체(폐강 포함, PLM-003 드롭다운 정책과 일관)
+-->
+<mapper namespace="com.univus.app.lms.mapper.LmsProfCoursesMapper">
+
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectCoursesFlat" resultType="com.univus.app.lms.dto.LmsProfCoursesDto$CourseFlatRow">
+        SELECT
+            l.LEC_ID        AS lecId,
+            s.SEM_ID        AS semId,
+            s.SEM_YEAR      AS year,
+            s.SEM_TERM      AS termCode,
+            CASE WHEN TRUNC(SYSDATE) BETWEEN TRUNC(s.SEM_STR_DATE) AND TRUNC(s.SEM_END_DATE)
+                 THEN 1 ELSE 0 END AS inProgressFlag,
+            lc.LEC_COD_NAME AS courseName,
+            l.LEC_SECTION   AS lecSection,
+            (SELECT LISTAGG(
+                        CASE t.LEC_TIM_DAY_CODE
+                            WHEN 'MON' THEN '월' WHEN 'TUE' THEN '화' WHEN 'WED' THEN '수'
+                            WHEN 'THU' THEN '목' WHEN 'FRI' THEN '금' WHEN 'SAT' THEN '토'
+                            WHEN 'SUN' THEN '일' ELSE '?' END
+                        || ' ' || TO_CHAR(t.LEC_TIM_STR_TIME, 'HH24:MI'), ' · ')
+                    WITHIN GROUP (ORDER BY
+                        CASE t.LEC_TIM_DAY_CODE
+                            WHEN 'MON' THEN 1 WHEN 'TUE' THEN 2 WHEN 'WED' THEN 3 WHEN 'THU' THEN 4
+                            WHEN 'FRI' THEN 5 WHEN 'SAT' THEN 6 WHEN 'SUN' THEN 7 ELSE 8 END,
+                        t.LEC_TIM_STR_TIME)
+             FROM LECTURE_TIME t WHERE t.LEC_ID = l.LEC_ID) AS schedule,
+            (SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e
+              WHERE e.LEC_ID = l.LEC_ID AND e.LEC_STD_ENR_STATUS != 'DRP') AS studentCount,
+            (SELECT ROUND(AVG(stu.attRate), 0) FROM (
+                 SELECT (SELECT COUNT(*) FROM STUDENT_ENROLLMENT_ATTENDANCE a
+                          WHERE a.LEC_STD_ENR_ID = e2.LEC_STD_ENR_ID
+                            AND a.STD_ENR_ATD_STS_CODE = 'PRS') * 100.0
+                        / NULLIF((SELECT COUNT(*) FROM STUDENT_ENROLLMENT_ATTENDANCE a
+                                   WHERE a.LEC_STD_ENR_ID = e2.LEC_STD_ENR_ID), 0) AS attRate
+                 FROM LECTURE_STUDENT_ENROLLMENT e2
+                 WHERE e2.LEC_ID = l.LEC_ID AND e2.LEC_STD_ENR_STATUS != 'DRP'
+             ) stu) AS attendanceRate,
+            (SELECT NVL(SUM(GREATEST(pa.totalStudents - pa.gradedCount, 0)), 0) FROM (
+                 SELECT
+                     (SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e3
+                       WHERE e3.LEC_ID = asn.LEC_ID AND e3.LEC_STD_ENR_STATUS != 'DRP') AS totalStudents,
+                     (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb
+                        JOIN ASSIGNMENT_SUBMISSION_EVALUATION ev ON ev.LEC_ASN_SBM_ID = sb.LEC_ASN_SBM_ID
+                       WHERE sb.LEC_ASN_ID = asn.LEC_ASN_ID AND ev.ASN_SBM_EVL_SCORE IS NOT NULL) AS gradedCount
+                 FROM LECTURE_ASSIGNMENT asn WHERE asn.LEC_ID = l.LEC_ID
+             ) pa) AS ungradedCount
+        FROM LECTURE l
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
+        WHERE l.LMS_PRF_ID = #{lmsPrfId}
+          <!-- 아직 시작 안 한 미래 학기는 목록에서 제외 (예정 → 마감 오표시 방지) -->
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
+        ORDER BY inProgressFlag DESC, s.SEM_STR_DATE DESC, l.LEC_ID
+    </select>
+
+</mapper>
