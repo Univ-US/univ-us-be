@@ -80,6 +80,11 @@ public class CmypageService {
             throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
         }
 
+        boolean hasMemberDetail = cmypageMapper.countMemberDetail(memberId) > 0;
+        if (!hasMemberDetail && cmypageMapper.selectDefaultDeptIdForMember(memberId) == null) {
+            throw new IllegalStateException("소속 대학의 학과 정보가 없어 커뮤니티 닉네임을 설정할 수 없습니다.");
+        }
+
         int updated = cmypageMapper.updateCommunityNickname(memberId, communityNickname);
         if (updated <= 0) {
             throw new IllegalArgumentException("회원 상세 정보를 찾을 수 없습니다.");

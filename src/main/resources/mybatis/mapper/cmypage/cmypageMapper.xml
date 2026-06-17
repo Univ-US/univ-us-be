@@ -170,6 +170,19 @@
           AND MEMBER_ID != #{memberId}
     </select>
 
+    <select id="countMemberDetail" resultType="int">
+        SELECT COUNT(*)
+        FROM MEMBER_DETAIL
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectDefaultDeptIdForMember" resultType="java.lang.Long">
+        SELECT MIN(D.DEPT_ID)
+        FROM MEMBER M
+        JOIN DEPARTMENT D ON D.UNIV_ID = M.UNIV_ID
+        WHERE M.MEMBER_ID = #{memberId}
+    </select>
+
     <update id="updateCommunityNickname">
         MERGE INTO MEMBER_DETAIL MD
         USING (
