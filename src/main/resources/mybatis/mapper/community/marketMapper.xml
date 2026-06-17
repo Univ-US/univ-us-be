@@ -601,6 +601,7 @@
         JOIN MEMBER BM ON TCR.BUYER_ID = BM.MEMBER_ID
         WHERE TCR.PRODUCT_ID = #{productId}
           AND TCR.BUYER_ID = #{buyerId}
+          AND TCR.STATUS = 'ACTIVE'
     </select>
 
     <insert id="insertTradeChatRoom" parameterType="com.univus.app.community.dto.MarketDto$TradeChatRoomDto">
@@ -765,6 +766,41 @@
         SET STATUS = #{status}
         WHERE ROOM_ID = #{roomId}
     </update>
+
+    <select id="selectActiveTradeChatRoomsByProduct" resultMap="TradeChatRoomResultMap">
+        SELECT
+            TCR.ROOM_ID,
+            TCR.PRODUCT_ID,
+            TCR.SELLER_ID,
+            TCR.BUYER_ID,
+            TCR.NEGOTIATED_PRICE,
+            TCR.STATUS,
+            TCR.CREATED_AT,
+            P.PRODUCT_NAME,
+            P.PRODUCT_STATUS,
+            SM.MEMBER_NAME AS SELLER_NAME,
+            BM.MEMBER_NAME AS BUYER_NAME,
+            (
+                SELECT M.CONTENT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE,
+            (
+                SELECT M.SEND_AT
+                FROM TRADE_CHAT_MESSAGE M
+                WHERE M.ROOM_ID = TCR.ROOM_ID
+                ORDER BY M.SEND_AT DESC
+                FETCH FIRST 1 ROW ONLY
+            ) AS LAST_MESSAGE_AT
+        FROM TRADE_CHAT_ROOM TCR
+        JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
+        JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
+        JOIN MEMBER BM ON TCR.BUYER_ID = BM.MEMBER_ID
+        WHERE TCR.PRODUCT_ID = #{productId}
+          AND TCR.STATUS = 'ACTIVE'
+    </select>
 
     <update id="updateActiveTradeChatStatusByProduct">
         UPDATE TRADE_CHAT_ROOM
