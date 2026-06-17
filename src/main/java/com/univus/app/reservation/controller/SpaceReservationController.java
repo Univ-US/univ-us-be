@@ -23,6 +23,8 @@ import com.univus.app.reservation.dto.ReservationDto.ReadingSeatAvailabilityDto;
 import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationDto;
 import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationRequestDto;
 import com.univus.app.reservation.dto.ReservationDto.ReservationDateOptionsResponseDto;
+import com.univus.app.reservation.dto.ReservationDto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationDto.ReservationPenaltyStatusDto;
 import com.univus.app.reservation.dto.ReservationDto.RoomAvailabilityDto;
 import com.univus.app.reservation.dto.ReservationDto.RoomReservationDto;
 import com.univus.app.reservation.dto.ReservationDto.RoomReservationRequestDto;
@@ -41,6 +43,27 @@ public class SpaceReservationController {
     public ResponseEntity<ReservationDateOptionsResponseDto> getReservationDateOptions(
             @RequestParam(value = "days", defaultValue = "5") int days) {
         return ResponseEntity.ok(reservationService.getReservationDateOptions(days));
+    }
+
+    @GetMapping("/penalties/status")
+    public ResponseEntity<ReservationPenaltyStatusDto> getReservationPenaltyStatus(
+            @AuthenticationPrincipal Long memberId) {
+        return ResponseEntity.ok(reservationService.getReservationPenaltyStatus(memberId));
+    }
+
+    @PostMapping("/penalties/pledge")
+    public ResponseEntity<?> pledgeReservationPenalty(
+            @AuthenticationPrincipal Long memberId,
+            @RequestBody ReservationPenaltyPledgeRequestDto request) {
+        try {
+            return ResponseEntity.ok(reservationService.pledgeReservationPenalty(memberId, request));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
     }
 
     @GetMapping("/rooms/availability")

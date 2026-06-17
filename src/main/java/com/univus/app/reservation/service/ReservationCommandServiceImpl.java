@@ -26,6 +26,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private static final String REALTIME_ACTION_RESERVED = "RESERVED";
     private static final String REALTIME_ACTION_CANCELLED = "CANCELLED";
     private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
+    private static final int PENALTY_BLOCK_THRESHOLD = 5;
 
     private final ReservationMapper reservationMapper;
     private final SimpMessagingTemplate messagingTemplate;
@@ -35,6 +36,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     public ReservationDto.ReadingSeatReservationDto reserveReadingSeat(
             Long memberId,
             ReservationDto.ReadingSeatReservationRequestDto request) {
+        validateReservationPenaltyLimit(memberId);
+
         int usableSeatCount = reservationMapper.countUsableReadingSeat(request.getSeatId());
         if (usableSeatCount == 0) {
             throw new IllegalArgumentException("사용 가능한 좌석이 아닙니다.");
@@ -97,6 +100,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     public ReservationDto.RoomReservationDto reserveRoom(
             Long memberId,
             ReservationDto.RoomReservationRequestDto request) {
+        validateReservationPenaltyLimit(memberId);
+
         int usableRoomCount = reservationMapper.countUsableReservationRoom(request.getRoomId());
         if (usableRoomCount == 0) {
             throw new IllegalArgumentException("사용 가능한 공간이 아닙니다.");
@@ -200,6 +205,14 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                 
         publishSeatRealtimeEventAfterCommit("EXTENDED", updatedReservation);
         return updatedReservation;
+    }
+
+    private void validateReservationPenaltyLimit(Long memberId) {
+        int activePenaltyCount = reservationMapper.countActiveReservationPenalties(memberId);
+        if (activePenaltyCount >= PENALTY_BLOCK_THRESHOLD) {
+            throw new IllegalStateException(
+                    "노쇼 패널티가 5회 누적되어 예약이 제한되었습니다. 서약서를 확인하면 다시 예약할 수 있습니다.");
+        }
     }
 
     private void publishSeatRealtimeEventAfterCommit(

@@ -32,6 +32,15 @@ public interface ReservationMapper {
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
+    int countActiveReservationPenalties(@Param("memberId") Long memberId);
+
+    int insertReservationPenalty(
+            @Param("memberId") Long memberId,
+            @Param("penaltyType") String penaltyType,
+            @Param("reason") String reason);
+
+    int pledgeActiveReservationPenalties(@Param("memberId") Long memberId);
+
     int countUsableReadingSeat(@Param("seatId") Long seatId);
 
     int insertReadingSeatReservation(ReservationDto.ReadingSeatReservationDto reservation);

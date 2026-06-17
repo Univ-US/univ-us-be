@@ -189,6 +189,43 @@
           AND END_TIME <![CDATA[ > ]]> #{startTime}
     </select>
 
+    <select id="countActiveReservationPenalties" resultType="int">
+        SELECT COUNT(*)
+        FROM RESERVATION_PENALTIES
+        WHERE MEMBER_ID = #{memberId}
+          AND STATUS = 'ACTIVE'
+    </select>
+
+    <insert id="insertReservationPenalty">
+        INSERT INTO RESERVATION_PENALTIES (
+            PENALTY_ID,
+            MEMBER_ID,
+            PENALTY_TYPE,
+            REASON,
+            START_TIME,
+            END_TIME,
+            STATUS,
+            CREATED_AT
+        ) VALUES (
+            SEQ_RESERVATION_PENALTIES.NEXTVAL,
+            #{memberId},
+            #{penaltyType},
+            #{reason},
+            SYSTIMESTAMP,
+            SYSTIMESTAMP + INTERVAL '100' YEAR,
+            'ACTIVE',
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <update id="pledgeActiveReservationPenalties">
+        UPDATE RESERVATION_PENALTIES
+        SET STATUS = 'PLEDGED',
+            END_TIME = SYSTIMESTAMP
+        WHERE MEMBER_ID = #{memberId}
+          AND STATUS = 'ACTIVE'
+    </update>
+
     <select id="countUsableReadingSeat" parameterType="long" resultType="int">
         SELECT COUNT(*)
         FROM READING_ROOM_SEATS S
@@ -430,7 +467,7 @@
           ON S.SEAT_ID = R.SEAT_ID
         JOIN READING_ROOMS RR
           ON RR.READING_ROOM_ID = S.READING_ROOM_ID
-        WHERE R.STATUS IN ('USING', 'RESERVED')
+        WHERE R.STATUS = 'USING'
           AND R.END_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
     </select>
 

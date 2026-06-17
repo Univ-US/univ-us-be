@@ -13,6 +13,7 @@ import java.util.stream.IntStream;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.univus.app.reservation.dto.ReservationDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
@@ -35,6 +36,12 @@ public class ReservationServiceImpl implements ReservationService {
     private static final int SLOT_HOURS = 2;
     private static final int DAILY_SLOT_COUNT = (24 - 8) / SLOT_HOURS;
     private static final int MAX_RESERVATION_HOURS = 6;
+    private static final int PENALTY_BLOCK_THRESHOLD = 5;
+    private static final String PENALTY_PLEDGE_PHRASE =
+            "예약한 시설은 책임 있게 이용하며, 사전 취소 없이 이용하지 않는 일이 반복되지 않도록 유의하겠습니다.";
+    private static final String PENALTY_BLOCK_MESSAGE =
+            "노쇼 패널티가 5회 누적되어 예약이 제한되었습니다. 서약서를 확인하면 다시 예약할 수 있습니다.";
+    private static final String PENALTY_AVAILABLE_MESSAGE = "예약 이용이 가능합니다.";
 
     private final ReservationMapper reservationMapper;
     private final ReservationCommandService reservationCommandService;
@@ -70,6 +77,39 @@ public class ReservationServiceImpl implements ReservationService {
                 .serverNow(serverNow)
                 .dates(dates)
                 .build();
+    }
+
+    @Override
+    public ReservationDto.ReservationPenaltyStatusDto getReservationPenaltyStatus(Long memberId) {
+        validateMember(memberId);
+        return buildReservationPenaltyStatus(reservationMapper.countActiveReservationPenalties(memberId));
+    }
+
+    @Transactional
+    @Override
+    public ReservationDto.ReservationPenaltyStatusDto pledgeReservationPenalty(
+            Long memberId,
+            ReservationDto.ReservationPenaltyPledgeRequestDto request) {
+        validateMember(memberId);
+        if (request == null) {
+            throw new IllegalArgumentException("서약 요청 본문은 필수입니다.");
+        }
+        if (!Boolean.TRUE.equals(request.getAgreed())) {
+            throw new IllegalArgumentException("예약 이용 정책 확인에 동의해주세요.");
+        }
+
+        String pledgeText = request.getPledgeText() == null ? "" : request.getPledgeText().trim();
+        if (!PENALTY_PLEDGE_PHRASE.equals(pledgeText)) {
+            throw new IllegalArgumentException("서약 문구를 정확히 입력해주세요.");
+        }
+
+        int activePenaltyCount = reservationMapper.countActiveReservationPenalties(memberId);
+        if (activePenaltyCount < PENALTY_BLOCK_THRESHOLD) {
+            throw new IllegalStateException("서약은 노쇼 패널티 5회 이상인 경우에만 진행할 수 있습니다.");
+        }
+
+        reservationMapper.pledgeActiveReservationPenalties(memberId);
+        return buildReservationPenaltyStatus(reservationMapper.countActiveReservationPenalties(memberId));
     }
 
     @Override
@@ -418,6 +458,17 @@ public class ReservationServiceImpl implements ReservationService {
 
     private boolean isCancelableStatus(String status) {
         return "RESERVED".equals(status) || "USING".equals(status);
+    }
+
+    private ReservationDto.ReservationPenaltyStatusDto buildReservationPenaltyStatus(int activePenaltyCount) {
+        boolean blocked = activePenaltyCount >= PENALTY_BLOCK_THRESHOLD;
+        return ReservationDto.ReservationPenaltyStatusDto.builder()
+                .activePenaltyCount(activePenaltyCount)
+                .blockThreshold(PENALTY_BLOCK_THRESHOLD)
+                .blocked(blocked)
+                .pledgePhrase(PENALTY_PLEDGE_PHRASE)
+                .message(blocked ? PENALTY_BLOCK_MESSAGE : PENALTY_AVAILABLE_MESSAGE)
+                .build();
     }
 
     @FunctionalInterface

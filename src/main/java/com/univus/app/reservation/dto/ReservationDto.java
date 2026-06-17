@@ -41,6 +41,27 @@ public class ReservationDto {
     @Getter
     @Setter
     @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ReservationPenaltyStatusDto {
+        private Integer activePenaltyCount;
+        private Integer blockThreshold;
+        private Boolean blocked;
+        private String pledgePhrase;
+        private String message;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class ReservationPenaltyPledgeRequestDto {
+        private String pledgeText;
+        private Boolean agreed;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
     public static class ReadingSeatReservationRequestDto {
         private Long seatId;
         private LocalDateTime startTime;
