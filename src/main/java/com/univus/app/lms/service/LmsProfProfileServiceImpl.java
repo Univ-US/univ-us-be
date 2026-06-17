@@ -47,7 +47,7 @@ public class LmsProfProfileServiceImpl implements LmsProfProfileService {
         // 이메일, 소개 수정
         lmsProfProfileMapper.updateLmsProfessorProfile(memberId, lmsProfessorProfileUpdateDto);
         // 이미지 처리 (새 이미지가 넘어온 경우에만)
-        MultipartFile lmsProfessorProfileImage = lmsProfessorProfileUpdateDto.getLmsProfessorProfileImage();
+        MultipartFile lmsProfessorProfileImage = lmsProfessorProfileUpdateDto.getImage();
         if (lmsProfessorProfileImage != null && !lmsProfessorProfileImage.isEmpty()) {
             LmsProfileImageValidator.validate(lmsProfessorProfileImage); // 형식·용량·매직바이트 검증(공용)
             String directoryPath = uploadRoot + File.separator + IMAGE_SUBDIR;
@@ -69,15 +69,15 @@ public class LmsProfProfileServiceImpl implements LmsProfProfileService {
             return null;
         }
         return LmsProfProfileDto.ResDto.builder()
-                .lmsProfessorProfileName(m.getName())
-                .lmsProfessorProfileEmployeeNo(m.getEmployeeNo())
-                .lmsProfessorProfileDepartment(m.getDepartment())
-                .lmsProfessorProfilePhoneNumber(m.getPhoneNumber())
-                .lmsProfessorProfileEmail(m.getEmail())
-                .lmsProfessorProfileIntroduction(m.getIntroduction())
-                .lmsProfessorProfileImageUrl(m.getImageUrl())
-                .lmsProfessorProfileUniversityName(m.getUniversityName())
-                .lmsProfessorProfileRole(toRoleLabel(m.getRole()))
+                .name(m.getName())
+                .employeeNo(m.getEmployeeNo())
+                .department(m.getDepartment())
+                .phoneNumber(m.getPhoneNumber())
+                .lmsPrfEmail(m.getLmsPrfEmail())
+                .lmsPrfIntro(m.getLmsPrfIntro())
+                .imageUrl(m.getImageUrl())
+                .universityName(m.getUniversityName())
+                .role(toRoleLabel(m.getRole()))
                 .build();
     }
 

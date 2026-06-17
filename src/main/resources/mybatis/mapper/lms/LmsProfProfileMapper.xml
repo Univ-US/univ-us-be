@@ -13,8 +13,8 @@
             m.LOGIN_ID       AS employeeNo,
             d.DEPT_NAME      AS department,
             m.PHONE_NUMBER   AS phoneNumber,
-            lp.LMS_PRF_EMAIL AS email,
-            lp.LMS_PRF_INTRO AS introduction,
+            lp.LMS_PRF_EMAIL AS lmsPrfEmail,
+            lp.LMS_PRF_INTRO AS lmsPrfIntro,
             (SELECT lpi.LMS_PRF_IMG_ORG_URL
                FROM LMS_PROFILE_IMAGE lpi
               WHERE lpi.LMS_PRF_ID = lp.LMS_PRF_ID
@@ -45,8 +45,8 @@
     <!-- 이메일·소개 수정  -->
     <update id="updateLmsProfessorProfile">
         UPDATE LMS_PROFILE
-        SET LMS_PRF_EMAIL = #{dto.lmsProfessorProfileEmail},
-            LMS_PRF_INTRO = #{dto.lmsProfessorProfileIntroduction}
+        SET LMS_PRF_EMAIL = #{dto.lmsPrfEmail},
+            LMS_PRF_INTRO = #{dto.lmsPrfIntro}
         WHERE MEMBER_ID = #{memberId}
     </update>
 

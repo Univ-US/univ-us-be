@@ -35,16 +35,16 @@ public class LmsProfCoursesServiceImpl implements LmsProfCoursesService {
         for (LmsProfCoursesDto.CourseFlatRow r : rows) {
             LmsProfCoursesDto.SemesterResDto sem = bySem.computeIfAbsent(r.getSemId(), k ->
                     LmsProfCoursesDto.SemesterResDto.builder()
-                            .year(r.getYear())
-                            .termCode(r.getTermCode())
-                            .semesterLabel(semesterLabel(r.getYear(), r.getTermCode()))
+                            .semYear(r.getSemYear())
+                            .semTerm(r.getSemTerm())
+                            .semesterLabel(semesterLabel(r.getSemYear(), r.getSemTerm()))
                             .inProgress(r.getInProgressFlag() == 1)
                             .courses(new ArrayList<>())
                             .build());
             sem.getCourses().add(LmsProfCoursesDto.CourseResDto.builder()
                     .lecId(r.getLecId())
                     .courseName(r.getCourseName())
-                    .section(r.getLecSection() == null ? 0 : r.getLecSection())
+                    .lecSection(r.getLecSection() == null ? 0 : r.getLecSection())
                     .studentCount(r.getStudentCount())
                     .schedule(r.getSchedule() == null ? "" : r.getSchedule())
                     .attendanceRate(r.getAttendanceRate() == null ? 0 : r.getAttendanceRate())
