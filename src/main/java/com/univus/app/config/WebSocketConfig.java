@@ -19,6 +19,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://192.168.0.108",         // LAN 배포(현 HTTP) — 배포 환경 WS 핸드셰이크 403 수정
                         "https://www.univus.com",       // TLS-A(self-signed, hosts 가상도메인) 대비
                         "https://univus.com",           // TLS-A 대비
+                        "https://univus.duckdns.org",   // TLS prod(Let's Encrypt, LE) - 외부/webhook 도메인
                         "https://happyjob.iptime.org"   // TLS-B(Let's Encrypt) 대비
                 ) // React 도메인 허용
                 .withSockJS(); // 브라우저 호환성을 위한 SockJS 사용
