@@ -45,6 +45,8 @@ public class MemberService {
     member.setLoginId(request.getLoginId());
     member.setPassword(passwordEncoder.encode(request.getPassword()));
     member.setMemberName(request.getMemberName());
+    member.setDeptId(request.getDeptId());
+    member.setCommunityNickname(normalizeNickname(request.getCommunityNickname()));
     member.setRole(DEFAULT_ROLE);
     member.setPhoneNumber(request.getPhoneNumber());
     member.setGender(request.getGender());
@@ -55,6 +57,19 @@ public class MemberService {
 
     if (inserted != 1) {
       throw new IllegalStateException("Failed to create member.");
+    }
+
+    if (member.getDeptId() != null) {
+      MemberDto createdMember = memberMapper.findByLoginId(request.getLoginId());
+      if (createdMember == null || createdMember.getMemberId() == null) {
+        throw new IllegalStateException("Failed to load created member.");
+      }
+
+      member.setMemberId(createdMember.getMemberId());
+      int detailInserted = memberMapper.insertMemberDetail(member);
+      if (detailInserted != 1) {
+        throw new IllegalStateException("Failed to create member detail.");
+      }
     }
   }
 
@@ -303,5 +318,14 @@ public class MemberService {
 
   private boolean isAdminRole(String role) {
     return ROLE_ADMIN.equals(role) || ROLE_SUPER_ADMIN.equals(role);
+  }
+
+  private String normalizeNickname(String communityNickname) {
+    if (communityNickname == null) {
+      return null;
+    }
+
+    String trimmed = communityNickname.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 }
