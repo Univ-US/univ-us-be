@@ -171,9 +171,25 @@
     </select>
 
     <update id="updateCommunityNickname">
-        UPDATE MEMBER_DETAIL
-        SET COMMUNITY_NICKNAME = #{communityNickname}
-        WHERE MEMBER_ID = #{memberId}
+        MERGE INTO MEMBER_DETAIL MD
+        USING (
+            SELECT
+                #{memberId,jdbcType=NUMERIC} AS MEMBER_ID,
+                #{communityNickname,jdbcType=VARCHAR} AS COMMUNITY_NICKNAME,
+                (
+                    SELECT MIN(D.DEPT_ID)
+                    FROM DEPARTMENT D
+                    JOIN MEMBER M ON M.UNIV_ID = D.UNIV_ID
+                    WHERE M.MEMBER_ID = #{memberId,jdbcType=NUMERIC}
+                ) AS DEPT_ID
+            FROM DUAL
+        ) SRC
+        ON (MD.MEMBER_ID = SRC.MEMBER_ID)
+        WHEN MATCHED THEN
+            UPDATE SET MD.COMMUNITY_NICKNAME = SRC.COMMUNITY_NICKNAME
+        WHEN NOT MATCHED THEN
+            INSERT (MEMBER_ID, DEPT_ID, COMMUNITY_NICKNAME)
+            VALUES (SRC.MEMBER_ID, SRC.DEPT_ID, SRC.COMMUNITY_NICKNAME)
     </update>
 
     <update id="updateMemberStatus">

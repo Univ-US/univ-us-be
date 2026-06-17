@@ -130,9 +130,9 @@
             DEPT_ID,
             COMMUNITY_NICKNAME
         ) VALUES (
-            #{memberId},
-            #{deptId},
-            #{communityNickname}
+            #{memberId,jdbcType=NUMERIC},
+            #{deptId,jdbcType=NUMERIC},
+            #{communityNickname,jdbcType=VARCHAR}
         )
     </insert>
 

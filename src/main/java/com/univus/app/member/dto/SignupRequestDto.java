@@ -10,6 +10,8 @@ public class SignupRequestDto {
   private String loginId;
   private String password;
   private String memberName;
+  private Long deptId;
+  private String communityNickname;
   private Long phoneNumber;
   private String gender;
   private String birth;
