@@ -34,4 +34,10 @@ public interface SubscriptionService {
             Long memberId,
             SubscriptionPaymentCancelRequestDto request
     );
+
+    // school-admin(ADM)이 등록한 결제 수단(마스킹된 카드 정보 등)을 조회합니다.
+    SubscriptionPaymentMethodResponseDto getPaymentMethod(Long memberId);
+
+    // school-admin(ADM)이 자기 학교의 결제 내역을 조회합니다.
+    List<SubscriptionPaymentHistoryResponseDto> getPaymentHistory(Long memberId);
 }

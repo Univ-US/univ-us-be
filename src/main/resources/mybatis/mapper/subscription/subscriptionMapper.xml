@@ -116,13 +116,19 @@
             S.STATUS AS SUBSCRIPTION_STATUS,
             S.PENDING_ACTION,
             S.CANCELLATION_EFFECTIVE_AT,
-            S.ENDED_AT
+            S.ENDED_AT,
+            P.PLAN_ID,
+            P.PLAN_NAME,
+            P.PRICE,
+            P.BILLING_CYCLE
         FROM MEMBER M
         LEFT JOIN UNIVERSITY U
                ON U.UNIV_ID = M.UNIV_ID
         LEFT JOIN LATEST_SUBSCRIPTION S
                ON S.UNIV_ID = M.UNIV_ID
               AND S.RN = 1
+        LEFT JOIN SUBSCRIPTION_PLANS P
+               ON P.PLAN_ID = S.PLAN_ID
         WHERE M.MEMBER_ID = #{memberId}
     </select>
 
@@ -285,6 +291,55 @@
         SELECT SUBSCRIPTION_BILLING_KEY_ID
         FROM SUBSCRIPTION_BILLING_KEY
         WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="findBillingKeyByMemberId"
+            resultType="com.univus.app.subscription.dto.SubscriptionBillingKeyInsertDto">
+        SELECT
+            SUBSCRIPTION_BILLING_KEY_ID AS billingKeyId,
+            MEMBER_ID AS memberId,
+            UNIV_ID AS univId,
+            SUBSCRIPTION_BILLING_KEY_VALUE AS billingKeyValue,
+            PG_PROVIDER AS pgProvider,
+            STATUS AS status
+        FROM SUBSCRIPTION_BILLING_KEY
+        WHERE MEMBER_ID = #{memberId}
+          AND DELETED_AT IS NULL
+        ORDER BY UPDATED_AT DESC
+        FETCH FIRST 1 ROW ONLY
+    </select>
+
+    <select id="findPaymentsByUnivId"
+            resultType="com.univus.app.subscription.dto.SubscriptionPaymentHistoryResponseDto">
+        SELECT
+            H.HISTORY_ID AS historyId,
+            COALESCE(H.PLAN_NAME, P.PLAN_NAME) AS planName,
+            P.BILLING_CYCLE AS billingCycle,
+            H.AMOUNT AS amount,
+            H.STATUS AS status,
+            CASE
+                WHEN LOWER(B.PG_PROVIDER) = 'kakaopay' THEN 'KAKAO_PAY'
+                ELSE 'CARD'
+            END AS paymentMethod,
+            CASE
+                WHEN H.MERCHANT_UID LIKE 'sub_renew_%' THEN 'RECURRING'
+                ELSE 'INITIAL'
+            END AS paymentType,
+            H.CREATED_AT AS createdAt,
+            H.PAID_AT AS paidAt,
+            H.FAIL_REASON AS failReason,
+            S.NEXT_BILLING_AT AS nextBillingAt,
+            H.REFUNDED_AT AS refundedAt,
+            H.REFUND_AMOUNT AS refundAmount
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+        JOIN SUBSCRIPTIONS S
+          ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+        LEFT JOIN SUBSCRIPTION_PLANS P
+          ON P.PLAN_ID = S.PLAN_ID
+        LEFT JOIN SUBSCRIPTION_BILLING_KEY B
+          ON B.SUBSCRIPTION_BILLING_KEY_ID = H.BILLINGKEY_ID
+        WHERE S.UNIV_ID = #{univId}
+        ORDER BY H.CREATED_AT DESC, H.HISTORY_ID DESC
     </select>
 
     <update id="updateBillingKeyForResubscription"

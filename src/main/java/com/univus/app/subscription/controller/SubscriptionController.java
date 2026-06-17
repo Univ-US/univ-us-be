@@ -63,6 +63,22 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.getPaymentConfig());
     }
 
+    // school-admin(ADM)이 등록한 결제 수단(마스킹된 카드 정보 등)을 조회하는 API입니다.
+    @GetMapping("/payment-method")
+    public ResponseEntity<SubscriptionPaymentMethodResponseDto> getPaymentMethod(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        return ResponseEntity.ok(subscriptionService.getPaymentMethod(memberId));
+    }
+
+    // school-admin(ADM)이 자기 학교의 결제 내역을 조회하는 API입니다.
+    @GetMapping("/payments")
+    public ResponseEntity<List<SubscriptionPaymentHistoryResponseDto>> getPaymentHistory(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        return ResponseEntity.ok(subscriptionService.getPaymentHistory(memberId));
+    }
+
     // 구독 결제 준비 API입니다.
     // 로그인한 사용자의 memberId를 JWT 인증 결과에서 받아옵니다.
     // 이 API는 실제 결제를 완료하는 API가 아닙니다.

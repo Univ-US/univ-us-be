@@ -52,6 +52,11 @@ public interface SubscriptionMapper {
 
     Long findBillingKeyIdByMemberId(@Param("memberId") Long memberId);
 
+    SubscriptionBillingKeyInsertDto findBillingKeyByMemberId(@Param("memberId") Long memberId);
+
+    // school-admin(ADM)이 자기 학교의 결제 내역만 조회할 때 사용합니다.
+    List<SubscriptionPaymentHistoryResponseDto> findPaymentsByUnivId(@Param("univId") Long univId);
+
     int updateBillingKeyForResubscription(SubscriptionBillingKeyInsertDto billingKey);
 
     int attachSubscriptionBillingKey(

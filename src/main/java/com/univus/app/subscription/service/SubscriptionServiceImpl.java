@@ -5,10 +5,12 @@ import com.univus.app.subscription.dto.*;
 import com.univus.app.subscription.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -39,6 +41,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final SubscriptionAccessService subscriptionAccessService;
     private final JwtTokenProvider jwtTokenProvider;
     private final PortOnePaymentClient portOnePaymentClient;
+    private final PortOneBillingClient portOneBillingClient;
     private final SubscriptionPaymentFailureRecorder failureRecorder;
 
     @Value("${portone.subscription.store-id:}")
@@ -461,6 +464,62 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         }
 
         throw new IllegalStateException("취소할 수 없는 결제 상태입니다.");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SubscriptionPaymentMethodResponseDto getPaymentMethod(Long memberId) {
+        requireSchoolAdmin(memberId);
+
+        SubscriptionBillingKeyInsertDto billingKey =
+                subscriptionMapper.findBillingKeyByMemberId(memberId);
+        if (billingKey == null) {
+            return SubscriptionPaymentMethodResponseDto.builder()
+                    .registered(false)
+                    .build();
+        }
+
+        PortOneBillingClient.PortOneBillingKey portOneBillingKey;
+        try {
+            portOneBillingKey = portOneBillingClient.getBillingKey(billingKey.getBillingKeyValue());
+        } catch (RuntimeException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "결제 수단 정보를 조회하지 못했습니다.",
+                    exception
+            );
+        }
+
+        PortOneBillingClient.PaymentMethod method = portOneBillingKey.getPaymentMethod();
+        boolean isEasyPay = method != null && "EASY_PAY".equals(method.getType());
+        PortOneBillingClient.Card card = method == null ? null : method.getCard();
+
+        return SubscriptionPaymentMethodResponseDto.builder()
+                .registered(true)
+                .paymentMethodType(isEasyPay ? "KAKAO_PAY" : "CARD")
+                .maskedCardNumber(card == null ? null : card.getNumber())
+                .cardIssuer(card == null ? null : card.getIssuer())
+                .status(portOneBillingKey.getStatus())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SubscriptionPaymentHistoryResponseDto> getPaymentHistory(Long memberId) {
+        SubscriptionAccessStatusDto status = requireSchoolAdmin(memberId);
+        return subscriptionMapper.findPaymentsByUnivId(status.getUnivId());
+    }
+
+    // school-admin(ADM) 전용 조회 API에서 자신의 학교로만 범위를 제한하기 위해 사용합니다.
+    private SubscriptionAccessStatusDto requireSchoolAdmin(Long memberId) {
+        SubscriptionAccessStatusDto status = subscriptionAccessService.getStatus(memberId);
+        if (!MEMBER_ROLE_ADMIN.equals(status.getRole()) || status.getUnivId() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "학교 관리자만 조회할 수 있습니다."
+            );
+        }
+        return status;
     }
 
     private void validateCancelRequest(
