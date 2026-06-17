@@ -75,6 +75,7 @@ public class MarketService {
         List<MarketDto.ProductDto> products = marketMapper.selectProductList(searchDto);
         for (MarketDto.ProductDto product : products) {
             product.setImages(marketMapper.selectProductImageList(product.getProductId()));
+            product.setHasUnreadTradeChat(hasUnreadTradeChat(product.getProductId(), memberId));
         }
         return products;
     }
@@ -97,6 +98,7 @@ public class MarketService {
         product = marketMapper.selectProductDetail(productId);
         if (product != null) {
             product.setImages(marketMapper.selectProductImageList(productId));
+            product.setHasUnreadTradeChat(hasUnreadTradeChat(productId, memberId));
         }
         return product;
     }
@@ -553,8 +555,15 @@ public class MarketService {
         List<MarketDto.ProductDto> products = marketMapper.selectMyLikeList(memberId, scope.getQueryUnivId());
         for (MarketDto.ProductDto product : products) {
             product.setImages(marketMapper.selectProductImageList(product.getProductId()));
+            product.setHasUnreadTradeChat(hasUnreadTradeChat(product.getProductId(), memberId));
         }
         return products;
+    }
+
+    @Transactional
+    public int markTradeChatMessagesAsRead(Long memberId, Long roomId) {
+        requireTradeChatRoom(roomId, memberId);
+        return marketMapper.markTradeChatMessagesAsRead(roomId, memberId);
     }
 
     public MarketDto.PaymentConfigDto getPaymentConfig() {
@@ -829,6 +838,11 @@ public class MarketService {
 
     private int closeActiveTradeChatRoomsByProduct(Long productId) {
         return marketMapper.updateActiveTradeChatStatusByProduct(productId, CLOSED_TRADE_CHAT_STATUS);
+    }
+
+    private boolean hasUnreadTradeChat(Long productId, Long memberId) {
+        return memberId != null
+                && marketMapper.selectUnreadTradeChatMessageCountByProduct(productId, memberId) > 0;
     }
 
     private void publishProductChatRoomsAfterCommit(

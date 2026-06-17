@@ -25,6 +25,7 @@
         <result property="chatCount"     column="CHAT_COUNT"/>
         <result property="reportCount"   column="REPORT_COUNT"/>
         <result property="isBlind"       column="IS_BLIND"/>
+        <result property="hasUnreadTradeChat" column="HAS_UNREAD_TRADE_CHAT"/>
     </resultMap>
 
     <resultMap id="ProductCommentResultMap" type="com.univus.app.community.dto.MarketDto$ProductCommentDto">
@@ -56,6 +57,7 @@
         <result property="buyerName"       column="BUYER_NAME"/>
         <result property="lastMessage"     column="LAST_MESSAGE"/>
         <result property="lastMessageAt"   column="LAST_MESSAGE_AT"/>
+        <result property="unreadCount"     column="UNREAD_COUNT"/>
     </resultMap>
 
     <resultMap id="TradeChatMessageResultMap" type="com.univus.app.community.dto.MarketDto$TradeChatMessageDto">
@@ -89,6 +91,7 @@
             (SELECT COUNT(*) FROM PRODUCT_LIKE PL WHERE PL.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
             (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT,
             (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS REPORT_COUNT,
+            0 AS HAS_UNREAD_TRADE_CHAT,
             CASE
                 WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
                 ELSE 0
@@ -170,6 +173,7 @@
             (SELECT COUNT(*) FROM PRODUCT_LIKE PL WHERE PL.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
             (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC WHERE TC.PRODUCT_ID = P.PRODUCT_ID) AS CHAT_COUNT,
             (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS REPORT_COUNT,
+            0 AS HAS_UNREAD_TRADE_CHAT,
             CASE
                 WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
                 ELSE 0
@@ -499,6 +503,7 @@
             (SELECT COUNT(*) FROM PRODUCT_LIKE PL2 WHERE PL2.PRODUCT_ID = P.PRODUCT_ID) AS LIKE_COUNT,
             (SELECT COUNT(*) FROM TRADE_CHAT_ROOM TC  WHERE TC.PRODUCT_ID  = P.PRODUCT_ID) AS CHAT_COUNT,
             (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS REPORT_COUNT,
+            0 AS HAS_UNREAD_TRADE_CHAT,
             CASE
                 WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
                 ELSE 0
@@ -594,7 +599,14 @@
                 WHERE M.ROOM_ID = TCR.ROOM_ID
                 ORDER BY M.SEND_AT DESC
                 FETCH FIRST 1 ROW ONLY
-            ) AS LAST_MESSAGE_AT
+            ) AS LAST_MESSAGE_AT,
+            (
+                SELECT COUNT(*)
+                FROM TRADE_CHAT_MESSAGE UM
+                WHERE UM.ROOM_ID = TCR.ROOM_ID
+                  AND UM.SENDER_ID != #{buyerId}
+                  AND UM.IS_READ = 0
+            ) AS UNREAD_COUNT
         FROM TRADE_CHAT_ROOM TCR
         JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
         JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
@@ -653,7 +665,14 @@
                 WHERE M.ROOM_ID = TCR.ROOM_ID
                 ORDER BY M.SEND_AT DESC
                 FETCH FIRST 1 ROW ONLY
-            ) AS LAST_MESSAGE_AT
+            ) AS LAST_MESSAGE_AT,
+            (
+                SELECT COUNT(*)
+                FROM TRADE_CHAT_MESSAGE UM
+                WHERE UM.ROOM_ID = TCR.ROOM_ID
+                  AND UM.SENDER_ID != #{memberId}
+                  AND UM.IS_READ = 0
+            ) AS UNREAD_COUNT
         FROM TRADE_CHAT_ROOM TCR
         JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
         JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
@@ -688,7 +707,14 @@
                 WHERE M.ROOM_ID = TCR.ROOM_ID
                 ORDER BY M.SEND_AT DESC
                 FETCH FIRST 1 ROW ONLY
-            ) AS LAST_MESSAGE_AT
+            ) AS LAST_MESSAGE_AT,
+            (
+                SELECT COUNT(*)
+                FROM TRADE_CHAT_MESSAGE UM
+                WHERE UM.ROOM_ID = TCR.ROOM_ID
+                  AND UM.SENDER_ID != #{memberId}
+                  AND UM.IS_READ = 0
+            ) AS UNREAD_COUNT
         FROM TRADE_CHAT_ROOM TCR
         JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
         JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
@@ -703,6 +729,16 @@
             ),
             TCR.CREATED_AT
         ) DESC
+    </select>
+
+    <select id="selectUnreadTradeChatMessageCountByProduct" resultType="int">
+        SELECT COUNT(*)
+        FROM TRADE_CHAT_ROOM TCR
+        JOIN TRADE_CHAT_MESSAGE TCM ON TCM.ROOM_ID = TCR.ROOM_ID
+        WHERE TCR.PRODUCT_ID = #{productId}
+          AND (TCR.SELLER_ID = #{memberId} OR TCR.BUYER_ID = #{memberId})
+          AND TCM.SENDER_ID != #{memberId}
+          AND TCM.IS_READ = 0
     </select>
 
     <select id="selectTradeChatMessages" resultMap="TradeChatMessageResultMap">
@@ -754,6 +790,14 @@
         JOIN MEMBER M ON TCM.SENDER_ID = M.MEMBER_ID
         WHERE TCM.MESSAGE_ID = #{messageId}
     </select>
+
+    <update id="markTradeChatMessagesAsRead">
+        UPDATE TRADE_CHAT_MESSAGE
+        SET IS_READ = 1
+        WHERE ROOM_ID = #{roomId}
+          AND SENDER_ID != #{memberId}
+          AND IS_READ = 0
+    </update>
 
     <update id="updateTradeChatNegotiatedPrice">
         UPDATE TRADE_CHAT_ROOM

@@ -103,11 +103,19 @@ public interface MarketMapper {
 
     List<MarketDto.TradeChatRoomDto> selectTradeChatRoomsForMember(@Param("memberId") Long memberId);
 
+    int selectUnreadTradeChatMessageCountByProduct(
+            @Param("productId") Long productId,
+            @Param("memberId") Long memberId);
+
     List<MarketDto.TradeChatMessageDto> selectTradeChatMessages(@Param("roomId") Long roomId);
 
     int insertTradeChatMessage(MarketDto.TradeChatMessageDto messageDto);
 
     MarketDto.TradeChatMessageDto selectTradeChatMessage(@Param("messageId") Long messageId);
+
+    int markTradeChatMessagesAsRead(
+            @Param("roomId") Long roomId,
+            @Param("memberId") Long memberId);
 
     int updateTradeChatNegotiatedPrice(@Param("roomId") Long roomId, @Param("negotiatedPrice") Long negotiatedPrice);
 
