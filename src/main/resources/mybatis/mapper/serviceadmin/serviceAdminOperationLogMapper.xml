@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminOperationLogMapper">
+
+    <sql id="operationLogUnion">
+        SELECT
+            'access-' || LL.LOG_ID AS ID,
+            'ACCESS' AS CATEGORY,
+            CASE
+                WHEN LL.RESULT = 'SUCCESS' THEN 'LOGIN_SUCCESS'
+                WHEN LL.RESULT = 'LOGOUT' THEN 'LOGOUT'
+                ELSE 'LOGIN_FAILED'
+            END AS ACTION,
+            CASE
+                WHEN LL.RESULT IN ('SUCCESS', 'LOGOUT') THEN 'SUCCESS'
+                ELSE 'FAILURE'
+            END AS RESULT,
+            LL.LOG_TIME AS OCCURRED_AT,
+            LL.LOG_ID AS SOURCE_ID,
+            LL.MEMBER_ID,
+            M.MEMBER_NAME,
+            M.LOGIN_ID,
+            M.ROLE,
+            M.STATUS AS MEMBER_STATUS,
+            M.UNIV_ID,
+            U.UNIV_NAME,
+            M.LOGIN_ID AS IDENTIFIER,
+            LL.FAIL_REASON,
+            CASE LL.FAIL_REASON
+                WHEN 'MEMBER_NOT_FOUND' THEN '회원을 찾을 수 없음'
+                WHEN 'INVALID_PASSWORD' THEN '비밀번호 불일치'
+                WHEN 'ROLE_NOT_ALLOWED' THEN '허용되지 않은 로그인 유형'
+                WHEN 'ACCOUNT_NOT_ACTIVE' THEN '비활성 계정'
+                WHEN 'CONCURRENT_ADMIN_SESSION' THEN '관리자 중복 세션'
+                ELSE LL.FAIL_REASON
+            END AS FAIL_REASON_LABEL,
+            CAST(NULL AS NUMBER) AS SUBSCRIPTION_ID,
+            CAST(NULL AS VARCHAR2(30)) AS PAYMENT_STATUS,
+            CAST(NULL AS VARCHAR2(255)) AS MERCHANT_UID,
+            CAST(NULL AS VARCHAR2(255)) AS PORTONE_PAYMENT_ID,
+            CAST(NULL AS VARCHAR2(255)) AS PORTONE_SCHEDULE_ID,
+            CAST(NULL AS NUMBER) AS AMOUNT,
+            CAST(NULL AS VARCHAR2(255)) AS PLAN_NAME,
+            CAST(NULL AS TIMESTAMP) AS PAID_AT,
+            CAST(NULL AS TIMESTAMP) AS NEXT_BILLING_AT,
+            CAST(NULL AS TIMESTAMP) AS REFUNDED_AT,
+            CAST(NULL AS NUMBER) AS REFUND_AMOUNT,
+            CAST(NULL AS VARCHAR2(1000)) AS REFUND_REASON,
+            CAST(NULL AS VARCHAR2(255)) AS PORTONE_CANCELLATION_ID
+        FROM LOGIN_LOG LL
+        LEFT JOIN MEMBER M
+          ON M.MEMBER_ID = LL.MEMBER_ID
+        LEFT JOIN UNIVERSITY U
+          ON U.UNIV_ID = M.UNIV_ID
+
+        UNION ALL
+
+        SELECT
+            'payment-' || H.HISTORY_ID AS ID,
+            'PAYMENT' AS CATEGORY,
+            CASE H.STATUS
+                WHEN 'PAID' THEN 'PAYMENT_PAID'
+                WHEN 'FAILED' THEN 'PAYMENT_FAILED'
+                WHEN 'READY' THEN 'PAYMENT_READY'
+                WHEN 'CANCELED' THEN 'PAYMENT_CANCELED'
+                WHEN 'REFUNDED' THEN 'PAYMENT_REFUNDED'
+                ELSE 'PAYMENT'
+            END AS ACTION,
+            CASE
+                WHEN H.STATUS = 'READY' THEN 'SCHEDULED'
+                WHEN H.STATUS = 'FAILED' THEN 'FAILURE'
+                ELSE 'SUCCESS'
+            END AS RESULT,
+            CASE
+                WHEN H.STATUS = 'PAID' THEN NVL(H.PAID_AT, H.CREATED_AT)
+                WHEN H.STATUS = 'REFUNDED' THEN NVL(H.REFUNDED_AT, NVL(H.PAID_AT, H.CREATED_AT))
+                ELSE H.CREATED_AT
+            END AS OCCURRED_AT,
+            H.HISTORY_ID AS SOURCE_ID,
+            H.MEMBER_ID,
+            M.MEMBER_NAME,
+            M.LOGIN_ID,
+            M.ROLE,
+            M.STATUS AS MEMBER_STATUS,
+            H.UNIV_ID,
+            COALESCE(U.UNIV_NAME, A.UNIV_NAME) AS UNIV_NAME,
+            H.MERCHANT_UID AS IDENTIFIER,
+            H.FAIL_REASON,
+            H.FAIL_REASON AS FAIL_REASON_LABEL,
+            H.SUBSCRIPTION_ID,
+            H.STATUS AS PAYMENT_STATUS,
+            H.MERCHANT_UID,
+            H.PORTONE_PAYMENT_ID,
+            H.PORTONE_SCHEDULE_ID,
+            H.AMOUNT,
+            COALESCE(H.PLAN_NAME, P.PLAN_NAME) AS PLAN_NAME,
+            H.PAID_AT,
+            S.NEXT_BILLING_AT,
+            H.REFUNDED_AT,
+            H.REFUND_AMOUNT,
+            H.REFUND_REASON,
+            H.PORTONE_CANCELLATION_ID
+        FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+        LEFT JOIN MEMBER M
+          ON M.MEMBER_ID = H.MEMBER_ID
+        LEFT JOIN SUBSCRIPTIONS S
+          ON S.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+        LEFT JOIN SUBSCRIPTION_PLANS P
+          ON P.PLAN_ID = S.PLAN_ID
+        LEFT JOIN UNIVERSITY U
+          ON U.UNIV_ID = H.UNIV_ID
+        LEFT JOIN SUBSCRIPTION_APPLICATIONS A
+          ON A.SUBSCRIPTION_ID = H.SUBSCRIPTION_ID
+    </sql>
+
+    <sql id="operationLogFilters">
+        WHERE 1 = 1
+        <if test="keyword != null and keyword != ''">
+            AND (
+                LOWER(L.MEMBER_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(L.LOGIN_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(L.UNIV_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(L.MERCHANT_UID) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(L.PORTONE_PAYMENT_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(L.PORTONE_SCHEDULE_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+            )
+        </if>
+        <if test="category != null and category != ''">
+            AND L.CATEGORY = #{category}
+        </if>
+        <if test="result != null and result != ''">
+            AND L.RESULT = #{result}
+        </if>
+        <if test="periodDays != null">
+            AND L.OCCURRED_AT <![CDATA[ >= ]]>
+                CAST(SYSTIMESTAMP AS TIMESTAMP) - NUMTODSINTERVAL(#{periodDays}, 'DAY')
+        </if>
+    </sql>
+
+    <select id="selectOperationLogs"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminOperationLogDto$Log">
+        SELECT *
+        FROM (
+            SELECT L.*
+            FROM (
+                <include refid="operationLogUnion"/>
+            ) L
+            <include refid="operationLogFilters"/>
+            ORDER BY L.OCCURRED_AT DESC, L.CATEGORY ASC, L.SOURCE_ID DESC
+        )
+        OFFSET #{offset} ROWS FETCH NEXT 12 ROWS ONLY
+    </select>
+
+    <select id="countOperationLogs" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+            SELECT L.*
+            FROM (
+                <include refid="operationLogUnion"/>
+            ) L
+            <include refid="operationLogFilters"/>
+        )
+    </select>
+
+    <select id="selectOperationLogSummary"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminOperationLogDto$Summary">
+        SELECT
+            COUNT(*) AS TOTAL_COUNT,
+            NVL(SUM(CASE WHEN L.RESULT = 'SUCCESS' THEN 1 ELSE 0 END), 0)
+                AS SUCCESS_COUNT,
+            NVL(SUM(CASE WHEN L.RESULT = 'FAILURE' THEN 1 ELSE 0 END), 0)
+                AS FAILURE_COUNT,
+            NVL(SUM(CASE WHEN L.RESULT = 'SCHEDULED' THEN 1 ELSE 0 END), 0)
+                AS SCHEDULED_COUNT
+        FROM (
+            <include refid="operationLogUnion"/>
+        ) L
+        <include refid="operationLogFilters"/>
+    </select>
+</mapper>
