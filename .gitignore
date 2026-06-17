@@ -67,3 +67,6 @@ CLAUDE-BE.md
 ### Codex ###
 .codex/
 .agents/
+
+### Local RAG Infrastructure ###
+docker-compose.rag.yml
