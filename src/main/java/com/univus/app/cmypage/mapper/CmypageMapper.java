@@ -20,6 +20,8 @@ public interface CmypageMapper {
     List<CmypageTradeDto> selectMyTrades(Long memberId);
     List<CmypageWishlistDto> selectMyWishlist(Long memberId);
     int countCommunityNicknameForOthers(@Param("memberId") Long memberId, @Param("communityNickname") String communityNickname);
+    int countMemberDetail(@Param("memberId") Long memberId);
+    Long selectDefaultDeptIdForMember(@Param("memberId") Long memberId);
     int updateCommunityNickname(@Param("memberId") Long memberId, @Param("communityNickname") String communityNickname);
     int updateMemberStatus(@Param("memberId") Long memberId, @Param("status") String status);
 }
