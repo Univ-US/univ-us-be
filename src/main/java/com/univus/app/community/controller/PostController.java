@@ -219,7 +219,7 @@ public class PostController {
              @AuthenticationPrincipal Long memberId,
              Authentication authentication,
 	         @RequestBody PostCommentDto commentDto) {
-         assertCanManageComment(commentId, requireMemberId(memberId), authentication);
+         assertCanManageComment(postId, commentId, requireMemberId(memberId), authentication);
 	     commentDto.setCommentId(commentId);
 	     commentDto.setPostId(postId);
 	
@@ -238,7 +238,7 @@ public class PostController {
 	         @PathVariable("commentId") Long commentId,
              @AuthenticationPrincipal Long memberId,
              Authentication authentication) {
-         assertCanManageComment(commentId, requireMemberId(memberId), authentication);
+         assertCanManageComment(postId, commentId, requireMemberId(memberId), authentication);
 	     int result = postService.removeComment(commentId);
 	     if (result > 0) {
 	         return ResponseEntity.ok(Map.of("message", "댓글이 삭제되었습니다."));
@@ -286,14 +286,17 @@ public class PostController {
         }
     }
 
-    private void assertCanManageComment(Long commentId, Long memberId, Authentication authentication) {
+    private void assertCanManageComment(Long postId, Long commentId, Long memberId, Authentication authentication) {
         PostCommentDto comment = postService.findCommentById(commentId);
         if (comment == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.");
         }
+        if (!comment.getPostId().equals(postId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.");
+        }
         postService.assertPostAccessible(comment.getPostId(), memberId);
         if (!comment.getMemberId().equals(memberId) && !isAdmin(authentication)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 삭제 권한이 없습니다.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "댓글 수정/삭제 권한이 없습니다.");
         }
     }
 

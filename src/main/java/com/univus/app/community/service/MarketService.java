@@ -154,8 +154,12 @@ public class MarketService {
         }
 
         marketMapper.updateProductStatus(productId, "DONE");
+        List<MarketDto.TradeChatRoomDto> activeRooms =
+                marketMapper.selectActiveTradeChatRoomsByProduct(productId);
         marketMapper.updateActiveTradeChatStatusByProduct(productId, DONE_TRADE_CHAT_STATUS);
-        return marketMapper.selectProductDetail(productId);
+        MarketDto.ProductDto completedProduct = marketMapper.selectProductDetail(productId);
+        publishProductChatRoomsAfterCommit(activeRooms, DONE_TRADE_CHAT_STATUS, "DONE");
+        return completedProduct;
     }
 
     public int deleteProduct(Long productId) {
@@ -825,6 +829,38 @@ public class MarketService {
 
     private int closeActiveTradeChatRoomsByProduct(Long productId) {
         return marketMapper.updateActiveTradeChatStatusByProduct(productId, CLOSED_TRADE_CHAT_STATUS);
+    }
+
+    private void publishProductChatRoomsAfterCommit(
+            List<MarketDto.TradeChatRoomDto> rooms,
+            String roomStatus,
+            String productStatus) {
+        if (rooms == null || rooms.isEmpty()) {
+            return;
+        }
+
+        runAfterCommit(() -> {
+            for (MarketDto.TradeChatRoomDto room : rooms) {
+                MarketDto.TradeChatRoomDto updatedRoom = MarketDto.TradeChatRoomDto.builder()
+                        .roomId(room.getRoomId())
+                        .productId(room.getProductId())
+                        .sellerId(room.getSellerId())
+                        .buyerId(room.getBuyerId())
+                        .negotiatedPrice(room.getNegotiatedPrice())
+                        .status(roomStatus)
+                        .createdAt(room.getCreatedAt())
+                        .productName(room.getProductName())
+                        .productStatus(productStatus)
+                        .sellerName(room.getSellerName())
+                        .buyerName(room.getBuyerName())
+                        .lastMessage(room.getLastMessage())
+                        .lastMessageAt(room.getLastMessageAt())
+                        .build();
+                messagingTemplate.convertAndSend(
+                        MARKET_CHAT_TOPIC_PREFIX + room.getRoomId() + "/room",
+                        updatedRoom);
+            }
+        });
     }
 
     private boolean isBlindProduct(MarketDto.ProductDto product) {
