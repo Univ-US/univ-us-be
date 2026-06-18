@@ -214,7 +214,7 @@
             #{penaltyType},
             #{reason},
             SYSTIMESTAMP,
-            SYSTIMESTAMP + INTERVAL '100' YEAR,
+            SYSTIMESTAMP + INTERVAL '100' YEAR(3),
             'ACTIVE',
             SYSTIMESTAMP
         )
