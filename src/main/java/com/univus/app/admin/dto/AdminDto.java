@@ -36,21 +36,34 @@ public class AdminDto {
 
     @Data
     public static class MemberItemDto {
-        private Long memberId;
-        private Long univId;
+        private String loginId;
         private String password;
         private String memberName;
-        private String role;
-        private Long phoneNumber;
+        private String phoneNumber;
         private String gender;
         private String birth;
+        private String role;
         private Long deptId;
-        private String communityNickname;
     }
 
     @Data
     public static class MemberBulkRequestDto {
         private List<MemberItemDto> members;
+    }
+
+    @Data
+    public static class MemberBulkResultDto {
+        private String loginId;
+        private String memberName;
+        private boolean success;
+        private String message;
+    }
+
+    @Data
+    public static class MemberBulkResponseDto {
+        private int successCount;
+        private int failCount;
+        private List<MemberBulkResultDto> results;
     }
 
     @Data

@@ -109,7 +109,8 @@
             STATUS,
             CREATED_AT,
             LOGTIME_AT,
-            BIRTH
+            BIRTH,
+            UNIV_ID
         ) VALUES (
             #{loginId},
             #{password},
@@ -120,7 +121,8 @@
             #{status},
             SYSTIMESTAMP,
             SYSTIMESTAMP,
-            #{birth}
+            #{birth},
+            #{univId,jdbcType=NUMERIC}
         )
     </insert>
 

@@ -13,10 +13,6 @@ public interface AdminMapper {
 
     int countMemberList(AdminDto.MemberSearchDto search);
 
-    int insertMemberBulk(@Param("members") List<AdminDto.MemberItemDto> members);
-
-    int insertMemberDetailBulk(@Param("members") List<AdminDto.MemberItemDto> members);
-
     int updateMemberStatus(AdminDto.MemberStatusDto memberStatusDto);
 
     int insertNotice(AdminDto.NoticeDto notice);
