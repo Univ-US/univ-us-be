@@ -211,37 +211,37 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
     }
 
     private void validateSubmittable(LmsStuAssignmentsDto.SubmitAccessRow access) {
-        if (!SUBMITTABLE_VAL_STATUS.contains(access.getValStatus())) {
+        if (!SUBMITTABLE_VAL_STATUS.contains(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "제출할 수 없는 상태의 과제입니다.");
         }
-        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getValStatus())) {
+        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "마감된 과제는 제출할 수 없습니다.");
         }
-        String status = access.getSubmissionStatus();
+        String status = access.getLecAsnSbmStatus();
         if (status != null && !NOT_SUBMITTED.equals(status)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 제출된 과제입니다.");
         }
     }
 
     private void validateEditable(LmsStuAssignmentsDto.SubmitAccessRow access) {
-        if (!SUBMITTABLE_VAL_STATUS.contains(access.getValStatus())) {
+        if (!SUBMITTABLE_VAL_STATUS.contains(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "수정할 수 없는 상태의 과제입니다.");
         }
-        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getValStatus())) {
+        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "마감된 과제는 수정할 수 없습니다.");
         }
-        if (!SUBMITTED.equals(access.getSubmissionStatus())) {
+        if (!SUBMITTED.equals(access.getLecAsnSbmStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "제출 완료 상태에서만 수정할 수 있습니다.");
         }
     }
 
     private LmsStuAssignmentsDto.SubmittableAssignmentResDto toSubmittableResponse(
             LmsStuAssignmentsDto.SubmittableRow row) {
-        boolean late = "LAT".equals(row.getValStatus());
+        boolean late = "LAT".equals(row.getLecAsnValStatus());
         String status = late ? "EXTENDED" : "OPEN";
         return LmsStuAssignmentsDto.SubmittableAssignmentResDto.builder()
                 .id(row.getAssignmentId())
-                .title(row.getTitle())
+                .lecAsnTitle(row.getLecAsnTitle())
                 .courseName(row.getCourseName())
                 .dueLabel(row.getDueLabel())
                 .status(status)
@@ -252,7 +252,7 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .guide(LmsStuAssignmentsDto.SubmitGuideResDto.builder()
                         .courseName(row.getCourseName())
                         .professor(row.getProfessor())
-                        .lines(buildGuideLines(row.getContent()))
+                        .lines(buildGuideLines(row.getLecAsnContent()))
                         .build())
                 .build();
     }

@@ -50,14 +50,14 @@ public final class LmsStuAssignmentsDto {
     @AllArgsConstructor
     @Builder
     public static class SubmittableRow {
-        private Long assignmentId;
-        private String courseName;
-        private String professor;
-        private String title;
-        private String content;
-        private String dueLabel;
-        private String dueIso;
-        private String valStatus;
+        private Long assignmentId;        // LEC_ASN_ID (PK)
+        private String courseName;        // LEC_COD_NAME (조인)
+        private String professor;         // MEMBER_NAME (조인)
+        private String lecAsnTitle;       // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
+        private String lecAsnContent;     // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT
+        private String dueLabel;          // LEC_ASN_DUE_DATE TO_CHAR (파생 포맷)
+        private String dueIso;            // LEC_ASN_DUE_DATE TO_CHAR ISO (파생 포맷)
+        private String lecAsnValStatus;   // LECTURE_ASSIGNMENT.LEC_ASN_VAL_STATUS
     }
 
     @Getter
@@ -66,11 +66,11 @@ public final class LmsStuAssignmentsDto {
     @AllArgsConstructor
     @Builder
     public static class SubmitAccessRow {
-        private Long assignmentId;
-        private String valStatus;
-        private Integer overdueFlag;
-        private Long submissionId;
-        private String submissionStatus;
+        private Long assignmentId;        // LEC_ASN_ID (PK)
+        private String lecAsnValStatus;   // LECTURE_ASSIGNMENT.LEC_ASN_VAL_STATUS
+        private Integer overdueFlag;      // 파생(마감 경과)
+        private Long submissionId;        // LEC_ASN_SBM_ID (PK)
+        private String lecAsnSbmStatus;   // LEC_ASN_SBM_STATUS
     }
 
     @Getter
@@ -176,14 +176,14 @@ public final class LmsStuAssignmentsDto {
     @Builder
     public static class SubmittableAssignmentResDto {
         private Long id;
-        private String title;
+        private String lecAsnTitle;
         private String courseName;
-        private String dueLabel;
-        private String status;
-        private String dDay;
-        private String note;
-        private String badge;
-        private String dotColor;
+        private String dueLabel;          // 파생 포맷
+        private String status;            // 파생(OPEN/EXTENDED)
+        private String dDay;              // 파생
+        private String note;              // 파생
+        private String badge;             // 파생
+        private String dotColor;          // 파생
         private SubmitGuideResDto guide;
     }
 

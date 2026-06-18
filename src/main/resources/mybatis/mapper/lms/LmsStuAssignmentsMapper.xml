@@ -74,11 +74,11 @@
         SELECT a.LEC_ASN_ID AS assignmentId,
                lc.LEC_COD_NAME AS courseName,
                pm.MEMBER_NAME AS professor,
-               a.LEC_ASN_TITLE AS title,
-               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS content,
+               a.LEC_ASN_TITLE AS lecAsnTitle,
+               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS lecAsnContent,
                TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY.MM.DD HH24:MI') AS dueLabel,
                TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS dueIso,
-               a.LEC_ASN_VAL_STATUS AS valStatus
+               a.LEC_ASN_VAL_STATUS AS lecAsnValStatus
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
@@ -99,13 +99,13 @@
 
     <select id="selectSubmitAccess" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmitAccessRow">
         SELECT a.LEC_ASN_ID AS assignmentId,
-               a.LEC_ASN_VAL_STATUS AS valStatus,
+               a.LEC_ASN_VAL_STATUS AS lecAsnValStatus,
                CASE
                    WHEN a.LEC_ASN_DUE_DATE &lt; SYSTIMESTAMP THEN 1
                    ELSE 0
                END AS overdueFlag,
                sb.LEC_ASN_SBM_ID AS submissionId,
-               sb.LEC_ASN_SBM_STATUS AS submissionStatus
+               sb.LEC_ASN_SBM_STATUS AS lecAsnSbmStatus
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
         JOIN LECTURE_ASSIGNMENT a ON a.LEC_ID = l.LEC_ID
@@ -119,13 +119,13 @@
 
     <select id="selectSubmissionAccess" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmitAccessRow">
         SELECT a.LEC_ASN_ID AS assignmentId,
-               a.LEC_ASN_VAL_STATUS AS valStatus,
+               a.LEC_ASN_VAL_STATUS AS lecAsnValStatus,
                CASE
                    WHEN a.LEC_ASN_DUE_DATE &lt; SYSTIMESTAMP THEN 1
                    ELSE 0
                END AS overdueFlag,
                sb.LEC_ASN_SBM_ID AS submissionId,
-               sb.LEC_ASN_SBM_STATUS AS submissionStatus
+               sb.LEC_ASN_SBM_STATUS AS lecAsnSbmStatus
         FROM LECTURE_ASSIGNMENT_SUBMISSION sb
         JOIN LECTURE_ASSIGNMENT a ON a.LEC_ASN_ID = sb.LEC_ASN_ID
         JOIN LECTURE l ON l.LEC_ID = a.LEC_ID
