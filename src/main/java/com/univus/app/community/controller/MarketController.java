@@ -237,8 +237,10 @@ public class MarketController {
     public ResponseEntity<Map<String, Object>> toggleLike(
             @PathVariable("productId") Long productId,
             @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
             @RequestBody MarketDto.ProductLikeDto likeDto) {
 
+        assertNotAdminReaction(authentication, "관리자는 관심을 누를 수 없습니다.");
         likeDto.setProductId(productId);
         likeDto.setMemberId(requireMemberId(memberId));
         boolean liked = marketService.toggleProductLike(likeDto);
@@ -276,8 +278,10 @@ public class MarketController {
     public ResponseEntity<Map<String, Object>> reportProduct(
             @PathVariable("productId") Long productId,
             @AuthenticationPrincipal Long memberId,
+            Authentication authentication,
             @RequestBody MarketDto.ProductReportDto reportDto) {
 
+        assertNotAdminReaction(authentication, "관리자는 신고할 수 없습니다.");
         reportDto.setProductId(productId);
         reportDto.setMemberId(requireMemberId(memberId));
         return ResponseEntity.ok(marketService.reportProduct(reportDto));
@@ -457,5 +461,11 @@ public class MarketController {
                 .anyMatch(authority ->
                         "ROLE_SUA".equals(authority.getAuthority())
                                 || "ROLE_ADM".equals(authority.getAuthority()));
+    }
+
+    private void assertNotAdminReaction(Authentication authentication, String message) {
+        if (isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+        }
     }
 }

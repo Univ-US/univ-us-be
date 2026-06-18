@@ -21,6 +21,9 @@
         <result property="updatedAt"       column="UPDATED_AT"/>
         <result property="authorName"      column="AUTHOR_NAME"/>
         <result property="authorNickname"  column="AUTHOR_NICKNAME"/>
+        <result property="authorRole"      column="AUTHOR_ROLE"/>
+        <result property="isAdminNotice"   column="IS_ADMIN_NOTICE"/>
+        <result property="isPinned"        column="IS_PINNED"/>
         <result property="boardName"       column="BOARD_NAME"/>
         <result property="isAnonymous"     column="IS_ANONYMOUS"/>
         <result property="likeCount"       column="LIKE_COUNT"/>
@@ -43,7 +46,16 @@
         P.CREATED_AT,
         P.UPDATED_AT,
         M.MEMBER_NAME        AS AUTHOR_NAME,
+        M.ROLE               AS AUTHOR_ROLE,
         MD.COMMUNITY_NICKNAME AS AUTHOR_NICKNAME,
+        CASE
+            WHEN M.ROLE IN ('ADM', 'SUA') AND P.BOARD_ID IN (1, 2) THEN 1
+            ELSE 0
+        END AS IS_ADMIN_NOTICE,
+        CASE
+            WHEN M.ROLE IN ('ADM', 'SUA') AND P.BOARD_ID IN (1, 2) THEN 1
+            ELSE 0
+        END AS IS_PINNED,
         B.BOARD_NAME,
         B.IS_ANONYMOUS,
         (SELECT COUNT(*) FROM POST_LIKE    PL WHERE PL.POST_ID = P.POST_ID) AS LIKE_COUNT,
@@ -81,7 +93,12 @@
                     AND (P.TITLE LIKE '%' || #{keyword} || '%'
                     OR  P.CONTENT LIKE '%' || #{keyword} || '%')
                 </if>
-                ORDER BY P.CREATED_AT DESC
+                ORDER BY
+                    CASE
+                        WHEN M.ROLE IN ('ADM', 'SUA') AND P.BOARD_ID IN (1, 2) THEN 1
+                        ELSE 0
+                    END DESC,
+                    P.CREATED_AT DESC
             ) T
             WHERE ROWNUM <![CDATA[ <= ]]> #{page} * #{size}
         )

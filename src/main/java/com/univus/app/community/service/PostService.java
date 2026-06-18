@@ -127,7 +127,10 @@ public class PostService {
 
     // 좋아요 토글 (없으면 추가, 있으면 취소)
     public Map<String, Object> toggleLike(Long postId, Long memberId) {
-        assertPostAccessible(postId, memberId);
+        PostDto post = requireAccessiblePost(postId, memberId);
+        if (post.getMemberId().equals(memberId)) {
+            throw forbidden("Author cannot like own post.");
+        }
         int exists = postMapper.selectLikeCount(postId, memberId);
         Map<String, Object> result = new HashMap<>();
         if (exists > 0) {
@@ -151,7 +154,10 @@ public class PostService {
     // 신고 (중복 신고 차단)
     @Transactional
     public Map<String, Object> reportPost(PostDto postDto) {
-        assertPostAccessible(postDto.getPostId(), postDto.getMemberId());
+        PostDto post = requireAccessiblePost(postDto.getPostId(), postDto.getMemberId());
+        if (post.getMemberId().equals(postDto.getMemberId())) {
+            throw forbidden("Author cannot report own post.");
+        }
         Map<String, Object> result = new HashMap<>();
         int exists = postMapper.selectReportCount(postDto.getPostId(), postDto.getMemberId());
         if (exists > 0) {
@@ -276,5 +282,9 @@ public class PostService {
 
     private ResponseStatusException notFound(String message) {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
+    }
+
+    private ResponseStatusException forbidden(String message) {
+        return new ResponseStatusException(HttpStatus.FORBIDDEN, message);
     }
 }
