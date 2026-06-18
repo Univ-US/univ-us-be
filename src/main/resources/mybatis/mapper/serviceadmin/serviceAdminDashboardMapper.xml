@@ -93,8 +93,8 @@
             ) AS PREVIOUS_MONTH_NEW_MEMBER_COUNT,
             (
                 SELECT COUNT(*)
-                FROM SUPPORT SP
-                WHERE NVL(SP.STATUS, 0) = 0
+                FROM INQUIRY_ROOMS IR
+                WHERE IR.STATUS != 'CLOSED'
             ) AS UNRESOLVED_INQUIRY_COUNT,
             (
                 SELECT COUNT(*)

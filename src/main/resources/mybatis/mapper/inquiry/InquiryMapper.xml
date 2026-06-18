@@ -1,0 +1,258 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.univus.app.inquiry.mapper.InquiryMapper">
+
+    <sql id="roomColumns">
+        R.INQUIRY_ROOM_ID AS roomId,
+        R.UNIV_ID AS univId,
+        U.UNIV_NAME AS univName,
+        R.TITLE AS title,
+        R.CATEGORY AS category,
+        CASE
+            WHEN R.STATUS = 'PROGRESS' THEN 'IN_PROGRESS'
+            ELSE R.STATUS
+        END AS status,
+        TO_CHAR(R.CREATED_AT, 'YYYY-MM-DD"T"HH24:MI:SS') AS createdAt,
+        COALESCE(
+            (
+                SELECT TO_CHAR(M.SEND_TIME, 'YYYY-MM-DD"T"HH24:MI:SS')
+                FROM INQUIRY_MESSAGES M
+                WHERE M.INQUIRY_ROOM_ID = R.INQUIRY_ROOM_ID
+                ORDER BY M.SEND_TIME DESC, M.INQUIRY_MESSAGE_ID DESC
+                FETCH FIRST 1 ROW ONLY
+            ),
+            TO_CHAR(R.CREATED_AT, 'YYYY-MM-DD"T"HH24:MI:SS')
+        ) AS lastAt,
+        COALESCE(
+            (
+                SELECT M.INQUIRY_MESSAGE_CONTENT
+                FROM INQUIRY_MESSAGES M
+                WHERE M.INQUIRY_ROOM_ID = R.INQUIRY_ROOM_ID
+                ORDER BY M.SEND_TIME DESC, M.INQUIRY_MESSAGE_ID DESC
+                FETCH FIRST 1 ROW ONLY
+            ),
+            ''
+        ) AS lastMessage,
+        (
+            SELECT MIN(P.MEMBER_ID)
+            FROM INQUIRY_PARTICIPANT P
+            JOIN MEMBER PM ON PM.MEMBER_ID = P.MEMBER_ID
+            WHERE P.INQUIRY_ROOM_ID = R.INQUIRY_ROOM_ID
+              AND PM.ROLE = 'ADM'
+        ) AS adminMemberId,
+        (
+            SELECT MIN(PM.MEMBER_NAME)
+            FROM INQUIRY_PARTICIPANT P
+            JOIN MEMBER PM ON PM.MEMBER_ID = P.MEMBER_ID
+            WHERE P.INQUIRY_ROOM_ID = R.INQUIRY_ROOM_ID
+              AND PM.ROLE = 'ADM'
+        ) AS adminName,
+        (
+            SELECT COUNT(*)
+            FROM INQUIRY_MESSAGES UM
+            WHERE UM.INQUIRY_ROOM_ID = R.INQUIRY_ROOM_ID
+              AND (#{memberId, jdbcType=NUMERIC} IS NULL OR UM.MEMBER_ID != #{memberId, jdbcType=NUMERIC})
+              AND NVL(UM.STATUS, 0) = 0
+        ) AS unreadCount
+    </sql>
+
+    <insert id="insertRoom" parameterType="com.univus.app.inquiry.dto.InquiryDto$Room">
+        <selectKey keyProperty="roomId" resultType="long" order="BEFORE">
+            SELECT NVL(MAX(INQUIRY_ROOM_ID), 0) + 1 FROM INQUIRY_ROOMS
+        </selectKey>
+        INSERT INTO INQUIRY_ROOMS (
+            INQUIRY_ROOM_ID,
+            UNIV_ID,
+            TITLE,
+            CATEGORY,
+            CREATED_AT,
+            STATUS
+        ) VALUES (
+            #{roomId},
+            #{univId},
+            #{title},
+            #{category},
+            SYSTIMESTAMP,
+            #{status}
+        )
+    </insert>
+
+    <insert id="insertParticipant">
+        MERGE INTO INQUIRY_PARTICIPANT P
+        USING (
+            SELECT #{roomId} AS INQUIRY_ROOM_ID,
+                   #{memberId} AS MEMBER_ID
+            FROM DUAL
+        ) SRC
+        ON (
+            P.INQUIRY_ROOM_ID = SRC.INQUIRY_ROOM_ID
+            AND P.MEMBER_ID = SRC.MEMBER_ID
+        )
+        WHEN NOT MATCHED THEN
+            INSERT (
+                MEMBER_ID,
+                INQUIRY_ROOM_ID
+            ) VALUES (
+                SRC.MEMBER_ID,
+                SRC.INQUIRY_ROOM_ID
+            )
+    </insert>
+
+    <select id="selectAdminRooms" resultType="com.univus.app.inquiry.dto.InquiryDto$Room">
+        SELECT
+            <include refid="roomColumns"/>
+        FROM INQUIRY_ROOMS R
+        JOIN UNIVERSITY U ON U.UNIV_ID = R.UNIV_ID
+        WHERE R.UNIV_ID = #{univId}
+        ORDER BY lastAt DESC, R.INQUIRY_ROOM_ID DESC
+    </select>
+
+    <select id="selectServiceAdminRooms" resultType="com.univus.app.inquiry.dto.InquiryDto$Room">
+        SELECT
+            <include refid="roomColumns"/>
+        FROM INQUIRY_ROOMS R
+        JOIN UNIVERSITY U ON U.UNIV_ID = R.UNIV_ID
+        ORDER BY lastAt DESC, R.INQUIRY_ROOM_ID DESC
+    </select>
+
+    <select id="selectRoom" resultType="com.univus.app.inquiry.dto.InquiryDto$Room">
+        SELECT
+            <include refid="roomColumns"/>
+        FROM INQUIRY_ROOMS R
+        JOIN UNIVERSITY U ON U.UNIV_ID = R.UNIV_ID
+        WHERE R.INQUIRY_ROOM_ID = #{roomId}
+    </select>
+
+    <select id="selectAdminRoom" resultType="com.univus.app.inquiry.dto.InquiryDto$Room">
+        SELECT
+            <include refid="roomColumns"/>
+        FROM INQUIRY_ROOMS R
+        JOIN UNIVERSITY U ON U.UNIV_ID = R.UNIV_ID
+        WHERE R.INQUIRY_ROOM_ID = #{roomId}
+          AND R.UNIV_ID = #{univId}
+    </select>
+
+    <select id="selectMessages" resultType="com.univus.app.inquiry.dto.InquiryDto$Message">
+        SELECT
+            M.INQUIRY_MESSAGE_ID AS messageId,
+            M.INQUIRY_ROOM_ID AS roomId,
+            M.MEMBER_ID AS memberId,
+            MB.MEMBER_NAME AS senderName,
+            MB.ROLE AS senderRole,
+            M.INQUIRY_MESSAGE_CONTENT AS content,
+            TO_CHAR(M.SEND_TIME, 'YYYY-MM-DD"T"HH24:MI:SS') AS sentAt,
+            CASE WHEN NVL(M.STATUS, 0) = 1 THEN 1 ELSE 0 END AS read
+        FROM INQUIRY_MESSAGES M
+        JOIN MEMBER MB ON MB.MEMBER_ID = M.MEMBER_ID
+        WHERE M.INQUIRY_ROOM_ID = #{roomId}
+        ORDER BY M.SEND_TIME ASC, M.INQUIRY_MESSAGE_ID ASC
+    </select>
+
+    <select id="selectMessage" resultType="com.univus.app.inquiry.dto.InquiryDto$Message">
+        SELECT
+            M.INQUIRY_MESSAGE_ID AS messageId,
+            M.INQUIRY_ROOM_ID AS roomId,
+            M.MEMBER_ID AS memberId,
+            MB.MEMBER_NAME AS senderName,
+            MB.ROLE AS senderRole,
+            M.INQUIRY_MESSAGE_CONTENT AS content,
+            TO_CHAR(M.SEND_TIME, 'YYYY-MM-DD"T"HH24:MI:SS') AS sentAt,
+            CASE WHEN NVL(M.STATUS, 0) = 1 THEN 1 ELSE 0 END AS read
+        FROM INQUIRY_MESSAGES M
+        JOIN MEMBER MB ON MB.MEMBER_ID = M.MEMBER_ID
+        WHERE M.INQUIRY_MESSAGE_ID = #{messageId}
+    </select>
+
+    <insert id="insertMessage" parameterType="com.univus.app.inquiry.dto.InquiryDto$Message">
+        <selectKey keyProperty="messageId" resultType="long" order="BEFORE">
+            SELECT NVL(MAX(INQUIRY_MESSAGE_ID), 0) + 1 FROM INQUIRY_MESSAGES
+        </selectKey>
+        INSERT INTO INQUIRY_MESSAGES (
+            INQUIRY_MESSAGE_ID,
+            INQUIRY_ROOM_ID,
+            MEMBER_ID,
+            INQUIRY_MESSAGE_CONTENT,
+            SEND_TIME,
+            STATUS
+        ) VALUES (
+            #{messageId},
+            #{roomId},
+            #{memberId},
+            #{content},
+            SYSTIMESTAMP,
+            0
+        )
+    </insert>
+
+    <insert id="insertAttachment" parameterType="com.univus.app.inquiry.dto.InquiryDto$Attachment">
+        <selectKey keyProperty="attachmentId" resultType="long" order="BEFORE">
+            SELECT NVL(MAX(ATTACHMENT_ID), 0) + 1 FROM INQUIRY_ATTACHMENTS
+        </selectKey>
+        INSERT INTO INQUIRY_ATTACHMENTS (
+            ATTACHMENT_ID,
+            INQUIRY_MESSAGE_ID,
+            ORIGINAL_NAME,
+            SAVE_NAME,
+            FILE_PATH,
+            FILE_SIZE,
+            FILE_TYPE,
+            CREATE_AT
+        ) VALUES (
+            #{attachmentId},
+            #{messageId},
+            #{originalName},
+            #{saveName},
+            #{filePath},
+            #{fileSize},
+            #{fileType},
+            SYSTIMESTAMP
+        )
+    </insert>
+
+    <select id="selectAttachmentsByMessageId" resultType="com.univus.app.inquiry.dto.InquiryDto$Attachment">
+        SELECT
+            ATTACHMENT_ID AS attachmentId,
+            INQUIRY_MESSAGE_ID AS messageId,
+            ORIGINAL_NAME AS originalName,
+            SAVE_NAME AS saveName,
+            FILE_PATH AS filePath,
+            FILE_SIZE AS fileSize,
+            FILE_TYPE AS fileType,
+            TO_CHAR(CREATE_AT, 'YYYY-MM-DD"T"HH24:MI:SS') AS createdAt
+        FROM INQUIRY_ATTACHMENTS
+        WHERE INQUIRY_MESSAGE_ID = #{messageId}
+        ORDER BY ATTACHMENT_ID ASC
+    </select>
+
+    <select id="selectAttachment" resultType="com.univus.app.inquiry.dto.InquiryDto$Attachment">
+        SELECT
+            ATTACHMENT_ID AS attachmentId,
+            INQUIRY_MESSAGE_ID AS messageId,
+            ORIGINAL_NAME AS originalName,
+            SAVE_NAME AS saveName,
+            FILE_PATH AS filePath,
+            FILE_SIZE AS fileSize,
+            FILE_TYPE AS fileType,
+            TO_CHAR(CREATE_AT, 'YYYY-MM-DD"T"HH24:MI:SS') AS createdAt
+        FROM INQUIRY_ATTACHMENTS
+        WHERE ATTACHMENT_ID = #{attachmentId}
+    </select>
+
+    <update id="markIncomingMessagesRead">
+        UPDATE INQUIRY_MESSAGES
+        SET STATUS = 1
+        WHERE INQUIRY_ROOM_ID = #{roomId}
+          AND MEMBER_ID != #{memberId}
+          AND NVL(STATUS, 0) = 0
+    </update>
+
+    <update id="updateRoomStatus">
+        UPDATE INQUIRY_ROOMS
+        SET STATUS = CASE
+            WHEN #{status} = 'IN_PROGRESS' THEN 'PROGRESS'
+            ELSE #{status}
+        END
+        WHERE INQUIRY_ROOM_ID = #{roomId}
+    </update>
+</mapper>
