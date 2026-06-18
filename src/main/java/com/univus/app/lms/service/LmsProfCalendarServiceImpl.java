@@ -71,10 +71,10 @@ public class LmsProfCalendarServiceImpl implements LmsProfCalendarService {
         // 2) 과제 마감 — 범위 내 마감일/시각 (과제명 + 마감시각, 분반·종료시각 없음)
         for (LmsProfCalendarDto.AssignmentDueRow due : lmsProfCalendarMapper.selectAssignmentDues(lmsPrfId, from, to)) {
             events.add(LmsProfCalendarDto.EventResDto.builder()
-                    .date(due.getDueDate())
+                    .date(due.getLecAsnDueDate())
                     .type(TYPE_ASSIGNMENT)
-                    .title(due.getTitle())
-                    .time(due.getDueTime())
+                    .title(due.getLecAsnTitle())
+                    .time(due.getLecAsnDueTime())
                     .endTime(null)
                     .lecId(due.getLecId())
                     .lecSection(null)
@@ -87,11 +87,11 @@ public class LmsProfCalendarServiceImpl implements LmsProfCalendarService {
     /* 주간 슬롯을 [from,to] ∩ [학기시작,학기종료] 안에서 해당 요일 날짜로 전개 */
     private void expandLecture(LmsProfCalendarDto.LectureTimeRow slot, LocalDate from, LocalDate to,
                                List<LmsProfCalendarDto.EventResDto> out) {
-        DayOfWeek dow = DAY_OF_WEEK.get(slot.getDayCode());
+        DayOfWeek dow = DAY_OF_WEEK.get(slot.getLecTimDayCode());
         if (dow == null) {
             return; // 알 수 없는 요일코드(데이터 이상)는 스킵
         }
-        LocalDate start = laterOf(from, LocalDate.parse(slot.getSemStartDate()));
+        LocalDate start = laterOf(from, LocalDate.parse(slot.getSemStrDate()));
         LocalDate end = earlierOf(to, LocalDate.parse(slot.getSemEndDate()));
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
             if (d.getDayOfWeek() == dow) {
@@ -99,8 +99,8 @@ public class LmsProfCalendarServiceImpl implements LmsProfCalendarService {
                         .date(d.toString()) // ISO "YYYY-MM-DD"
                         .type(TYPE_LECTURE)
                         .title(slot.getCourseName())
-                        .time(slot.getStartTime())
-                        .endTime(slot.getEndTime())
+                        .time(slot.getLecTimStrTime())
+                        .endTime(slot.getLecTimEndTime())
                         .lecId(slot.getLecId())
                         .lecSection(slot.getLecSection())
                         .build());
