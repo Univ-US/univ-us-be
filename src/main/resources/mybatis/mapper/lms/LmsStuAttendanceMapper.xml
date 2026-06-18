@@ -8,8 +8,8 @@
     </select>
 
     <select id="selectCourseRows" resultType="com.univus.app.lms.dto.LmsStuAttendanceDto$CourseRow">
-        SELECT s.SEM_YEAR AS year,
-               s.SEM_TERM AS termCode,
+        SELECT s.SEM_YEAR AS semYear,
+               s.SEM_TERM AS semTerm,
                CASE
                    WHEN TRUNC(SYSDATE) BETWEEN TRUNC(s.SEM_STR_DATE) AND TRUNC(s.SEM_END_DATE) THEN 1
                    ELSE 0
@@ -18,7 +18,7 @@
                l.LEC_ID AS lecId,
                lc.LEC_COD_NAME AS courseName,
                l.LEC_SECTION AS lecSection,
-               NVL(l.LEC_TOT_CLASSES, 0) AS totalSessions,
+               NVL(l.LEC_TOT_CLASSES, 0) AS lecTotClasses,
                (SELECT COUNT(*)
                   FROM STUDENT_ENROLLMENT_ATTENDANCE a
                  WHERE a.LEC_STD_ENR_ID = e.LEC_STD_ENR_ID
@@ -56,8 +56,8 @@
 
     <select id="selectDetailRecords" resultType="com.univus.app.lms.dto.LmsStuAttendanceDto$RecordRow">
         SELECT a.LEC_STD_ENR_ID AS enrollmentId,
-               a.STD_ENR_ATD_STS_CODE AS statusCode,
-               TO_CHAR(a.STD_ENR_ATD_REG_DATE, 'YYYY-MM-DD') AS attendanceDate
+               a.STD_ENR_ATD_STS_CODE AS stdEnrAtdStsCode,
+               TO_CHAR(a.STD_ENR_ATD_REG_DATE, 'YYYY-MM-DD') AS stdEnrAtdRegDate
         FROM STUDENT_ENROLLMENT_ATTENDANCE a
         JOIN LECTURE_STUDENT_ENROLLMENT e ON e.LEC_STD_ENR_ID = a.LEC_STD_ENR_ID
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
