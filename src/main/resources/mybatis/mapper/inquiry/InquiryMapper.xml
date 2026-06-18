@@ -26,7 +26,7 @@
         ) AS lastAt,
         COALESCE(
             (
-                SELECT M.INQUIRY_MESSAGE_CONTENT
+                SELECT DBMS_LOB.SUBSTR(M.INQUIRY_MESSAGE_CONTENT, 1000, 1)
                 FROM INQUIRY_MESSAGES M
                 WHERE M.INQUIRY_ROOM_ID = R.INQUIRY_ROOM_ID
                 ORDER BY M.SEND_TIME DESC, M.INQUIRY_MESSAGE_ID DESC
