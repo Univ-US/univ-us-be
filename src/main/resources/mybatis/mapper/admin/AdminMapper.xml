@@ -63,27 +63,6 @@
         </if>
     </select>
 
-    <!-- 회원 일괄 등록 -->
-    <insert id="insertMemberBulk">
-        INSERT ALL
-        <foreach collection="members" item="item">
-            INTO MEMBER (MEMBER_ID, UNIV_ID, PASSWORD, MEMBER_NAME, ROLE, PHONE_NUMBER, GENDER, STATUS, CREATED_AT, LOGTIME_AT, BIRTH)
-            VALUES (#{item.memberId}, #{item.univId}, #{item.password}, #{item.memberName}, #{item.role},
-                    #{item.phoneNumber}, #{item.gender}, 'ACTIVE', SYSTIMESTAMP, SYSTIMESTAMP, #{item.birth})
-        </foreach>
-        SELECT 1 FROM DUAL
-    </insert>
-
-    <!-- 회원 상세 일괄 등록 -->
-    <insert id="insertMemberDetailBulk">
-        INSERT ALL
-        <foreach collection="members" item="item">
-            INTO MEMBER_DETAIL (MEMBER_ID, DEPT_ID, COMMUNITY_NICKNAME)
-            VALUES (#{item.memberId}, #{item.deptId}, #{item.communityNickname})
-        </foreach>
-        SELECT 1 FROM DUAL
-    </insert>
-
     <!-- 회원 상태 변경 (ACTIVE / SUSPENDED / WITHDRAWN) -->
     <update id="updateMemberStatus" parameterType="com.univus.app.admin.dto.AdminDto$MemberStatusDto">
         UPDATE MEMBER

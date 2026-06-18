@@ -64,15 +64,14 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getMemberList(search, memberId));
     }
 
-    // 회원 일괄 등록
+    // 회원 일괄 등록 (ADM/SUA, 행 단위 부분 성공 허용 — 항상 200 OK)
     @PostMapping("/members/bulk")
-    @ResponseStatus(HttpStatus.CREATED)
-    public void registerBulkMembers(
+    public ResponseEntity<AdminDto.MemberBulkResponseDto> registerBulkMembers(
             @RequestBody AdminDto.MemberBulkRequestDto request,
             Authentication authentication
     ) {
         Long requesterId = Long.valueOf(authentication.getPrincipal().toString());
-        adminService.registerBulkMembers(request.getMembers(), requesterId);
+        return ResponseEntity.ok(adminService.registerBulkMembers(request.getMembers(), requesterId));
     }
 
     // 회원 상태 변경 (정지 / 탈퇴)
