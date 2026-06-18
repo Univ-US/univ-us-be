@@ -148,7 +148,9 @@ public class PostController {
     @PostMapping("/{postId}/like")
     public ResponseEntity<Map<String, Object>> toggleLike(
             @PathVariable("postId") Long postId,
-            @AuthenticationPrincipal Long memberId) {
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication) {
+        assertNotAdminReaction(authentication, "관리자는 좋아요를 누를 수 없습니다.");
         Map<String, Object> result = postService.toggleLike(postId, requireMemberId(memberId));
         return ResponseEntity.ok(result);
     }
@@ -167,7 +169,9 @@ public class PostController {
     public ResponseEntity<Map<String, Object>> reportPost(
             @PathVariable("postId") Long postId,
             @RequestBody PostDto postDto,
-            @AuthenticationPrincipal Long memberId) {
+            @AuthenticationPrincipal Long memberId,
+            Authentication authentication) {
+        assertNotAdminReaction(authentication, "관리자는 신고할 수 없습니다.");
         postDto.setPostId(postId);
         postDto.setMemberId(requireMemberId(memberId));
         Map<String, Object> result = postService.reportPost(postDto);
@@ -309,5 +313,11 @@ public class PostController {
                 .anyMatch(authority ->
                         "ROLE_SUA".equals(authority.getAuthority())
                                 || "ROLE_ADM".equals(authority.getAuthority()));
+    }
+
+    private void assertNotAdminReaction(Authentication authentication, String message) {
+        if (isAdmin(authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+        }
     }
 }

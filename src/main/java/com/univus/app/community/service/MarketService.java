@@ -285,7 +285,10 @@ public class MarketService {
     // 찜 토글 (찜 되어 있으면 취소, 없으면 추가)
     @Transactional
     public boolean toggleProductLike(MarketDto.ProductLikeDto likeDto) {
-        assertProductAccessible(likeDto.getProductId(), likeDto.getMemberId());
+        MarketDto.ProductDto product = requireAccessibleProduct(likeDto.getProductId(), likeDto.getMemberId());
+        if (product.getMemberId().equals(likeDto.getMemberId())) {
+            throw forbidden("Seller cannot like own product.");
+        }
         int exists = marketMapper.selectProductLikeCount(likeDto);
         if (exists > 0) {
             marketMapper.deleteProductLike(likeDto);
