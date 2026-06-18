@@ -125,6 +125,11 @@ public interface MarketMapper {
 
     int updateActiveTradeChatStatusByProduct(@Param("productId") Long productId, @Param("status") String status);
 
+    int updateOtherActiveTradeChatStatusByProduct(
+            @Param("productId") Long productId,
+            @Param("excludeRoomId") Long excludeRoomId,
+            @Param("status") String status);
+
     int selectActiveTradeChatRoomCountByProduct(@Param("productId") Long productId);
 
     int deleteTradeChatMessages(@Param("roomId") Long roomId);

@@ -719,8 +719,9 @@
         JOIN PRODUCT P ON TCR.PRODUCT_ID = P.PRODUCT_ID
         JOIN MEMBER SM ON TCR.SELLER_ID = SM.MEMBER_ID
         JOIN MEMBER BM ON TCR.BUYER_ID = BM.MEMBER_ID
-        WHERE TCR.SELLER_ID = #{memberId}
-           OR TCR.BUYER_ID = #{memberId}
+        WHERE (TCR.SELLER_ID = #{memberId}
+           OR TCR.BUYER_ID = #{memberId})
+          AND TCR.STATUS != 'DELETED'
         ORDER BY COALESCE(
             (
                 SELECT MAX(M.SEND_AT)
@@ -850,6 +851,14 @@
         UPDATE TRADE_CHAT_ROOM
         SET STATUS = #{status}
         WHERE PRODUCT_ID = #{productId}
+          AND STATUS = 'ACTIVE'
+    </update>
+
+    <update id="updateOtherActiveTradeChatStatusByProduct">
+        UPDATE TRADE_CHAT_ROOM
+        SET STATUS = #{status}
+        WHERE PRODUCT_ID = #{productId}
+          AND ROOM_ID != #{excludeRoomId}
           AND STATUS = 'ACTIVE'
     </update>
 

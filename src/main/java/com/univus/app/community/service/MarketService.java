@@ -64,6 +64,7 @@ public class MarketService {
     private static final String DEFAULT_TRADE_CHAT_STATUS = "ACTIVE";
     private static final String DONE_TRADE_CHAT_STATUS = "DONE";
     private static final String CLOSED_TRADE_CHAT_STATUS = "CLOSED";
+    private static final String DELETED_TRADE_CHAT_STATUS = "DELETED";
     private static final String MARKET_CHAT_TOPIC_PREFIX = "/sub/market-chats/";
     private static final int MAX_CHAT_MESSAGE_LENGTH = 2000;
 
@@ -158,9 +159,9 @@ public class MarketService {
         marketMapper.updateProductStatus(productId, "DONE");
         List<MarketDto.TradeChatRoomDto> activeRooms =
                 marketMapper.selectActiveTradeChatRoomsByProduct(productId);
-        marketMapper.updateActiveTradeChatStatusByProduct(productId, DONE_TRADE_CHAT_STATUS);
+        marketMapper.updateActiveTradeChatStatusByProduct(productId, CLOSED_TRADE_CHAT_STATUS);
         MarketDto.ProductDto completedProduct = marketMapper.selectProductDetail(productId);
-        publishProductChatRoomsAfterCommit(activeRooms, DONE_TRADE_CHAT_STATUS, "DONE");
+        publishProductChatRoomsAfterCommit(activeRooms, CLOSED_TRADE_CHAT_STATUS, "DONE");
         return completedProduct;
     }
 
@@ -415,9 +416,8 @@ public class MarketService {
             MarketDto.TradeChatMessageRequestDto request) {
         validateChatMessageRequest(request);
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
-        if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
-                || CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())
-                || "DONE".equals(room.getProductStatus())) {
+        if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())
+                || DELETED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
             throw conflict("Closed trade chat cannot send messages.");
         }
 
@@ -502,6 +502,7 @@ public class MarketService {
         marketMapper.insertTrade(tradeDto);
         marketMapper.updateProductStatus(product.getProductId(), "DONE");
         marketMapper.updateTradeChatStatus(room.getRoomId(), DONE_TRADE_CHAT_STATUS);
+        closeOtherActiveTradeChatRoomsByProduct(product.getProductId(), room.getRoomId());
 
         MarketDto.TradeChatRoomDto updatedRoom =
                 marketMapper.selectTradeChatRoomForMember(roomId, memberId);
@@ -513,9 +514,6 @@ public class MarketService {
     @Transactional
     public MarketDto.TradeChatRoomDto closeTradeChatRoom(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
-        if (DONE_TRADE_CHAT_STATUS.equals(room.getStatus())) {
-            throw conflict("Completed trade chat cannot be closed.");
-        }
         if (!CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
             marketMapper.updateTradeChatStatus(roomId, CLOSED_TRADE_CHAT_STATUS);
         }
@@ -532,15 +530,12 @@ public class MarketService {
     @Transactional
     public Map<String, Object> deleteTradeChatRoom(Long memberId, Long roomId) {
         MarketDto.TradeChatRoomDto room = requireTradeChatRoom(roomId, memberId);
-        boolean deletableStatus = CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())
-                || DONE_TRADE_CHAT_STATUS.equals(room.getStatus())
-                || "DONE".equals(room.getProductStatus());
+        boolean deletableStatus = CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus());
         if (!deletableStatus) {
-            throw conflict("Only closed or completed trade chat can be deleted.");
+            throw conflict("Only closed trade chat can be deleted.");
         }
 
-        marketMapper.deleteTradeChatMessages(roomId);
-        int rows = marketMapper.deleteTradeChatRoom(roomId);
+        int rows = marketMapper.updateTradeChatStatus(roomId, DELETED_TRADE_CHAT_STATUS);
         if (CLOSED_TRADE_CHAT_STATUS.equals(room.getStatus())) {
             restoreReservableProductIfNoActiveChats(room.getProductId());
         }
@@ -671,6 +666,13 @@ public class MarketService {
         marketMapper.insertPayment(paymentDto);
         marketMapper.updateProductStatus(product.getProductId(), "DONE");
         marketMapper.updateTradeChatStatus(room.getRoomId(), DONE_TRADE_CHAT_STATUS);
+        closeOtherActiveTradeChatRoomsByProduct(product.getProductId(), room.getRoomId());
+
+        MarketDto.TradeChatRoomDto updatedRoom =
+                marketMapper.selectTradeChatRoomForMember(room.getRoomId(), buyerId);
+        runAfterCommit(() -> messagingTemplate.convertAndSend(
+                MARKET_CHAT_TOPIC_PREFIX + room.getRoomId() + "/room",
+                updatedRoom));
 
         return MarketDto.PaymentResultDto.builder()
                 .tradeId(tradeDto.getTradeId())
@@ -841,6 +843,22 @@ public class MarketService {
 
     private int closeActiveTradeChatRoomsByProduct(Long productId) {
         return marketMapper.updateActiveTradeChatStatusByProduct(productId, CLOSED_TRADE_CHAT_STATUS);
+    }
+
+    private void closeOtherActiveTradeChatRoomsByProduct(Long productId, Long completedRoomId) {
+        List<MarketDto.TradeChatRoomDto> activeRooms =
+                marketMapper.selectActiveTradeChatRoomsByProduct(productId);
+        List<MarketDto.TradeChatRoomDto> otherActiveRooms = activeRooms.stream()
+                .filter(room -> !room.getRoomId().equals(completedRoomId))
+                .toList();
+        if (otherActiveRooms.isEmpty()) {
+            return;
+        }
+        marketMapper.updateOtherActiveTradeChatStatusByProduct(
+                productId,
+                completedRoomId,
+                CLOSED_TRADE_CHAT_STATUS);
+        publishProductChatRoomsAfterCommit(otherActiveRooms, CLOSED_TRADE_CHAT_STATUS, "DONE");
     }
 
     private boolean hasUnreadTradeChat(Long productId, Long memberId) {
