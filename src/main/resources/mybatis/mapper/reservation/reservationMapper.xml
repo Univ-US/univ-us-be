@@ -489,7 +489,10 @@
         JOIN READING_ROOMS RR
           ON RR.READING_ROOM_ID = S.READING_ROOM_ID
         WHERE R.STATUS = 'RESERVED'
-          AND R.START_TIME + INTERVAL '20' MINUTE <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND LEAST(
+                GREATEST(NVL(R.CREATED_AT, R.START_TIME), R.START_TIME) + INTERVAL '20' MINUTE,
+                R.END_TIME
+              ) <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
     </select>
 
     <update id="updateReadingSeatReservationStatus">

@@ -26,7 +26,7 @@ public class ReservationScheduler {
 
     private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
     private static final String NO_SHOW_PENALTY_TYPE = "NO_SHOW";
-    private static final String NO_SHOW_PENALTY_REASON = "예약 시작 후 20분 이내 입실하지 않아 자동 취소되었습니다.";
+    private static final String NO_SHOW_PENALTY_REASON = "독서실 좌석 입실 가능 시간 내 입실하지 않아 자동 취소되었습니다.";
 
     private final ReservationMapper reservationMapper;
     private final SimpMessagingTemplate messagingTemplate;
@@ -47,7 +47,7 @@ public class ReservationScheduler {
             }
         }
 
-        // 2. 노쇼 예약 (예약 시작 후 20분이 지났는데도 여전히 RESERVED인 경우) -> CANCELLED 처리
+        // 2. 노쇼 예약 (입실 가능 시간이 지났는데도 여전히 RESERVED인 경우) -> CANCELLED 처리
         List<ReservationDto.ReadingSeatReservationDto> noShowReservations = 
                 reservationMapper.selectNoShowReadingSeatReservations();
                 
