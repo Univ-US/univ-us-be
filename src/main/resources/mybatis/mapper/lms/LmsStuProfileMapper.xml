@@ -13,7 +13,7 @@
             m.LOGIN_ID       AS studentNo,
             d.DEPT_NAME      AS department,
             m.PHONE_NUMBER   AS phoneNumber,
-            lp.LMS_PRF_EMAIL AS email,
+            lp.LMS_PRF_EMAIL AS lmsPrfEmail,
             (SELECT lpi.LMS_PRF_IMG_ORG_URL
                FROM LMS_PROFILE_IMAGE lpi
               WHERE lpi.LMS_PRF_ID = lp.LMS_PRF_ID
@@ -44,7 +44,7 @@
     <!-- 이메일 수정 -->
     <update id="updateLmsStudentProfile">
         UPDATE LMS_PROFILE
-        SET LMS_PRF_EMAIL = #{dto.lmsStudentProfileEmail}
+        SET LMS_PRF_EMAIL = #{dto.lmsPrfEmail}
         WHERE MEMBER_ID = #{memberId}
     </update>
 

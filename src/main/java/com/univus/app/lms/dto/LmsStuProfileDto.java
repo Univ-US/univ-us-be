@@ -11,11 +11,12 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * SLM-001 학생 프로필 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
  * <ul>
- *   <li>바깥 = 매핑(정본) DTO: MyBatis resultType, SQL 컬럼과 1:1 (role은 코드값·라벨 변환 전).</li>
- *   <li>{@code ReqDto} = 요청(PUT multipart): FE form key = 필드명 그대로(FE 계약).</li>
- *   <li>{@code ResDto} = 응답(GET/PUT): JSON 프로퍼티명 = FE 계약(불변).</li>
+ *   <li>바깥 = 매핑(정본) DTO: MyBatis resultType (자기 테이블=컬럼 카멜, 조인=의미별칭).</li>
+ *   <li>{@code ReqDto} = 요청(PUT multipart): FE form key = 필드명(LMS_PROFILE 자기컬럼=컬럼 카멜).</li>
+ *   <li>{@code ResDto} = 응답(GET/PUT): JSON 프로퍼티명 = DB 컬럼 카멜(조인=의미별칭). role은 라벨 변환 후.</li>
  * </ul>
  * service가 매핑 DTO → ResDto 변환(role 코드→한글 라벨).
+ * ※ 명명 규칙: BE 정본 + DTO 변수명 = DB 컬럼명 카멜(조인 컬럼은 의미 별칭) — 커뮤니티 PostDto 컨벤션. PLM-001 교수 프로필과 동일 정본.
  */
 @Getter
 @Setter
@@ -27,9 +28,9 @@ public class LmsStuProfileDto {
     private String name;            // MEMBER.MEMBER_NAME
     private String studentNo;       // MEMBER.LOGIN_ID (학번)
     private String department;      // DEPARTMENT.DEPT_NAME (nullable)
-    private String phoneNumber;     // MEMBER.PHONE_NUMBER
-    private String email;           // LMS_PROFILE.LMS_PRF_EMAIL
-    private String imageUrl;        // 최신 유효 프로필 이미지 URL (nullable)
+    private String phoneNumber;     // MEMBER.PHONE_NUMBER (조인)
+    private String lmsPrfEmail;     // LMS_PROFILE.LMS_PRF_EMAIL (자기 테이블 컬럼)
+    private String imageUrl;        // 최신 유효 프로필 이미지 URL (서브쿼리, nullable)
     private String universityName;  // UNIVERSITY.UNIV_NAME (nullable)
     private String role;            // MEMBER.ROLE (코드값 — ResDto 변환 시 라벨화)
 
@@ -38,8 +39,8 @@ public class LmsStuProfileDto {
     @Setter
     public static class ReqDto {
         @Email(message = "이메일 형식이 올바르지 않습니다.")
-        private String lmsStudentProfileEmail;
-        private MultipartFile lmsStudentProfileImage; // 변경 없으면 null
+        private String lmsPrfEmail;     // LMS_PROFILE.LMS_PRF_EMAIL
+        private MultipartFile image;    // 새 프로필 이미지 (변경 없으면 null)
     }
 
     /** 응답 (GET/PUT) — JSON 프로퍼티명 = FE 계약(불변) */
@@ -49,13 +50,13 @@ public class LmsStuProfileDto {
     @AllArgsConstructor
     @Builder
     public static class ResDto {
-        private String lmsStudentProfileName;
-        private String lmsStudentProfileStudentNo;
-        private String lmsStudentProfileDepartment;
-        private String lmsStudentProfilePhoneNumber;
-        private String lmsStudentProfileEmail;
-        private String lmsStudentProfileImageUrl;
-        private String lmsStudentProfileUniversityName;
-        private String lmsStudentProfileRole;
+        private String name;            // MEMBER.MEMBER_NAME
+        private String studentNo;       // MEMBER.LOGIN_ID (학번)
+        private String department;      // DEPARTMENT.DEPT_NAME
+        private String phoneNumber;     // MEMBER.PHONE_NUMBER
+        private String lmsPrfEmail;     // LMS_PROFILE.LMS_PRF_EMAIL
+        private String imageUrl;        // 프로필 이미지 URL
+        private String universityName;  // UNIVERSITY.UNIV_NAME
+        private String role;            // MEMBER.ROLE → 한글 라벨
     }
 }

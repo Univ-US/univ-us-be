@@ -49,7 +49,7 @@ public class LmsStuProfileServiceImpl implements LmsStuProfileService {
         lmsStuProfileMapper.updateLmsStudentProfile(memberId, dto);
 
         // 이미지 (새 파일이 있을 때만)
-        MultipartFile image = dto.getLmsStudentProfileImage();
+        MultipartFile image = dto.getImage();
         if (image != null && !image.isEmpty()) {
             LmsProfileImageValidator.validate(image); // 형식·용량·매직바이트 검증(공용)
             String directoryPath = uploadRoot + File.separator + IMAGE_SUBDIR;
@@ -72,14 +72,14 @@ public class LmsStuProfileServiceImpl implements LmsStuProfileService {
             return null;
         }
         return LmsStuProfileDto.ResDto.builder()
-                .lmsStudentProfileName(m.getName())
-                .lmsStudentProfileStudentNo(m.getStudentNo())
-                .lmsStudentProfileDepartment(m.getDepartment())
-                .lmsStudentProfilePhoneNumber(m.getPhoneNumber())
-                .lmsStudentProfileEmail(m.getEmail())
-                .lmsStudentProfileImageUrl(m.getImageUrl())
-                .lmsStudentProfileUniversityName(m.getUniversityName())
-                .lmsStudentProfileRole(toRoleLabel(m.getRole()))
+                .name(m.getName())
+                .studentNo(m.getStudentNo())
+                .department(m.getDepartment())
+                .phoneNumber(m.getPhoneNumber())
+                .lmsPrfEmail(m.getLmsPrfEmail())
+                .imageUrl(m.getImageUrl())
+                .universityName(m.getUniversityName())
+                .role(toRoleLabel(m.getRole()))
                 .build();
     }
 
