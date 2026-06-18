@@ -24,30 +24,30 @@
     </sql>
 
     <select id="selectAssignmentRows" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$AssignmentFlatRow">
-        SELECT s.SEM_YEAR AS year,
-               s.SEM_TERM AS termCode,
+        SELECT s.SEM_YEAR AS semYear,
+               s.SEM_TERM AS semTerm,
                a.LEC_ASN_ID AS assignmentId,
                l.LEC_ID AS lecId,
                lc.LEC_COD_NAME AS courseName,
                l.LEC_SECTION AS lecSection,
                pm.MEMBER_NAME AS professor,
-               a.LEC_ASN_TITLE AS title,
-               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS content,
-               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS dueDate,
+               a.LEC_ASN_TITLE AS lecAsnTitle,
+               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS lecAsnContent,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS lecAsnDueDate,
                CASE
                    WHEN a.LEC_ASN_DUE_DATE &lt; SYSTIMESTAMP
                         OR a.LEC_ASN_VAL_STATUS IN ('CLS', 'NOP') THEN 1
                    ELSE 0
                END AS overdueFlag,
                sb.LEC_ASN_SBM_ID AS submissionId,
-               sb.LEC_ASN_SBM_STATUS AS submissionStatus,
-               TO_CHAR(sb.LEC_ASN_SBM_REG_DATE, 'YYYY.MM.DD HH24:MI') AS submittedAt,
-               sb.LEC_ASN_SBM_MEMO AS submissionMemo,
+               sb.LEC_ASN_SBM_STATUS AS lecAsnSbmStatus,
+               TO_CHAR(sb.LEC_ASN_SBM_REG_DATE, 'YYYY.MM.DD HH24:MI') AS lecAsnSbmRegDate,
+               sb.LEC_ASN_SBM_MEMO AS lecAsnSbmMemo,
                att.ASN_SBM_ATT_ORG_FIL_NAME AS fileName,
                att.ASN_SBM_ATT_FIL_SIZE AS fileSize,
                att.ASN_SBM_ATT_EXT_TYPE AS fileExt,
-               ev.ASN_SBM_EVL_SCORE AS score,
-               ev.ASN_SBM_EVL_FEEDBACK AS feedback
+               ev.ASN_SBM_EVL_SCORE AS asnSbmEvlScore,
+               ev.ASN_SBM_EVL_FEEDBACK AS asnSbmEvlFeedback
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID

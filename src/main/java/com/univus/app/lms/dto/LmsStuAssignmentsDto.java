@@ -22,26 +22,26 @@ public final class LmsStuAssignmentsDto {
     @AllArgsConstructor
     @Builder
     public static class AssignmentFlatRow {
-        private Integer year;
-        private String termCode;
-        private Long assignmentId;
-        private Long lecId;
-        private String courseName;
-        private Integer lecSection;
-        private String professor;
-        private String title;
-        private String content;
-        private String dueDate;
-        private Integer overdueFlag;
-        private Long submissionId;
-        private String submissionStatus;
-        private String submittedAt;
-        private String submissionMemo;
-        private String fileName;
-        private Long fileSize;
-        private String fileExt;
-        private BigDecimal score;
-        private String feedback;
+        private Integer semYear;          // SEMESTERS.SEM_YEAR
+        private String semTerm;           // SEMESTERS.SEM_TERM
+        private Long assignmentId;        // LECTURE_ASSIGNMENT.LEC_ASN_ID (PK)
+        private Long lecId;               // LECTURE.LEC_ID
+        private String courseName;        // LECTURE_CODE.LEC_COD_NAME (조인)
+        private Integer lecSection;       // LECTURE.LEC_SECTION (분반)
+        private String professor;         // MEMBER.MEMBER_NAME (조인)
+        private String lecAsnTitle;       // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
+        private String lecAsnContent;     // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT
+        private String lecAsnDueDate;     // LECTURE_ASSIGNMENT.LEC_ASN_DUE_DATE
+        private Integer overdueFlag;      // 파생(마감 경과 / CLS·NOP)
+        private Long submissionId;        // LECTURE_ASSIGNMENT_SUBMISSION.LEC_ASN_SBM_ID (PK)
+        private String lecAsnSbmStatus;   // LEC_ASN_SBM_STATUS (raw)
+        private String lecAsnSbmRegDate;  // LEC_ASN_SBM_REG_DATE
+        private String lecAsnSbmMemo;     // LEC_ASN_SBM_MEMO
+        private String fileName;          // ASN_SBM_ATT_ORG_FIL_NAME (첨부 메타)
+        private Long fileSize;            // ASN_SBM_ATT_FIL_SIZE (첨부 메타)
+        private String fileExt;           // ASN_SBM_ATT_EXT_TYPE (첨부 메타)
+        private BigDecimal asnSbmEvlScore;    // ASN_SBM_EVL_SCORE
+        private String asnSbmEvlFeedback;     // ASN_SBM_EVL_FEEDBACK
     }
 
     @Getter
@@ -114,8 +114,8 @@ public final class LmsStuAssignmentsDto {
     @AllArgsConstructor
     @Builder
     public static class SemesterAssignmentsResDto {
-        private Integer year;
-        private String termCode;
+        private Integer semYear;
+        private String semTerm;
         private String semesterLabel;
         private List<StudentAssignmentResDto> assignments;
     }
@@ -131,15 +131,15 @@ public final class LmsStuAssignmentsDto {
         private Long lecId;
         private String courseName;
         private Integer lecSection;
-        private String title;
-        private String content;
-        private String dueDate;
-        private String status;
+        private String lecAsnTitle;
+        private String lecAsnContent;
+        private String lecAsnDueDate;
+        private String status;            // 파생(NSB/SBM/GRD = resolveStatus) — 의미명 유지
         private boolean overdue;
-        private BigDecimal score;
+        private BigDecimal asnSbmEvlScore;
         private Integer maxScore;
-        private String submittedAt;
-        private String submissionMemo;
+        private String lecAsnSbmRegDate;
+        private String lecAsnSbmMemo;
         private SubmissionFileResDto file;
         private AssignmentFeedbackResDto feedback;
     }
@@ -162,11 +162,11 @@ public final class LmsStuAssignmentsDto {
     @AllArgsConstructor
     @Builder
     public static class AssignmentFeedbackResDto {
-        private BigDecimal score;
+        private BigDecimal asnSbmEvlScore;
         private Integer maxScore;
         private String courseName;
         private String professor;
-        private String comment;
+        private String asnSbmEvlFeedback;
     }
 
     @Getter

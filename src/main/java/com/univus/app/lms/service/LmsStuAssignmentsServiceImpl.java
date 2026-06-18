@@ -75,10 +75,10 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
 
         Map<String, SemesterAccumulator> semesters = new LinkedHashMap<>();
         for (LmsStuAssignmentsDto.AssignmentFlatRow row : rows) {
-            String key = row.getYear() + ":" + row.getTermCode();
+            String key = row.getSemYear() + ":" + row.getSemTerm();
             SemesterAccumulator semester = semesters.computeIfAbsent(
                     key,
-                    ignored -> new SemesterAccumulator(row.getYear(), row.getTermCode()));
+                    ignored -> new SemesterAccumulator(row.getSemYear(), row.getSemTerm()));
             semester.add(row);
         }
 
@@ -290,10 +290,10 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
     }
 
     private static String resolveStatus(LmsStuAssignmentsDto.AssignmentFlatRow row) {
-        if (row.getScore() != null || GRADED.equals(row.getSubmissionStatus())) {
+        if (row.getAsnSbmEvlScore() != null || GRADED.equals(row.getLecAsnSbmStatus())) {
             return GRADED;
         }
-        if (row.getSubmissionId() != null && !NOT_SUBMITTED.equals(row.getSubmissionStatus())) {
+        if (row.getSubmissionId() != null && !NOT_SUBMITTED.equals(row.getLecAsnSbmStatus())) {
             return SUBMITTED;
         }
         return NOT_SUBMITTED;
@@ -310,14 +310,14 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .fileUrl(row.getSubmissionId() == null ? null : String.format(SUBMISSION_DOWNLOAD_PATH, row.getSubmissionId()))
                 .contentType(row.getFileExt())
                 .build();
-        LmsStuAssignmentsDto.AssignmentFeedbackResDto feedback = row.getScore() == null
+        LmsStuAssignmentsDto.AssignmentFeedbackResDto feedback = row.getAsnSbmEvlScore() == null
                 ? null
                 : LmsStuAssignmentsDto.AssignmentFeedbackResDto.builder()
-                .score(row.getScore())
+                .asnSbmEvlScore(row.getAsnSbmEvlScore())
                 .maxScore(DEFAULT_MAX_SCORE)
                 .courseName(row.getCourseName())
                 .professor(row.getProfessor())
-                .comment(row.getFeedback() == null ? "" : row.getFeedback())
+                .asnSbmEvlFeedback(row.getAsnSbmEvlFeedback() == null ? "" : row.getAsnSbmEvlFeedback())
                 .build();
 
         return LmsStuAssignmentsDto.StudentAssignmentResDto.builder()
@@ -326,15 +326,15 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .title(row.getTitle())
-                .content(row.getContent())
-                .dueDate(row.getDueDate())
+                .lecAsnTitle(row.getLecAsnTitle())
+                .lecAsnContent(row.getLecAsnContent())
+                .lecAsnDueDate(row.getLecAsnDueDate())
                 .status(status)
                 .overdue(isOverdue(row))
-                .score(row.getScore())
+                .asnSbmEvlScore(row.getAsnSbmEvlScore())
                 .maxScore(DEFAULT_MAX_SCORE)
-                .submittedAt(row.getSubmittedAt())
-                .submissionMemo(row.getSubmissionMemo())
+                .lecAsnSbmRegDate(row.getLecAsnSbmRegDate())
+                .lecAsnSbmMemo(row.getLecAsnSbmMemo())
                 .file(file)
                 .feedback(feedback)
                 .build();
@@ -415,8 +415,8 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
 
         private LmsStuAssignmentsDto.SemesterAssignmentsResDto toResponse() {
             return LmsStuAssignmentsDto.SemesterAssignmentsResDto.builder()
-                    .year(year)
-                    .termCode(termCode)
+                    .semYear(year)
+                    .semTerm(termCode)
                     .semesterLabel(semesterLabel(year, termCode))
                     .assignments(assignments)
                     .build();
