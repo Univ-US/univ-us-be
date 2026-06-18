@@ -22,8 +22,8 @@ PLM-007 교수 공지사항 관리 SQL (PLM-005 강의 업로드 미러)
         SELECT l.LEC_ID        AS lecId,
                lc.LEC_COD_NAME AS courseName,
                l.LEC_SECTION   AS lecSection,
-               s.SEM_YEAR      AS year,
-               s.SEM_TERM      AS termCode
+               s.SEM_YEAR      AS semYear,
+               s.SEM_TERM      AS semTerm
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
         JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
@@ -55,12 +55,12 @@ PLM-007 교수 공지사항 관리 SQL (PLM-005 강의 업로드 미러)
                a.LEC_ID          AS lecId,
                lc.LEC_COD_NAME   AS courseName,
                l.LEC_SECTION     AS lecSection,
-               s.SEM_YEAR        AS year,
-               s.SEM_TERM        AS termCode,
-               a.LEC_ANN_TITLE   AS title,
-               a.LEC_ANN_CONTENT AS content,
+               s.SEM_YEAR        AS semYear,
+               s.SEM_TERM        AS semTerm,
+               a.LEC_ANN_TITLE   AS lecAnnTitle,
+               a.LEC_ANN_CONTENT AS lecAnnContent,
                mb.MEMBER_NAME    AS author,
-               TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS regDate,
+               TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAnnRegDate,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'MM.DD')              AS listDate
         FROM LECTURE_ANNOUNCEMENT a
         JOIN LECTURE l       ON l.LEC_ID       = a.LEC_ID
