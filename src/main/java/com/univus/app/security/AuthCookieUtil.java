@@ -16,6 +16,7 @@ import java.util.Optional;
 public class AuthCookieUtil {
 
     public static final String ACCESS_TOKEN_COOKIE = "accessToken";
+    public static final String WEBSOCKET_ACCESS_TOKEN_COOKIE = "wsAccessToken";
     public static final String REFRESH_TOKEN_COOKIE = "refreshToken";
 
     private final boolean secure;
@@ -43,6 +44,19 @@ public class AuthCookieUtil {
 
     public void addAccessTokenSessionCookie(HttpServletResponse response, String token) {
         addSessionCookie(response, ACCESS_TOKEN_COOKIE, token, "/api");
+        addWebSocketAccessTokenSessionCookie(response, token);
+    }
+
+    public void addWebSocketAccessTokenSessionCookie(
+            HttpServletResponse response,
+            String token
+    ) {
+        addSessionCookie(
+                response,
+                WEBSOCKET_ACCESS_TOKEN_COOKIE,
+                token,
+                "/ws-univus"
+        );
     }
 
     public void addRefreshTokenSessionCookie(HttpServletResponse response, String token) {
@@ -51,6 +65,13 @@ public class AuthCookieUtil {
 
     public void clearAuthCookies(HttpServletResponse response) {
         addCookie(response, ACCESS_TOKEN_COOKIE, "", "/api", Duration.ZERO);
+        addCookie(
+                response,
+                WEBSOCKET_ACCESS_TOKEN_COOKIE,
+                "",
+                "/ws-univus",
+                Duration.ZERO
+        );
         addCookie(response, REFRESH_TOKEN_COOKIE, "", "/api/auth", Duration.ZERO);
     }
 

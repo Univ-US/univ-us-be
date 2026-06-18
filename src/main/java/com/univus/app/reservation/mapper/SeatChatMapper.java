@@ -32,6 +32,10 @@ public interface SeatChatMapper {
     List<SeatChatDto.SeatChatMessageDto> selectSeatChatMessages(
             @Param("roomId") Long roomId);
 
+    int markIncomingMessagesRead(
+            @Param("roomId") Long roomId,
+            @Param("reservationId") Long reservationId);
+
     int insertSeatChatMessage(SeatChatDto.SeatChatMessageDto message);
 
     SeatChatDto.SeatChatMessageDto selectSeatChatMessage(

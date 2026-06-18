@@ -62,6 +62,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private String resolveToken(HttpServletRequest request) {
         return authCookieUtil
                 .getCookieValue(request, AuthCookieUtil.ACCESS_TOKEN_COOKIE)
+                .or(() -> authCookieUtil.getCookieValue(
+                        request,
+                        AuthCookieUtil.WEBSOCKET_ACCESS_TOKEN_COOKIE))
                 .orElse(null);
     }
 

@@ -39,13 +39,23 @@ public class SeatChatServiceImpl implements SeatChatService {
             return SeatChatDto.SeatChatContextDto.builder()
                     .activeReservation(null)
                     .rooms(List.of())
+                    .totalUnreadCount(0)
                     .build();
         }
 
+        List<SeatChatDto.SeatChatRoomDto> rooms =
+                seatChatMapper.selectSeatChatRoomsForReservation(
+                        activeReservation.getReservationId());
+        int totalUnreadCount = rooms.stream()
+                .map(SeatChatDto.SeatChatRoomDto::getUnreadCount)
+                .filter(count -> count != null && count > 0)
+                .mapToInt(Integer::intValue)
+                .sum();
+
         return SeatChatDto.SeatChatContextDto.builder()
                 .activeReservation(activeReservation)
-                .rooms(seatChatMapper.selectSeatChatRoomsForReservation(
-                        activeReservation.getReservationId()))
+                .rooms(rooms)
+                .totalUnreadCount(totalUnreadCount)
                 .build();
     }
 
@@ -133,6 +143,17 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional
     @Override
+    public void markSeatChatMessagesRead(Long memberId, Long roomId) {
+        SeatChatDto.ActiveSeatReservationDto activeReservation =
+                getRequiredActiveReservation(memberId);
+        getRequiredParticipantRoom(roomId, activeReservation.getReservationId());
+        seatChatMapper.markIncomingMessagesRead(
+                roomId,
+                activeReservation.getReservationId());
+    }
+
+    @Transactional
+    @Override
     public SeatChatDto.SeatChatMessageDto sendSeatChatMessage(
             Long memberId,
             Long roomId,
@@ -163,10 +184,26 @@ public class SeatChatServiceImpl implements SeatChatService {
                 seatChatMapper.selectSeatChatMessage(message.getMessageId());
         SeatChatDto.SeatChatMessageDto response =
                 savedMessage == null ? message : savedMessage;
+        SeatChatDto.SeatChatNotificationDto notification =
+                SeatChatDto.SeatChatNotificationDto.builder()
+                        .roomId(roomId)
+                        .messageId(response.getMessageId())
+                        .senderReservationId(activeReservation.getReservationId())
+                        .senderRoomName(activeReservation.getRoomName())
+                        .senderSeatNumber(activeReservation.getSeatNumber())
+                        .messageText(response.getMessageText())
+                        .createdAt(response.getCreatedAt())
+                        .build();
 
-        runAfterCommit(() -> messagingTemplate.convertAndSend(
-                SEAT_CHAT_TOPIC_PREFIX + roomId,
-                response));
+        runAfterCommit(() -> {
+            messagingTemplate.convertAndSend(
+                    SEAT_CHAT_TOPIC_PREFIX + roomId,
+                    response);
+            messagingTemplate.convertAndSendToUser(
+                    targetReservation.getMemberId().toString(),
+                    "/queue/seat-chat-notifications",
+                    notification);
+        });
 
         return response;
     }

@@ -16,6 +16,10 @@ public interface SeatChatService {
             Long memberId,
             Long roomId);
 
+    void markSeatChatMessagesRead(
+            Long memberId,
+            Long roomId);
+
     SeatChatDto.SeatChatMessageDto sendSeatChatMessage(
             Long memberId,
             Long roomId,
