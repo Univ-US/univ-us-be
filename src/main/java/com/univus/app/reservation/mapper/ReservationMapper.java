@@ -86,6 +86,18 @@ public interface ReservationMapper {
 
     int cancelAllPendingRoomReservations(@Param("memberId") Long memberId);
 
+    List<ReservationDto.RoomReservationDto> selectExpiredRoomReservations();
+
+    List<ReservationDto.RoomReservationDto> selectNoShowRoomReservations();
+
+    int completeExpiredRoomReservation(@Param("reservationId") Long reservationId);
+
+    int cancelNoShowRoomReservation(@Param("reservationId") Long reservationId);
+
+    int checkInRoomReservation(
+            @Param("reservationId") Long reservationId,
+            @Param("memberId") Long memberId);
+
     List<ReservationDto.ReadingSeatReservationDto> selectExpiredReadingSeatReservations();
 
     List<ReservationDto.ReadingSeatReservationDto> selectNoShowReadingSeatReservations();

@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class SeatChatServiceImpl implements SeatChatService {
 
     private static final String DEFAULT_ROOM_STATUS = "ACTIVE";
-    private static final String SEAT_CHAT_TOPIC_PREFIX = "/sub/seat-chats/";
+    private static final String SEAT_CHAT_USER_QUEUE_PREFIX = "/queue/seat-chats/";
     private static final int MAX_MESSAGE_LENGTH = 2000;
 
     private final SeatChatMapper seatChatMapper;
@@ -196,8 +196,13 @@ public class SeatChatServiceImpl implements SeatChatService {
                         .build();
 
         runAfterCommit(() -> {
-            messagingTemplate.convertAndSend(
-                    SEAT_CHAT_TOPIC_PREFIX + roomId,
+            messagingTemplate.convertAndSendToUser(
+                    memberId.toString(),
+                    SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
+                    response);
+            messagingTemplate.convertAndSendToUser(
+                    targetReservation.getMemberId().toString(),
+                    SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
                     response);
             messagingTemplate.convertAndSendToUser(
                     targetReservation.getMemberId().toString(),
