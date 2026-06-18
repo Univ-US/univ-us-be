@@ -42,10 +42,10 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
 
         Map<String, SemesterAccumulator> semesters = new LinkedHashMap<>();
         for (LmsStuCoursesDto.CourseFlatRow row : rows) {
-            String semesterKey = row.getYear() + ":" + row.getTermCode();
+            String semesterKey = row.getSemYear() + ":" + row.getSemTerm();
             SemesterAccumulator semester = semesters.computeIfAbsent(
                     semesterKey,
-                    key -> new SemesterAccumulator(row.getYear(), row.getTermCode(), isInProgress(row)));
+                    key -> new SemesterAccumulator(row.getSemYear(), row.getSemTerm(), isInProgress(row)));
             semester.add(row);
         }
 
@@ -103,8 +103,8 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
                     .sum();
 
             return LmsStuCoursesDto.SemesterCoursesResDto.builder()
-                    .year(year)
-                    .termCode(termCode)
+                    .semYear(year)
+                    .semTerm(termCode)
                     .semesterLabel(semesterLabel(year, termCode))
                     .inProgress(inProgress)
                     .courseCount(courseRows.size())
@@ -126,12 +126,12 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
             this.lecId = row.getLecId();
             this.courseName = row.getCourseName();
             this.lecSection = row.getLecSection();
-            this.credit = row.getCredit() == null ? 0 : row.getCredit();
+            this.credit = row.getLecCredit() == null ? 0 : row.getLecCredit();
             this.professor = row.getProfessor();
         }
 
         private void addSchedule(LmsStuCoursesDto.CourseFlatRow row) {
-            String schedule = formatSchedule(row.getDayCode(), row.getStartTime(), row.getEndTime());
+            String schedule = formatSchedule(row.getLecTimDayCode(), row.getLecTimStrTime(), row.getLecTimEndTime());
             if (schedule != null && !schedules.contains(schedule)) {
                 schedules.add(schedule);
             }
@@ -146,7 +146,7 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
                     .lecId(lecId)
                     .courseName(courseName)
                     .lecSection(lecSection)
-                    .credit(credit)
+                    .lecCredit(credit)
                     .professor(professor)
                     .schedule(schedules.isEmpty() ? "-" : String.join(" · ", schedules))
                     .build();
