@@ -117,6 +117,17 @@
             S.PENDING_ACTION,
             S.CANCELLATION_EFFECTIVE_AT,
             S.ENDED_AT,
+            S.NEXT_BILLING_AT,
+            CASE
+                WHEN S.PENDING_ACTION = 'PLAN_CHANGE' THEN (
+                    SELECT H.PLAN_NAME
+                    FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+                    WHERE H.SUBSCRIPTION_ID = S.SUBSCRIPTION_ID
+                      AND H.STATUS = 'READY'
+                    ORDER BY H.HISTORY_ID DESC
+                    FETCH FIRST 1 ROW ONLY
+                )
+            END AS PENDING_PLAN_NAME,
             P.PLAN_ID,
             P.PLAN_NAME,
             P.PRICE,
@@ -243,7 +254,8 @@
         PAID_AT,
         FAIL_REASON,
         AMOUNT,
-        PLAN_NAME
+        PLAN_NAME,
+        PORTONE_SCHEDULE_ID
         ) VALUES (
         #{historyId},
         #{subscriptionId},
@@ -256,7 +268,8 @@
         #{paidAt},
         #{failReason},
         #{amount},
-        #{planName}
+        #{planName},
+        #{portoneScheduleId}
         )
     </insert>
 
@@ -542,10 +555,26 @@
           AND STATUS = 'READY'
     </update>
 
+    <!--
+        다음 결제일을 갱신합니다.
+        플랜 변경이 예약되어 있었다면(PENDING_ACTION='PLAN_CHANGE') 이 시점, 즉 실제 결제가
+        성공한 시점에만 PLAN_ID를 새 플랜으로 갱신합니다. 결제 이력에는 PLAN_ID 컬럼이 없으므로
+        결제 이력에 저장된 PLAN_NAME으로 SUBSCRIPTION_PLANS를 조회해 PLAN_ID를 찾습니다.
+        일반 정기결제(플랜 변경 없음)에서는 같은 플랜명이 매칭되어 결과적으로 변경이 없습니다.
+    -->
     <update id="updateNextBillingAt">
         UPDATE SUBSCRIPTIONS
         SET STATUS = 'ACTIVE',
             NEXT_BILLING_AT = #{nextBillingAt},
+            PLAN_ID = NVL(
+                (
+                    SELECT PLAN_ID
+                    FROM SUBSCRIPTION_PLANS
+                    WHERE PLAN_NAME = #{planName}
+                      AND DELETED_AT IS NULL
+                ),
+                PLAN_ID
+            ),
             PENDING_ACTION =
                 CASE WHEN PENDING_ACTION = 'PLAN_CHANGE' THEN NULL ELSE PENDING_ACTION END,
             PENDING_ACTION_AT =
@@ -633,6 +662,112 @@
             UNIV_ID = #{univId},
             ROLE = 'ADM'
         WHERE MEMBER_ID = #{memberId}
+    </update>
+
+    <!--
+        학교(univId)의 현재 ACTIVE 구독과, 그 구독의 가장 최근 READY 결제 이력을 함께 조회합니다.
+        service-admin과 self-service의 플랜 변경/구독 취소 예약 처리가 공통으로 사용합니다.
+    -->
+    <select id="findMutationTargetByUnivId"
+            resultType="com.univus.app.subscription.dto.SubscriptionMutationTargetDto">
+        WITH READY_PAYMENTS AS (
+            SELECT
+                H.*,
+                ROW_NUMBER() OVER (
+                    PARTITION BY H.SUBSCRIPTION_ID
+                    ORDER BY H.HISTORY_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTION_PAYMENT_HISTORIES H
+            WHERE H.STATUS = 'READY'
+        )
+        SELECT
+            S.SUBSCRIPTION_ID,
+            S.UNIV_ID,
+            S.MEMBER_ID,
+            S.BILLINGKEY_ID,
+            B.SUBSCRIPTION_BILLING_KEY_VALUE AS PORTONE_BILLING_KEY,
+            S.PLAN_ID,
+            P.PLAN_NAME,
+            P.PRICE AS PLAN_PRICE,
+            S.STATUS AS SUBSCRIPTION_STATUS,
+            S.NEXT_BILLING_AT,
+            S.PENDING_ACTION,
+            H.HISTORY_ID AS READY_HISTORY_ID,
+            H.MERCHANT_UID AS READY_MERCHANT_UID,
+            H.PORTONE_SCHEDULE_ID AS READY_SCHEDULE_ID,
+            H.AMOUNT AS READY_AMOUNT
+        FROM SUBSCRIPTIONS S
+        JOIN SUBSCRIPTION_PLANS P
+          ON P.PLAN_ID = S.PLAN_ID
+        LEFT JOIN SUBSCRIPTION_BILLING_KEY B
+          ON B.SUBSCRIPTION_BILLING_KEY_ID = S.BILLINGKEY_ID
+        LEFT JOIN READY_PAYMENTS H
+          ON H.SUBSCRIPTION_ID = S.SUBSCRIPTION_ID
+         AND H.RN = 1
+        WHERE S.UNIV_ID = #{univId}
+          AND S.STATUS = 'ACTIVE'
+          AND S.ENDED_AT IS NULL
+        ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+        FETCH FIRST 1 ROW ONLY
+    </select>
+
+    <!--
+        다음 결제부터 새 플랜을 적용하기 위해 PENDING_ACTION만 표시합니다.
+        PLAN_ID는 건드리지 않고, 실제 결제가 성공한 뒤(updateNextBillingAt)에만 갱신합니다.
+    -->
+    <update id="markPendingPlanChange">
+        UPDATE SUBSCRIPTIONS
+        SET PENDING_ACTION = 'PLAN_CHANGE',
+            PENDING_ACTION_AT = CURRENT_TIMESTAMP,
+            CANCELLATION_EFFECTIVE_AT = NULL
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'ACTIVE'
+          AND ENDED_AT IS NULL
+          AND NVL(PENDING_ACTION, 'NONE') != 'CANCEL'
+    </update>
+
+    <update id="scheduleSubscriptionCancellation">
+        UPDATE SUBSCRIPTIONS
+        SET PENDING_ACTION = 'CANCEL',
+            PENDING_ACTION_AT = CURRENT_TIMESTAMP,
+            CANCELLATION_EFFECTIVE_AT = NEXT_BILLING_AT
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'ACTIVE'
+          AND ENDED_AT IS NULL
+          AND NEXT_BILLING_AT IS NOT NULL
+          AND NVL(PENDING_ACTION, 'NONE') != 'CANCEL'
+    </update>
+
+    <!-- 예약된 구독 취소를 철회합니다. -->
+    <update id="clearPendingCancellation">
+        UPDATE SUBSCRIPTIONS
+        SET PENDING_ACTION = NULL,
+            PENDING_ACTION_AT = NULL,
+            CANCELLATION_EFFECTIVE_AT = NULL
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'ACTIVE'
+          AND PENDING_ACTION = 'CANCEL'
+    </update>
+
+    <!-- 예약된 플랜 변경을 취소합니다. -->
+    <update id="clearPendingPlanChange">
+        UPDATE SUBSCRIPTIONS
+        SET PENDING_ACTION = NULL,
+            PENDING_ACTION_AT = NULL,
+            CANCELLATION_EFFECTIVE_AT = NULL
+        WHERE SUBSCRIPTION_ID = #{subscriptionId}
+          AND STATUS = 'ACTIVE'
+          AND PENDING_ACTION = 'PLAN_CHANGE'
+    </update>
+
+    <!-- PortOne 예약결제 교체가 실패했을 때, 기존 예약 정보로 결제 이력을 복구합니다. -->
+    <update id="replaceReadyPaymentSchedule">
+        UPDATE SUBSCRIPTION_PAYMENT_HISTORIES
+        SET MERCHANT_UID = #{merchantUid},
+            PORTONE_SCHEDULE_ID = #{portoneScheduleId},
+            FAIL_REASON = NULL
+        WHERE HISTORY_ID = #{historyId}
+          AND STATUS = 'READY'
     </update>
 
 </mapper>

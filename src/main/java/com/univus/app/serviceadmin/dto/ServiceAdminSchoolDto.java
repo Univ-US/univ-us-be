@@ -2,7 +2,6 @@ package com.univus.app.serviceadmin.dto;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -71,56 +70,6 @@ public class ServiceAdminSchoolDto {
         private String status;
         private LocalDateTime createdAt;
         private LocalDateTime logtimeAt;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class Plan {
-        private Long planId;
-        private String planName;
-        private Long price;
-        private String billingCycle;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MutationTarget {
-        private Long subscriptionId;
-        private Long univId;
-        private Long memberId;
-        private Long billingKeyId;
-        private String portoneBillingKey;
-        private Long planId;
-        private String planName;
-        private Long planPrice;
-        private String subscriptionStatus;
-        private LocalDateTime nextBillingAt;
-        private String pendingAction;
-        private Long readyHistoryId;
-        private String readyMerchantUid;
-        private String readyScheduleId;
-        private Long readyAmount;
-    }
-
-    @Getter
-    @Setter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class ScheduledPayment {
-        private Long historyId;
-        private Long subscriptionId;
-        private Long univId;
-        private Long memberId;
-        private Long billingKeyId;
-        private String merchantUid;
-        private String portoneScheduleId;
-        private Long amount;
-        private String planName;
     }
 
     @Getter

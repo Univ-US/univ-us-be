@@ -23,31 +23,5 @@ public interface ServiceAdminSchoolMapper {
             @Param("univId") Long univId
     );
 
-    ServiceAdminSchoolDto.MutationTarget selectMutationTarget(
-            @Param("univId") Long univId
-    );
-
-    ServiceAdminSchoolDto.Plan selectPlan(@Param("planId") Long planId);
-
-    int updateSubscriptionPlan(
-            @Param("subscriptionId") Long subscriptionId,
-            @Param("planId") Long planId
-    );
-
-    int scheduleSubscriptionCancellation(@Param("subscriptionId") Long subscriptionId);
-
-    int markReadyPaymentCanceled(
-            @Param("historyId") Long historyId,
-            @Param("reason") String reason
-    );
-
-    int insertScheduledPayment(ServiceAdminSchoolDto.ScheduledPayment payment);
-
-    int replaceReadyPaymentSchedule(
-            @Param("historyId") Long historyId,
-            @Param("merchantUid") String merchantUid,
-            @Param("portoneScheduleId") String portoneScheduleId
-    );
-
     int finalizeScheduledCancellations();
 }

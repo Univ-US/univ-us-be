@@ -9,11 +9,14 @@ import com.univus.app.subscription.service.SubscriptionAccessService;
 import com.univus.app.subscription.service.SubscriptionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -191,6 +194,33 @@ public class SubscriptionController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("success", false, "message", ex.getMessage()));
         }
+    }
+
+    // school-admin(ADM)이 자기 학교의 구독 플랜 변경을 예약하는 API입니다.
+    // 다음 결제(webhook 성공) 시점에만 실제로 플랜이 바뀝니다.
+    @PatchMapping("/plan")
+    public ResponseEntity<SubscriptionAccessStatusDto> changeMyPlan(
+            @AuthenticationPrincipal Long memberId,
+            @Valid @RequestBody SubscriptionPlanChangeRequestDto request
+    ) {
+        return ResponseEntity.ok(subscriptionService.changeMyPlan(memberId, request.getPlanId()));
+    }
+
+    // school-admin(ADM)이 자기 학교의 구독 취소를 예약하는 API입니다.
+    @PatchMapping("/cancel")
+    public ResponseEntity<SubscriptionAccessStatusDto> cancelMySubscription(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        return ResponseEntity.ok(subscriptionService.cancelMySubscription(memberId));
+    }
+
+    // school-admin(ADM)이 예약된 구독 취소를 철회하는 API입니다.
+    // 다음 결제를 다시 예약하고 pendingAction을 초기화합니다.
+    @DeleteMapping("/cancel")
+    public ResponseEntity<SubscriptionAccessStatusDto> resumeMySubscription(
+            @AuthenticationPrincipal Long memberId
+    ) {
+        return ResponseEntity.ok(subscriptionService.resumeMySubscription(memberId));
     }
 
     private void addAuthCookies(HttpServletResponse response, RefreshTokenResponseDto auth) {
