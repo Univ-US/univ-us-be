@@ -116,7 +116,21 @@ public class MemberController {
   }
 
   @GetMapping("/me")
-  public AuthSessionResponseDto me(@AuthenticationPrincipal Long memberId) {
+  public AuthSessionResponseDto me(
+          @AuthenticationPrincipal Long memberId,
+          HttpServletRequest httpServletRequest,
+          HttpServletResponse httpServletResponse
+  ) {
+    authCookieUtil
+            .getCookieValue(
+                    httpServletRequest,
+                    AuthCookieUtil.ACCESS_TOKEN_COOKIE
+            )
+            .ifPresent(token ->
+                    authCookieUtil.addWebSocketAccessTokenSessionCookie(
+                            httpServletResponse,
+                            token
+                    ));
     return memberService.getSession(memberId);
   }
 

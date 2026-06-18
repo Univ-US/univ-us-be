@@ -30,6 +30,7 @@
         <result property="createdAt"              column="CREATED_AT"/>
         <result property="lastMessageText"        column="LAST_MESSAGE_TEXT"/>
         <result property="lastMessageAt"          column="LAST_MESSAGE_AT"/>
+        <result property="unreadCount"            column="UNREAD_COUNT"/>
     </resultMap>
 
     <resultMap id="SeatChatMessageResultMap"
@@ -141,7 +142,14 @@
             CR.STATUS,
             CR.CREATED_AT,
             LM.MESSAGE_TEXT AS LAST_MESSAGE_TEXT,
-            LM.CREATED_AT AS LAST_MESSAGE_AT
+            LM.CREATED_AT AS LAST_MESSAGE_AT,
+            (
+                SELECT COUNT(*)
+                FROM SEAT_CHAT_MESSAGES UM
+                WHERE UM.ROOM_ID = CR.ROOM_ID
+                  AND UM.SENDER_RES_ID != #{reservationId}
+                  AND NVL(UM.IS_READ, 0) = 0
+            ) AS UNREAD_COUNT
         FROM SEAT_CHAT_ROOMS CR
         JOIN READING_SEAT_RESERVATIONS TR
           ON TR.RESERVATION_ID = CASE
@@ -188,7 +196,14 @@
             CR.STATUS,
             CR.CREATED_AT,
             LM.MESSAGE_TEXT AS LAST_MESSAGE_TEXT,
-            LM.CREATED_AT AS LAST_MESSAGE_AT
+            LM.CREATED_AT AS LAST_MESSAGE_AT,
+            (
+                SELECT COUNT(*)
+                FROM SEAT_CHAT_MESSAGES UM
+                WHERE UM.ROOM_ID = CR.ROOM_ID
+                  AND UM.SENDER_RES_ID != #{reservationId}
+                  AND NVL(UM.IS_READ, 0) = 0
+            ) AS UNREAD_COUNT
         FROM SEAT_CHAT_ROOMS CR
         JOIN READING_SEAT_RESERVATIONS TR
           ON TR.RESERVATION_ID = CASE
@@ -240,6 +255,14 @@
         )
         ORDER BY CREATED_AT ASC, MESSAGE_ID ASC
     </select>
+
+    <update id="markIncomingMessagesRead">
+        UPDATE SEAT_CHAT_MESSAGES
+        SET IS_READ = 1
+        WHERE ROOM_ID = #{roomId}
+          AND SENDER_RES_ID != #{reservationId}
+          AND NVL(IS_READ, 0) = 0
+    </update>
 
     <insert id="insertSeatChatMessage"
             parameterType="com.univus.app.reservation.dto.SeatChatDto$SeatChatMessageDto">

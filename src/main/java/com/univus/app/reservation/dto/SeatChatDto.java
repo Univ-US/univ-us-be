@@ -38,6 +38,7 @@ public class SeatChatDto {
     public static class SeatChatContextDto {
         private ActiveSeatReservationDto activeReservation;
         private List<SeatChatRoomDto> rooms;
+        private Integer totalUnreadCount;
     }
 
     @Getter
@@ -71,6 +72,22 @@ public class SeatChatDto {
         private LocalDateTime createdAt;
         private String lastMessageText;
         private LocalDateTime lastMessageAt;
+        private Integer unreadCount;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SeatChatNotificationDto {
+        private Long roomId;
+        private Long messageId;
+        private Long senderReservationId;
+        private String senderRoomName;
+        private String senderSeatNumber;
+        private String messageText;
+        private LocalDateTime createdAt;
     }
 
     @Getter
