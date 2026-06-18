@@ -19,10 +19,10 @@ SLM-010 학생 캘린더 SQL (학생 전용 — 수강 강의 LECTURE_STUDENT_EN
         SELECT l.LEC_ID                               AS lecId,
                lc.LEC_COD_NAME                        AS courseName,
                l.LEC_SECTION                          AS lecSection,
-               t.LEC_TIM_DAY_CODE                     AS dayCode,
-               TO_CHAR(t.LEC_TIM_STR_TIME, 'HH24:MI') AS startTime,
-               TO_CHAR(t.LEC_TIM_END_TIME, 'HH24:MI') AS endTime,
-               TO_CHAR(s.SEM_STR_DATE, 'YYYY-MM-DD')  AS semStartDate,
+               t.LEC_TIM_DAY_CODE                     AS lecTimDayCode,
+               TO_CHAR(t.LEC_TIM_STR_TIME, 'HH24:MI') AS lecTimStrTime,
+               TO_CHAR(t.LEC_TIM_END_TIME, 'HH24:MI') AS lecTimEndTime,
+               TO_CHAR(s.SEM_STR_DATE, 'YYYY-MM-DD')  AS semStrDate,
                TO_CHAR(s.SEM_END_DATE, 'YYYY-MM-DD')  AS semEndDate
         FROM LECTURE_TIME t
         JOIN LECTURE l       ON l.LEC_ID       = t.LEC_ID
@@ -41,9 +41,9 @@ SLM-010 학생 캘린더 SQL (학생 전용 — 수강 강의 LECTURE_STUDENT_EN
     <!-- 수강 강의 과제 마감 — 범위 내 마감일/시각, 비폐강 강의만 (과제명=LEC_ASN_TITLE) -->
     <select id="selectAssignmentDues" resultType="com.univus.app.lms.dto.LmsStuCalendarDto$AssignmentDueRow">
         SELECT l.LEC_ID                                  AS lecId,
-               a.LEC_ASN_TITLE                           AS title,
-               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY-MM-DD') AS dueDate,
-               TO_CHAR(a.LEC_ASN_DUE_DATE, 'HH24:MI')    AS dueTime
+               a.LEC_ASN_TITLE                           AS lecAsnTitle,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY-MM-DD') AS lecAsnDueDate,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'HH24:MI')    AS lecAsnDueTime
         FROM LECTURE_ASSIGNMENT a
         JOIN LECTURE l ON l.LEC_ID = a.LEC_ID
         WHERE l.LEC_VAL_STATUS != 'CNCL'
