@@ -10,15 +10,15 @@
     </select>
 
     <select id="selectStudentNotices" resultType="com.univus.app.lms.dto.LmsStuNoticeDto$NoticeRow">
-        SELECT a.LEC_ANN_ID AS id,
-               s.SEM_YEAR AS year,
-               s.SEM_TERM AS termCode,
+        SELECT a.LEC_ANN_ID AS noticeId,
+               s.SEM_YEAR AS semYear,
+               s.SEM_TERM AS semTerm,
                l.LEC_ID AS lecId,
                l.LEC_SECTION AS lecSection,
                lc.LEC_COD_NAME AS courseName,
                lc.LEC_COD_NAME AS courseFullName,
-               a.LEC_ANN_TITLE AS title,
-               a.LEC_ANN_CONTENT AS content,
+               a.LEC_ANN_TITLE AS lecAnnTitle,
+               a.LEC_ANN_CONTENT AS lecAnnContent,
                mb.MEMBER_NAME AS author,
                (
                    SELECT lpi.LMS_PRF_IMG_ORG_URL
@@ -28,7 +28,7 @@
                    ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC
                    FETCH FIRST 1 ROWS ONLY
                ) AS authorImageUrl,
-               TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS regDate,
+               TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAnnRegDate,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'MM.DD') AS listDate
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
