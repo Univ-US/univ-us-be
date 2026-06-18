@@ -120,7 +120,7 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
     public LmsProfUploadDto.MaterialResDto createUpload(Long memberId, LmsProfUploadDto.CreateReqDto request) {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
 
-        String title = requireTitle(request.getTitle());
+        String title = requireTitle(request.getLecUplTitle());
         // 파일은 선택·다중 — 텍스트(설명)만으로도 등록 가능
         List<MultipartFile> files = normalizeFiles(request.getFiles());
         validateFiles(files);
@@ -133,7 +133,7 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
         LmsProfUploadDto.InsertParam param = LmsProfUploadDto.InsertParam.builder()
                 .lecId(request.getLecId())
                 .title(title)
-                .content(normalizeContent(request.getContent()))
+                .content(normalizeContent(request.getLecUplContent()))
                 .build();
         lmsProfUploadMapper.insertUpload(param);
 
@@ -152,8 +152,8 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
         requireOwnedUpload(uploadId, lmsPrfId);
 
-        String title = requireTitle(request.getTitle());
-        lmsProfUploadMapper.updateUpload(uploadId, title, normalizeContent(request.getContent()));
+        String title = requireTitle(request.getLecUplTitle());
+        lmsProfUploadMapper.updateUpload(uploadId, title, normalizeContent(request.getLecUplContent()));
 
         // 기존 첨부 개별 제거 (소프트 무효화 — uploadId 조건으로 본 자료의 첨부만)
         List<Long> removeIds = request.getRemoveAttachmentIds() == null
@@ -220,8 +220,8 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .year(row.getYear())
-                .termCode(row.getTermCode())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
                 .lecValStatus(row.getLecValStatus())
                 .build();
     }
@@ -232,11 +232,11 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .year(row.getYear())
-                .termCode(row.getTermCode())
-                .title(row.getTitle())
-                .content(row.getContent())
-                .uploadedAt(row.getUploadedAt())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .lecUplTitle(row.getLecUplTitle())
+                .lecUplContent(row.getLecUplContent())
+                .lecUplRegDate(row.getLecUplRegDate())
                 .build();
     }
 
@@ -251,8 +251,8 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
 
     private LmsProfUploadDto.SemesterOptionResDto toSemesterOptionResDto(LmsProfUploadDto.SemesterOptionRow row) {
         return LmsProfUploadDto.SemesterOptionResDto.builder()
-                .year(row.getYear())
-                .termCode(row.getTermCode())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
                 .build();
     }
 
