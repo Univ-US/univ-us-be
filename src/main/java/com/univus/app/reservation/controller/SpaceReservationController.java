@@ -110,6 +110,19 @@ public class SpaceReservationController {
         }
     }
 
+    @PostMapping("/rooms/{reservationId}/checkin")
+    public ResponseEntity<?> checkInRoom(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("reservationId") Long reservationId) {
+        try {
+            reservationService.checkInRoom(memberId, reservationId);
+            return ResponseEntity.ok(Map.of("success", true, "message", "정상적으로 입실 처리되었습니다."));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
     @GetMapping("/seats/availability")
     public ResponseEntity<List<ReadingRoomAvailabilityDto>> getReadingRoomAvailability(
             @AuthenticationPrincipal Long memberId,

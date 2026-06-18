@@ -198,6 +198,8 @@ public class ReservationDto {
         private LocalDateTime endTime;
         private String status;
         private LocalDateTime createdAt;
+        private String checkInState;
+        private LocalDateTime checkInDeadline;
     }
 
     @Getter

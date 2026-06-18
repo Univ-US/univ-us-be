@@ -101,6 +101,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             Long memberId,
             ReservationDto.RoomReservationRequestDto request) {
         validateReservationPenaltyLimit(memberId);
+        if (!LocalDateTime.now(RESERVATION_ZONE).isBefore(request.getStartTime().plusMinutes(20))) {
+            throw new IllegalArgumentException("예약 시작 후 20분이 지난 시간대는 예약할 수 없습니다.");
+        }
 
         int usableRoomCount = reservationMapper.countUsableReservationRoom(request.getRoomId());
         if (usableRoomCount == 0) {
@@ -144,6 +147,19 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
             throw new IllegalArgumentException("취소할 수 있는 공간 예약을 찾을 수 없습니다.");
         }
         publishRoomRealtimeEventAfterCommit(REALTIME_ACTION_CANCELLED, reservation);
+    }
+
+    @Transactional
+    @Override
+    public void checkInRoom(Long memberId, Long reservationId) {
+        int updated = reservationMapper.checkInRoomReservation(reservationId, memberId);
+        if (updated == 0) {
+            throw new IllegalArgumentException("입실할 수 있는 공간 예약이 아니거나 입실 가능 시간이 지났습니다.");
+        }
+
+        ReservationDto.RoomReservationDto reservation =
+                reservationMapper.selectRoomReservationForMember(reservationId, memberId);
+        publishRoomRealtimeEventAfterCommit("CHECKED_IN", reservation);
     }
 
     @Transactional
