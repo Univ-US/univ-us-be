@@ -109,7 +109,8 @@ public interface SubscriptionMapper {
 
     int updateNextBillingAt(
             @Param("subscriptionId") Long subscriptionId,
-            @Param("nextBillingAt") LocalDateTime nextBillingAt
+            @Param("nextBillingAt") LocalDateTime nextBillingAt,
+            @Param("planName") String planName
     );
 
     int updatePaymentScheduleId(
@@ -159,5 +160,28 @@ public interface SubscriptionMapper {
     int updateMemberAsUniversityAdmin(
             @Param("memberId") Long memberId,
             @Param("univId") Long univId
+    );
+
+    // 자기 학교(univId)의 현재 ACTIVE 구독과, 그 구독의 다음 READY 결제 이력을 함께 조회합니다.
+    // 플랜 변경/구독 취소 예약 처리의 대상 조회에 사용합니다.
+    SubscriptionMutationTargetDto findMutationTargetByUnivId(@Param("univId") Long univId);
+
+    // 다음 결제부터 새 플랜을 적용하기 위해 PENDING_ACTION만 표시합니다.
+    // PLAN_ID는 실제 결제가 성공한 뒤(webhook)에만 갱신합니다.
+    int markPendingPlanChange(@Param("subscriptionId") Long subscriptionId);
+
+    int scheduleSubscriptionCancellation(@Param("subscriptionId") Long subscriptionId);
+
+    // 예약된 구독 취소를 철회합니다(PENDING_ACTION='CANCEL' 해제).
+    int clearPendingCancellation(@Param("subscriptionId") Long subscriptionId);
+
+    // 예약된 플랜 변경을 취소합니다(PENDING_ACTION='PLAN_CHANGE' 해제).
+    int clearPendingPlanChange(@Param("subscriptionId") Long subscriptionId);
+
+    // PortOne 예약결제 교체가 실패했을 때, 기존 예약 정보로 결제 이력을 복구합니다.
+    int replaceReadyPaymentSchedule(
+            @Param("historyId") Long historyId,
+            @Param("merchantUid") String merchantUid,
+            @Param("portoneScheduleId") String portoneScheduleId
     );
 }

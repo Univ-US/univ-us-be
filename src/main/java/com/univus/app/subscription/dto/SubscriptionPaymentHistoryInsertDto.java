@@ -39,4 +39,8 @@ public class SubscriptionPaymentHistoryInsertDto {
     private String failReason;
     private Long amount;
     private String planName;
+
+    // 예약결제(PortOne payment-schedule) 생성 시 받은 스케줄 ID입니다.
+    // 즉시결제 흐름에서는 null입니다.
+    private String portoneScheduleId;
 }

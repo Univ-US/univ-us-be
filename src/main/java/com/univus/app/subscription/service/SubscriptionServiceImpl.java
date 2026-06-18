@@ -43,6 +43,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     private final PortOnePaymentClient portOnePaymentClient;
     private final PortOneBillingClient portOneBillingClient;
     private final SubscriptionPaymentFailureRecorder failureRecorder;
+    private final SubscriptionLifecycleService subscriptionLifecycleService;
 
     @Value("${portone.subscription.store-id:}")
     private String portOneStoreId;
@@ -508,6 +509,33 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     public List<SubscriptionPaymentHistoryResponseDto> getPaymentHistory(Long memberId) {
         SubscriptionAccessStatusDto status = requireSchoolAdmin(memberId);
         return subscriptionMapper.findPaymentsByUnivId(status.getUnivId());
+    }
+
+    @Override
+    @Transactional
+    public SubscriptionAccessStatusDto changeMyPlan(Long memberId, Long planId) {
+        if (planId == null) {
+            throw new IllegalArgumentException("구독 플랜 ID가 필요합니다.");
+        }
+        SubscriptionAccessStatusDto status = requireSchoolAdmin(memberId);
+        subscriptionLifecycleService.changePlan(status.getUnivId(), planId);
+        return subscriptionAccessService.getStatus(memberId);
+    }
+
+    @Override
+    @Transactional
+    public SubscriptionAccessStatusDto cancelMySubscription(Long memberId) {
+        SubscriptionAccessStatusDto status = requireSchoolAdmin(memberId);
+        subscriptionLifecycleService.scheduleCancellation(status.getUnivId());
+        return subscriptionAccessService.getStatus(memberId);
+    }
+
+    @Override
+    @Transactional
+    public SubscriptionAccessStatusDto resumeMySubscription(Long memberId) {
+        SubscriptionAccessStatusDto status = requireSchoolAdmin(memberId);
+        subscriptionLifecycleService.resumeSubscription(status.getUnivId());
+        return subscriptionAccessService.getStatus(memberId);
     }
 
     // school-admin(ADM) 전용 조회 API에서 자신의 학교로만 범위를 제한하기 위해 사용합니다.
