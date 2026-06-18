@@ -20,15 +20,15 @@ public final class LmsStuMaterialsDto {
     @AllArgsConstructor
     @Builder
     public static class MaterialFlatRow {
-        private Integer year;
-        private String termCode;
-        private Long lecId;
-        private String courseName;
-        private Integer lecSection;
-        private Long uploadId;
-        private String title;
-        private String content;
-        private String uploadedAt;
+        private Integer semYear;          // SEMESTERS.SEM_YEAR
+        private String semTerm;           // SEMESTERS.SEM_TERM
+        private Long lecId;               // LECTURE.LEC_ID
+        private String courseName;        // LECTURE_CODE.LEC_COD_NAME (조인)
+        private Integer lecSection;       // LECTURE.LEC_SECTION (분반)
+        private Long uploadId;            // LECTURE_UPLOADING.LEC_UPL_ID (PK)
+        private String lecUplTitle;       // LECTURE_UPLOADING.LEC_UPL_TITLE
+        private String lecUplContent;     // LECTURE_UPLOADING.LEC_UPL_CONTENT
+        private String lecUplRegDate;     // LEC_UPL_REG_DATE (TO_CHAR 'YYYY-MM-DD')
     }
 
     @Getter
@@ -74,12 +74,12 @@ public final class LmsStuMaterialsDto {
     @Builder
     public static class MaterialResDto {
         private Long uploadId;
-        private String title;
-        private String content;
-        private String uploadedAt;
+        private String lecUplTitle;
+        private String lecUplContent;
+        private String lecUplRegDate;
         private List<AttachmentResDto> attachments;
-        private boolean downloadable;
-        private String lockedReason;
+        private boolean downloadable;     // 파생
+        private String lockedReason;      // 파생
     }
 
     @Getter
@@ -100,8 +100,8 @@ public final class LmsStuMaterialsDto {
     @AllArgsConstructor
     @Builder
     public static class SemesterMaterialsResDto {
-        private Integer year;
-        private String termCode;
+        private Integer semYear;
+        private String semTerm;
         private String semesterLabel;
         private List<CourseMaterialsResDto> courses;
     }

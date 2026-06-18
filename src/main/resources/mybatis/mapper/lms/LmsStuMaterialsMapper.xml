@@ -10,15 +10,15 @@
     </select>
 
     <select id="selectMaterialRows" resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$MaterialFlatRow">
-        SELECT s.SEM_YEAR AS year,
-               s.SEM_TERM AS termCode,
+        SELECT s.SEM_YEAR AS semYear,
+               s.SEM_TERM AS semTerm,
                l.LEC_ID AS lecId,
                lc.LEC_COD_NAME AS courseName,
                l.LEC_SECTION AS lecSection,
                u.LEC_UPL_ID AS uploadId,
-               u.LEC_UPL_TITLE AS title,
-               u.LEC_UPL_CONTENT AS content,
-               TO_CHAR(u.LEC_UPL_REG_DATE, 'YYYY-MM-DD') AS uploadedAt
+               u.LEC_UPL_TITLE AS lecUplTitle,
+               u.LEC_UPL_CONTENT AS lecUplContent,
+               TO_CHAR(u.LEC_UPL_REG_DATE, 'YYYY-MM-DD') AS lecUplRegDate
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
