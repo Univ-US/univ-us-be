@@ -2,8 +2,8 @@ package com.univus.app.reservation.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,12 +34,14 @@ public class ReservationServiceImpl implements ReservationService {
     public ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(
             int days) {
         LocalDateTime serverNow =
-                LocalDateTime.now(ReservationPolicy.RESERVATION_ZONE);
+                LocalDateTime.now(ReservationConstants.RESERVATION_ZONE);
         LocalDate today = serverNow.toLocalDate();
+        int dateOptionDays = normalizeDateOptionDays(days);
         List<ReservationDto.ReservationDateOptionDto> dates =
-                IntStream.range(0, normalizeDateOptionDays(days))
-                        .mapToObj(index -> createDateOption(today, index))
-                        .toList();
+                new ArrayList<>();
+        for (int index = 0; index < dateOptionDays; index++) {
+            dates.add(createDateOption(today, index));
+        }
 
         return ReservationDto.ReservationDateOptionsResponseDto.builder()
                 .serverNow(serverNow)
@@ -223,20 +225,26 @@ public class ReservationServiceImpl implements ReservationService {
         LocalDateTime dateStart = date.atStartOfDay();
         LocalDateTime dateEnd = date.plusDays(1).atStartOfDay();
         LocalDateTime serverNow =
-                LocalDateTime.now(ReservationPolicy.RESERVATION_ZONE);
+                LocalDateTime.now(ReservationConstants.RESERVATION_ZONE);
         List<ReservationDto.RoomReservationSlotDto> reservations =
                 reservationMapper.selectRoomReservationsBetween(
                         dateStart,
                         dateEnd);
+        List<ReservationDto.RoomAvailabilityDto> rooms =
+                reservationMapper.selectActiveReservationRooms(memberId);
+        List<ReservationDto.RoomAvailabilityDto> roomsWithSlots =
+                new ArrayList<>();
 
-        return reservationMapper.selectActiveReservationRooms(memberId)
-                .stream()
-                .map(room -> roomSlotFactory.attachSlots(
-                                room,
-                                date,
-                                serverNow,
-                                reservations))
-                .toList();
+        for (ReservationDto.RoomAvailabilityDto room : rooms) {
+            ReservationDto.RoomAvailabilityDto roomWithSlots =
+                    roomSlotFactory.attachSlots(
+                            room,
+                            date,
+                            serverNow,
+                            reservations);
+            roomsWithSlots.add(roomWithSlots);
+        }
+        return roomsWithSlots;
     }
 
     @Override
@@ -330,8 +338,12 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private int normalizeDateOptionDays(int days) {
-        return Math.max(
-                MIN_DATE_OPTION_DAYS,
-                Math.min(days, MAX_DATE_OPTION_DAYS));
+        if (days < MIN_DATE_OPTION_DAYS) {
+            return MIN_DATE_OPTION_DAYS;
+        }
+        if (days > MAX_DATE_OPTION_DAYS) {
+            return MAX_DATE_OPTION_DAYS;
+        }
+        return days;
     }
 }

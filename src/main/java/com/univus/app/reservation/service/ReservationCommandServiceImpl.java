@@ -1,7 +1,6 @@
 package com.univus.app.reservation.service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,11 +55,12 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
         reservationMapper.insertReadingSeatReservation(reservation);
         ReservationDto.ReadingSeatReservationDto response =
-                Optional.ofNullable(
-                                reservationMapper.selectReadingSeatReservationForMember(
-                                        reservation.getReservationId(),
-                                        memberId))
-                        .orElse(reservation);
+                reservationMapper.selectReadingSeatReservationForMember(
+                        reservation.getReservationId(),
+                        memberId);
+        if (response == null) {
+            response = reservation;
+        }
         realtimePublisher.publishSeatAfterCommit(ACTION_RESERVED, response);
         return response;
     }

@@ -20,7 +20,8 @@ class ReservationServiceImplTest {
     private final ReservationMapper reservationMapper = mock(ReservationMapper.class);
     private final ReservationCommandService reservationCommandService =
             mock(ReservationCommandService.class);
-    private final ReservationPolicy reservationPolicy = new ReservationPolicy();
+    private final ReservationPolicy reservationPolicy =
+            new ReservationPolicyImpl();
     private final ReservationLockExecutor lockExecutor =
             mock(ReservationLockExecutor.class);
     private final RoomSlotFactory roomSlotFactory = mock(RoomSlotFactory.class);
