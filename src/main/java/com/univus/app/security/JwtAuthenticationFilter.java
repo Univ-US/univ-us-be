@@ -69,10 +69,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isSessionAllowed(Long memberId, String role, String sessionId) {
-        if (!"ADM".equals(role) && !"SUA".equals(role)) {
-            return true;
+        if ("ADM".equals(role) || "SUA".equals(role)) {
+            return refreshTokenRedisService.isCurrentAdminSession(memberId, sessionId);
         }
 
-        return refreshTokenRedisService.isCurrentAdminSession(memberId, sessionId);
+        return refreshTokenRedisService.sessionExists(memberId, sessionId);
     }
 }
