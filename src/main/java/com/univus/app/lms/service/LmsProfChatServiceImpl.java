@@ -40,6 +40,14 @@ public class LmsProfChatServiceImpl implements LmsProfChatService {
 
     @Override
     @Transactional
+    public List<LmsProfChatDto.ChatRoomResDto> getStartableRooms(Long memberId) {
+        Long professorLmsPrfId = requireProfessorLmsPrfId(memberId);
+        lmsProfChatMapper.insertMissingRooms(professorLmsPrfId);
+        return lmsProfChatMapper.selectStartableRooms(professorLmsPrfId);
+    }
+
+    @Override
+    @Transactional
     public LmsProfChatDto.ChatThreadResDto getChatThread(Long memberId, Long roomId) {
         Long professorLmsPrfId = requireProfessorLmsPrfId(memberId);
         requireProfessorRoom(roomId, professorLmsPrfId);

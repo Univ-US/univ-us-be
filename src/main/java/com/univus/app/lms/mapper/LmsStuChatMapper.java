@@ -15,6 +15,8 @@ public interface LmsStuChatMapper {
 
     List<LmsStuChatDto.ChatRoomResDto> selectChatRooms(@Param("lmsPrfId") Long lmsPrfId);
 
+    List<LmsStuChatDto.ChatRoomResDto> selectStartableRooms(@Param("lmsPrfId") Long lmsPrfId);
+
     LmsStuChatDto.ChatRoomResDto selectChatRoomForStudent(
             @Param("roomId") Long roomId,
             @Param("lmsPrfId") Long lmsPrfId);

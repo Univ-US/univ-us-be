@@ -32,6 +32,17 @@ public class LmsStuChatController {
         }
     }
 
+    // '채팅 만들기' 후보 — 수강 중이나 아직 대화 안 한 과목 방(빈 방). ('/{roomId}'보다 우선 매칭되는 리터럴 경로)
+    @GetMapping("/startable")
+    public ResponseEntity<?> requestGetStartableRooms(Authentication authentication) {
+        try {
+            Long memberId = Long.valueOf(authentication.getPrincipal().toString());
+            return ResponseEntity.ok(lmsStuChatService.getStartableRooms(memberId));
+        } catch (IllegalArgumentException ex) {
+            return badRequest(ex);
+        }
+    }
+
     @GetMapping("/unread-count")
     public ResponseEntity<?> requestGetUnreadCount(Authentication authentication) {
         try {
