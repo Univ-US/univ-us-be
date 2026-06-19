@@ -49,10 +49,10 @@ public class LmsStuMaterialsServiceImpl implements LmsStuMaterialsService {
         Map<Long, LmsStuMaterialsDto.MaterialResDto> materialIndex = new LinkedHashMap<>();
 
         for (LmsStuMaterialsDto.MaterialFlatRow row : rows) {
-            String key = row.getYear() + ":" + row.getTermCode();
+            String key = row.getSemYear() + ":" + row.getSemTerm();
             SemesterAccumulator semester = semesters.computeIfAbsent(
                     key,
-                    ignored -> new SemesterAccumulator(row.getYear(), row.getTermCode()));
+                    ignored -> new SemesterAccumulator(row.getSemYear(), row.getSemTerm()));
             CourseAccumulator course = semester.course(row);
             if (row.getUploadId() != null) {
                 LmsStuMaterialsDto.MaterialResDto material = toMaterialResDto(row);
@@ -102,9 +102,9 @@ public class LmsStuMaterialsServiceImpl implements LmsStuMaterialsService {
     private LmsStuMaterialsDto.MaterialResDto toMaterialResDto(LmsStuMaterialsDto.MaterialFlatRow row) {
         return LmsStuMaterialsDto.MaterialResDto.builder()
                 .uploadId(row.getUploadId())
-                .title(row.getTitle())
-                .content(row.getContent())
-                .uploadedAt(row.getUploadedAt())
+                .lecUplTitle(row.getLecUplTitle())
+                .lecUplContent(row.getLecUplContent())
+                .lecUplRegDate(row.getLecUplRegDate())
                 .attachments(Collections.emptyList())
                 .downloadable(true)
                 .lockedReason(null)
@@ -148,8 +148,8 @@ public class LmsStuMaterialsServiceImpl implements LmsStuMaterialsService {
 
         private LmsStuMaterialsDto.SemesterMaterialsResDto toResponse() {
             return LmsStuMaterialsDto.SemesterMaterialsResDto.builder()
-                    .year(year)
-                    .termCode(termCode)
+                    .semYear(year)
+                    .semTerm(termCode)
                     .semesterLabel(semesterLabel(year, termCode))
                     .courses(courses.values().stream()
                             .map(CourseAccumulator::toResponse)

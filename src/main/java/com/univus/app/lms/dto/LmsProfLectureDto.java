@@ -15,7 +15,7 @@ public class LmsProfLectureDto {
     private Integer lecSection;     // LECTURE.LEC_SECTION (분반)
     private Long semId;             // LECTURE.SEM_ID
     private String lecValStatus;    // LECTURE.LEC_VAL_STATUS (OPEN/PROG/CLSD/CNCL) — FE가 공통코드 LEC_VAL_STATUS로 라벨
-    private Integer year;           // 학기 연도 (드롭다운·헤더 모두 반환)
-    private String termCode;        // 학기 코드 (드롭다운·헤더 모두 반환, SEM_TERM 공통코드로 라벨)
+    private Integer semYear;        // SEMESTERS.SEM_YEAR — 학기 연도 (드롭다운·헤더 모두 반환)
+    private String semTerm;         // SEMESTERS.SEM_TERM — 학기 코드 (드롭다운·헤더 모두 반환, 공통코드로 라벨)
     private String semesterDisplay; // 미사용 (서버 미설정, 항상 null)
 }

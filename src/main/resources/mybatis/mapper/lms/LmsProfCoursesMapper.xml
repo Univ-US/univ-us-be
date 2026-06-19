@@ -23,8 +23,8 @@
         SELECT
             l.LEC_ID        AS lecId,
             s.SEM_ID        AS semId,
-            s.SEM_YEAR      AS year,
-            s.SEM_TERM      AS termCode,
+            s.SEM_YEAR      AS semYear,
+            s.SEM_TERM      AS semTerm,
             CASE WHEN TRUNC(SYSDATE) BETWEEN TRUNC(s.SEM_STR_DATE) AND TRUNC(s.SEM_END_DATE)
                  THEN 1 ELSE 0 END AS inProgressFlag,
             lc.LEC_COD_NAME AS courseName,

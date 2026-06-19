@@ -24,8 +24,8 @@ PLM-006 교수 과제 관리 SQL
         SELECT l.LEC_ID         AS lecId,
                lc.LEC_COD_NAME  AS courseName,
                l.LEC_SECTION    AS lecSection,
-               s.SEM_YEAR       AS year,
-               s.SEM_TERM       AS termCode,
+               s.SEM_YEAR       AS semYear,
+               s.SEM_TERM       AS semTerm,
                l.LEC_VAL_STATUS AS lecValStatus
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
@@ -59,12 +59,12 @@ PLM-006 교수 과제 관리 SQL
                asn.LEC_ID                                  AS lecId,
                lc.LEC_COD_NAME                             AS courseName,
                l.LEC_SECTION                               AS lecSection,
-               s.SEM_YEAR                                  AS year,
-               s.SEM_TERM                                  AS termCode,
-               asn.LEC_ASN_TITLE                           AS title,
-               asn.LEC_ASN_CONTENT                         AS description,
-               TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI') AS dueDate,
-               asn.LEC_ASN_VAL_STATUS                      AS valStatus,
+               s.SEM_YEAR                                  AS semYear,
+               s.SEM_TERM                                  AS semTerm,
+               asn.LEC_ASN_TITLE                           AS lecAsnTitle,
+               asn.LEC_ASN_CONTENT                         AS lecAsnContent,
+               TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI') AS lecAsnDueDate,
+               asn.LEC_ASN_VAL_STATUS                      AS lecAsnValStatus,
                (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb
                  WHERE sb.LEC_ASN_ID = asn.LEC_ASN_ID
                    AND sb.LEC_ASN_SBM_STATUS != 'NSB')      AS submittedCount,

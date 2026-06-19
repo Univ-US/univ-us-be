@@ -9,9 +9,9 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class LmsProfSemesterDto {
-    private Long semId;          // SEMESTERS.SEM_ID
-    private Integer year;        // SEMESTERS.SEM_YEAR
-    private String termCode;     // SEMESTERS.SEM_TERM (SemesterCode: SM1/SM2/...)
+    private Long semId;          // SEMESTERS.SEM_ID (자기 테이블 컬럼)
+    private Integer semYear;     // SEMESTERS.SEM_YEAR (자기 테이블 컬럼)
+    private String semTerm;      // SEMESTERS.SEM_TERM (자기 테이블 컬럼, SemesterCode: SM1/SM2/...)
     private String termLabel;    // SemesterCode.label ("1학기") — service에서 세팅
     private String displayName;  // "2026년 1학기" — service에서 세팅
 }

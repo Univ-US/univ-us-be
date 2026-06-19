@@ -28,14 +28,14 @@ public final class LmsStuCalendarDto {
     @AllArgsConstructor
     @Builder
     public static class LectureTimeRow {
-        private Long lecId;
-        private String courseName;   // LECTURE_CODE.LEC_COD_NAME
-        private Integer lecSection;  // LECTURE.LEC_SECTION (분반)
-        private String dayCode;      // LECTURE_TIME.LEC_TIM_DAY_CODE (MON~SUN)
-        private String startTime;    // "HH:mm" (TO_CHAR LEC_TIM_STR_TIME)
-        private String endTime;      // "HH:mm" (TO_CHAR LEC_TIM_END_TIME)
-        private String semStartDate; // "YYYY-MM-DD" (SEMESTERS.SEM_STR_DATE) — 전개 하한 경계
-        private String semEndDate;   // "YYYY-MM-DD" (SEMESTERS.SEM_END_DATE) — 전개 상한 경계
+        private Long lecId;            // LECTURE.LEC_ID
+        private String courseName;     // LECTURE_CODE.LEC_COD_NAME (조인 의미별칭)
+        private Integer lecSection;    // LECTURE.LEC_SECTION (분반)
+        private String lecTimDayCode;  // LECTURE_TIME.LEC_TIM_DAY_CODE (MON~SUN)
+        private String lecTimStrTime;  // "HH:mm" (TO_CHAR LEC_TIM_STR_TIME)
+        private String lecTimEndTime;  // "HH:mm" (TO_CHAR LEC_TIM_END_TIME)
+        private String semStrDate;     // "YYYY-MM-DD" (SEMESTERS.SEM_STR_DATE) — 전개 하한 경계
+        private String semEndDate;     // "YYYY-MM-DD" (SEMESTERS.SEM_END_DATE) — 전개 상한 경계
     }
 
     /** 과제 마감 1행 매핑 (selectAssignmentDues) — 범위 내 마감일/시각 */
@@ -45,10 +45,10 @@ public final class LmsStuCalendarDto {
     @AllArgsConstructor
     @Builder
     public static class AssignmentDueRow {
-        private Long lecId;
-        private String title;   // LECTURE_ASSIGNMENT.LEC_ASN_TITLE (과제명)
-        private String dueDate; // "YYYY-MM-DD" (TO_CHAR LEC_ASN_DUE_DATE)
-        private String dueTime; // "HH:mm" (TO_CHAR LEC_ASN_DUE_DATE)
+        private Long lecId;            // LECTURE.LEC_ID
+        private String lecAsnTitle;    // LECTURE_ASSIGNMENT.LEC_ASN_TITLE (과제명)
+        private String lecAsnDueDate;  // "YYYY-MM-DD" (TO_CHAR LEC_ASN_DUE_DATE — 날짜부)
+        private String lecAsnDueTime;  // "HH:mm" (TO_CHAR LEC_ASN_DUE_DATE — 시각부)
     }
 
     /* ===== 응답(ResDto) — JSON 프로퍼티명 = FE 계약(CalendarEvent, 불변) ===== */

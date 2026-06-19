@@ -97,7 +97,7 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
     public LmsProfNoticeDto.NoticeResDto createNotice(Long memberId, LmsProfNoticeDto.CreateReqDto request) {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
 
-        String title = requireTitle(request.getTitle());
+        String title = requireTitle(request.getLecAnnTitle());
         List<MultipartFile> files = normalizeFiles(request.getFiles());
         validateFiles(files);
 
@@ -108,7 +108,7 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
         LmsProfNoticeDto.InsertParam param = LmsProfNoticeDto.InsertParam.builder()
                 .lecId(request.getLecId())
                 .title(title)
-                .content(normalizeContent(request.getContent()))
+                .content(normalizeContent(request.getLecAnnContent()))
                 .build();
         lmsProfNoticeMapper.insertNotice(param);
 
@@ -127,8 +127,8 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
         requireOwnedNotice(noticeId, lmsPrfId);
 
-        String title = requireTitle(request.getTitle());
-        lmsProfNoticeMapper.updateNotice(noticeId, title, normalizeContent(request.getContent()));
+        String title = requireTitle(request.getLecAnnTitle());
+        lmsProfNoticeMapper.updateNotice(noticeId, title, normalizeContent(request.getLecAnnContent()));
 
         // 기존 첨부 개별 제거 (소프트 무효화 — noticeId 조건으로 본 공지의 첨부만)
         List<Long> removeIds = request.getRemoveAttachmentIds() == null
@@ -210,8 +210,8 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .year(row.getYear())
-                .termCode(row.getTermCode())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
                 .build();
     }
 
@@ -221,12 +221,12 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .year(row.getYear())
-                .termCode(row.getTermCode())
-                .title(row.getTitle())
-                .content(row.getContent())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .lecAnnTitle(row.getLecAnnTitle())
+                .lecAnnContent(row.getLecAnnContent())
                 .author(row.getAuthor())
-                .date(row.getRegDate())
+                .lecAnnRegDate(row.getLecAnnRegDate())
                 .listDate(row.getListDate())
                 .build();
     }

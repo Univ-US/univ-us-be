@@ -19,7 +19,7 @@
 
     <!-- 학기 목록 (드롭다운) -->
     <select id="selectSemesters" resultType="com.univus.app.lms.dto.LmsProfSemesterDto">
-        SELECT SEM_ID AS semId, SEM_YEAR AS year, SEM_TERM AS termCode
+        SELECT SEM_ID AS semId, SEM_YEAR AS semYear, SEM_TERM AS semTerm
         FROM SEMESTERS
         ORDER BY SEM_YEAR DESC, SEM_TERM DESC
     </select>
@@ -29,7 +29,7 @@
     <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsProfLectureDto">
         SELECT l.LEC_ID AS lecId, lc.LEC_COD_NAME AS lecName, lc.LEC_CODE AS lecCode,
                l.LEC_SECTION AS lecSection, l.SEM_ID AS semId,
-               s.SEM_YEAR AS year, s.SEM_TERM AS termCode, l.LEC_VAL_STATUS AS lecValStatus
+               s.SEM_YEAR AS semYear, s.SEM_TERM AS semTerm, l.LEC_VAL_STATUS AS lecValStatus
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
         JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
@@ -41,7 +41,7 @@
     <!-- 강의 헤더(+소유권 검증). 본인 강의 아니면 결과 없음 -->
     <select id="selectLectureHeader" resultType="com.univus.app.lms.dto.LmsProfLectureDto">
         SELECT l.LEC_ID AS lecId, lc.LEC_COD_NAME AS lecName, lc.LEC_CODE AS lecCode,
-               l.LEC_SECTION AS lecSection, l.SEM_ID AS semId, s.SEM_YEAR AS year, s.SEM_TERM AS termCode,
+               l.LEC_SECTION AS lecSection, l.SEM_ID AS semId, s.SEM_YEAR AS semYear, s.SEM_TERM AS semTerm,
                l.LEC_VAL_STATUS AS lecValStatus
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
@@ -138,9 +138,9 @@
     <select id="selectAssignmentScores" resultType="com.univus.app.lms.dto.LmsProfEnrolleeDto$AssignmentScoreRow">
         SELECT
             asn.LEC_ASN_ID        AS assignmentId,
-            asn.LEC_ASN_TITLE     AS title,
-            sb.LEC_ASN_SBM_STATUS AS submissionStatusCode,
-            ev.ASN_SBM_EVL_SCORE  AS score
+            asn.LEC_ASN_TITLE     AS lecAsnTitle,
+            sb.LEC_ASN_SBM_STATUS AS lecAsnSbmStatus,
+            ev.ASN_SBM_EVL_SCORE  AS asnSbmEvlScore
         FROM LECTURE_ASSIGNMENT asn
         LEFT JOIN LECTURE_ASSIGNMENT_SUBMISSION sb
                ON sb.LEC_ASN_ID = asn.LEC_ASN_ID AND sb.LMS_PRF_ID = #{studentLmsPrfId}
