@@ -9,6 +9,8 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
+import com.univus.app.exception.ConflictException;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -67,7 +69,7 @@ public class ReservationLockExecutorImpl implements ReservationLockExecutor {
                                 ReservationConstants.LOCK_WAIT_SECONDS,
                                 TimeUnit.SECONDS);
                 if (!locked) {
-                    throw new IllegalStateException(
+                    throw new ConflictException(
                             "예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
                 }
                 acquiredLocks.add(lock);
@@ -75,7 +77,9 @@ public class ReservationLockExecutorImpl implements ReservationLockExecutor {
             return operation.get();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("예약 처리가 중단되었습니다.", exception);
+            throw new ConflictException(
+                    "예약 처리가 중단되었습니다.",
+                    exception);
         } finally {
             releaseInReverseOrder(acquiredLocks);
         }

@@ -24,8 +24,14 @@ class SeatChatServiceImplTest {
     private final SeatChatMapper seatChatMapper = mock(SeatChatMapper.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
     private final RedissonClient redissonClient = mock(RedissonClient.class);
+    private final SeatChatPolicy seatChatPolicy =
+            new SeatChatPolicyImpl();
     private final SeatChatServiceImpl seatChatService =
-            new SeatChatServiceImpl(seatChatMapper, messagingTemplate, redissonClient);
+            new SeatChatServiceImpl(
+                    seatChatMapper,
+                    messagingTemplate,
+                    redissonClient,
+                    seatChatPolicy);
 
     @Test
     @DisplayName("좌석 채팅 메시지는 두 참여자의 개인 큐로만 발행한다")
