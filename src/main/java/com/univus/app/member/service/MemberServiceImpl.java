@@ -34,7 +34,7 @@ public class MemberServiceImpl implements MemberService {
   private final MemberMapper memberMapper;
   private final PasswordEncoder passwordEncoder;
   private final JwtTokenProvider jwtTokenProvider;
-  private final RefreshTokenRedisService refreshTokenRedisService;
+  private final RefreshTokenService refreshTokenService;
 
   @Transactional
   @Override
@@ -136,9 +136,9 @@ public class MemberServiceImpl implements MemberService {
 
     if (isAdminRole(member.getRole())) {
       if (Boolean.TRUE.equals(request.getForceLogin())) {
-        refreshTokenRedisService.deleteCurrentAdminSession(member.getMemberId());
+        refreshTokenService.deleteCurrentAdminSession(member.getMemberId());
       } else {
-        refreshTokenRedisService.findCurrentAdminSession(member.getMemberId())
+        refreshTokenService.findCurrentAdminSession(member.getMemberId())
                 .ifPresent(session -> {
                   insertLoginFailLog(member.getMemberId(), "CONCURRENT_ADMIN_SESSION");
                   throw new AdminSessionConflictException(session);
@@ -174,10 +174,10 @@ public class MemberServiceImpl implements MemberService {
       throw new InvalidLogoutException("Invalid logout request.");
     }
 
-    Long memberId = refreshTokenRedisService.findMemberId(refreshToken)
+    Long memberId = refreshTokenService.findMemberId(refreshToken)
             .orElseThrow(() -> new InvalidLogoutException("Invalid logout request."));
 
-    refreshTokenRedisService.delete(refreshToken);
+    refreshTokenService.delete(refreshToken);
 
     LoginLogDto loginLog = new LoginLogDto();
     loginLog.setMemberId(memberId);
@@ -215,37 +215,37 @@ public class MemberServiceImpl implements MemberService {
     }
 
     if (!jwtTokenProvider.validateToken(refreshToken)) {
-      refreshTokenRedisService.delete(refreshToken);
+      refreshTokenService.delete(refreshToken);
       throw new InvalidRefreshTokenException("Invalid refresh token.");
     }
 
-    RefreshTokenRedisService.LoginSession session =
-            refreshTokenRedisService.findSessionByRefreshToken(refreshToken)
+    RefreshTokenService.LoginSession session =
+            refreshTokenService.findSessionByRefreshToken(refreshToken)
                     .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token."));
 
     MemberDto member = memberMapper.findByMemberId(session.getMemberId());
 
     if (member == null) {
-      refreshTokenRedisService.delete(refreshToken);
+      refreshTokenService.delete(refreshToken);
       throw new InvalidRefreshTokenException("Invalid refresh token.");
     }
 
     if (STATUS_WITHDRAWN.equals(member.getStatus())) {
-      refreshTokenRedisService.delete(refreshToken);
+      refreshTokenService.delete(refreshToken);
       throw new InvalidRefreshTokenException("Inactive account.");
     }
 
     if (isAdminRole(member.getRole())
-            && !refreshTokenRedisService.isCurrentAdminSession(
+            && !refreshTokenService.isCurrentAdminSession(
             member.getMemberId(),
             session.getSessionId()
     )) {
-      refreshTokenRedisService.delete(refreshToken);
+      refreshTokenService.delete(refreshToken);
       throw new InvalidRefreshTokenException("The administrator session has expired.");
     }
 
     String newRefreshToken = jwtTokenProvider.createRefreshToken(member.getMemberId());
-    refreshTokenRedisService.rotate(
+    refreshTokenService.rotate(
             refreshToken,
             newRefreshToken,
             jwtTokenProvider.getRefreshTokenValidity()
@@ -274,7 +274,7 @@ public class MemberServiceImpl implements MemberService {
       throw new InvalidRefreshTokenException("Invalid authentication session.");
     }
 
-    refreshTokenRedisService.deleteCurrentAdminSession(memberId);
+    refreshTokenService.deleteCurrentAdminSession(memberId);
     return createSessionTokens(memberId, ROLE_ADMIN, ipAddress, userAgent);
   }
 
@@ -285,8 +285,8 @@ public class MemberServiceImpl implements MemberService {
           String userAgent
   ) {
     String refreshToken = jwtTokenProvider.createRefreshToken(memberId);
-    RefreshTokenRedisService.LoginSession session =
-            refreshTokenRedisService.createSession(
+    RefreshTokenService.LoginSession session =
+            refreshTokenService.createSession(
                     refreshToken,
                     memberId,
                     role,

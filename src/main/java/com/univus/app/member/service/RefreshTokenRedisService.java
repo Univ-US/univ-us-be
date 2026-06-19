@@ -1,7 +1,6 @@
 package com.univus.app.member.service;
 
 import com.univus.app.member.dto.AdminSessionInfoDto;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -21,7 +20,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class RefreshTokenRedisService {
+public class RefreshTokenRedisService implements RefreshTokenService {
 
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
     private static final String SESSION_KEY_PREFIX = "auth:session:";
@@ -37,6 +36,7 @@ public class RefreshTokenRedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
+    @Override
     public LoginSession createSession(
             String refreshToken,
             Long memberId,
@@ -70,6 +70,7 @@ public class RefreshTokenRedisService {
         return new LoginSession(sessionId, memberId, role);
     }
 
+    @Override
     public Optional<LoginSession> findSessionByRefreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             return Optional.empty();
@@ -90,10 +91,12 @@ public class RefreshTokenRedisService {
         return Optional.of(toLoginSession(sessionId, session));
     }
 
+    @Override
     public Optional<Long> findMemberId(String refreshToken) {
         return findSessionByRefreshToken(refreshToken).map(LoginSession::getMemberId);
     }
 
+    @Override
     public Optional<AdminSessionInfoDto> findCurrentAdminSession(Long memberId) {
         Object sessionIdValue = redisTemplate.opsForValue().get(adminSessionKey(memberId));
         if (sessionIdValue == null) {
@@ -114,6 +117,7 @@ public class RefreshTokenRedisService {
         return Optional.of(info);
     }
 
+    @Override
     public boolean isCurrentAdminSession(Long memberId, String sessionId) {
         if (memberId == null || sessionId == null || sessionId.isBlank()) {
             return false;
@@ -123,6 +127,7 @@ public class RefreshTokenRedisService {
         return sessionId.equals(String.valueOf(currentSessionId));
     }
 
+    @Override
     public boolean sessionExists(Long memberId, String sessionId) {
         if (memberId == null || sessionId == null || sessionId.isBlank()) {
             return false;
@@ -138,6 +143,7 @@ public class RefreshTokenRedisService {
         return String.valueOf(memberId).equals(storedMemberId);
     }
 
+    @Override
     public void rotate(String oldRefreshToken, String newRefreshToken, Duration ttl) {
         LoginSession session = findSessionByRefreshToken(oldRefreshToken)
                 .orElseThrow(() -> new IllegalStateException("Refresh session was not found."));
@@ -161,6 +167,7 @@ public class RefreshTokenRedisService {
         }
     }
 
+    @Override
     public void delete(String refreshToken) {
         findSessionByRefreshToken(refreshToken).ifPresent(this::deleteSession);
         if (refreshToken != null && !refreshToken.isBlank()) {
@@ -168,6 +175,7 @@ public class RefreshTokenRedisService {
         }
     }
 
+    @Override
     public void deleteCurrentAdminSession(Long memberId) {
         Object sessionIdValue = redisTemplate.opsForValue().get(adminSessionKey(memberId));
         if (sessionIdValue == null) {
@@ -179,6 +187,7 @@ public class RefreshTokenRedisService {
         deleteSession(sessionId, session);
     }
 
+    @Override
     public int deleteMemberSessions(Long memberId) {
         if (memberId == null) {
             return 0;
@@ -323,20 +332,6 @@ public class RefreshTokenRedisService {
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available.", e);
-        }
-    }
-
-    @Getter
-    public static class LoginSession {
-
-        private final String sessionId;
-        private final Long memberId;
-        private final String role;
-
-        public LoginSession(String sessionId, Long memberId, String role) {
-            this.sessionId = sessionId;
-            this.memberId = memberId;
-            this.role = role;
         }
     }
 }
