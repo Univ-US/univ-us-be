@@ -19,7 +19,7 @@ class ReservationLockExecutorTest {
 
     private final RedissonClient redissonClient = mock(RedissonClient.class);
     private final ReservationLockExecutor lockExecutor =
-            new ReservationLockExecutor(redissonClient);
+            new ReservationLockExecutorImpl(redissonClient);
 
     @Test
     @DisplayName("좌석 예약 Lock은 회원과 좌석 순서로 획득하고 역순으로 해제한다")
