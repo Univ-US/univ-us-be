@@ -32,6 +32,7 @@
         JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
         LEFT JOIN LECTURE_TIME t ON t.LEC_ID = l.LEC_ID
         WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY s.SEM_YEAR DESC,
                  s.SEM_ID DESC,
                  l.LEC_ID,

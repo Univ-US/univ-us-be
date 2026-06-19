@@ -64,6 +64,7 @@
                ON ev.LEC_ASN_SBM_ID = sb.LEC_ASN_SBM_ID
         WHERE e.LMS_PRF_ID = #{lmsPrfId}
           AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY s.SEM_YEAR DESC,
                  s.SEM_ID DESC,
                  a.LEC_ASN_DUE_DATE DESC,
@@ -82,6 +83,7 @@
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID
         JOIN LECTURE_ASSIGNMENT a ON a.LEC_ID = l.LEC_ID
         JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
         JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
@@ -90,6 +92,7 @@
               AND sb.LMS_PRF_ID = e.LMS_PRF_ID
         WHERE e.LMS_PRF_ID = #{lmsPrfId}
           AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
           AND a.LEC_ASN_VAL_STATUS IN ('AVL', 'MOD', 'LAT')
           AND (a.LEC_ASN_DUE_DATE &gt;= SYSTIMESTAMP OR a.LEC_ASN_VAL_STATUS = 'LAT')
           AND (sb.LEC_ASN_SBM_ID IS NULL OR sb.LEC_ASN_SBM_STATUS = 'NSB')
