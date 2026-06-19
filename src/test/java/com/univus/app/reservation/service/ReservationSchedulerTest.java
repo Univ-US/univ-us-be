@@ -1,8 +1,10 @@
 package com.univus.app.reservation.service;
 
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,12 +71,52 @@ class ReservationSchedulerTest {
                 (Object) argThat(event ->
                         event instanceof ReservationDto.RoomReservationRealtimeEventDto dto
                                 && "COMPLETED".equals(dto.getAction())
-                                && Long.valueOf(101L).equals(dto.getReservationId())));
+                                && Long.valueOf(21L).equals(dto.getRoomId())));
         verify(messagingTemplate).convertAndSend(
                 eq("/sub/reservations/rooms"),
                 (Object) argThat(event ->
                         event instanceof ReservationDto.RoomReservationRealtimeEventDto dto
                                 && "CANCELLED".equals(dto.getAction())
-                                && Long.valueOf(102L).equals(dto.getReservationId())));
+                                && Long.valueOf(22L).equals(dto.getRoomId())));
+        verify(messagingTemplate).convertAndSendToUser(
+                eq("11"),
+                eq("/queue/reservations/rooms"),
+                any(ReservationDto.RoomReservationRealtimeEventDto.class));
+        verify(messagingTemplate).convertAndSendToUser(
+                eq("12"),
+                eq("/queue/reservations/rooms"),
+                any(ReservationDto.RoomReservationRealtimeEventDto.class));
+    }
+
+    @Test
+    @DisplayName("좌석 노쇼 상태 변경이 선점되지 않으면 패널티를 중복 생성하지 않는다")
+    void skipSeatNoShowPenaltyWhenConditionalUpdateMisses() {
+        ReservationDto.ReadingSeatReservationDto noShowReservation =
+                ReservationDto.ReadingSeatReservationDto.builder()
+                        .reservationId(201L)
+                        .memberId(31L)
+                        .seatId(41L)
+                        .readingRoomId(51L)
+                        .status("RESERVED")
+                        .build();
+
+        when(reservationMapper.selectExpiredReadingSeatReservations()).thenReturn(List.of());
+        when(reservationMapper.selectNoShowReadingSeatReservations())
+                .thenReturn(List.of(noShowReservation));
+        when(reservationMapper.cancelNoShowReadingSeatReservation(201L)).thenReturn(0);
+        when(reservationMapper.selectExpiredRoomReservations()).thenReturn(List.of());
+        when(reservationMapper.selectNoShowRoomReservations()).thenReturn(List.of());
+
+        reservationScheduler.processExpiredAndNoShowReservations();
+
+        verify(reservationMapper).cancelNoShowReadingSeatReservation(201L);
+        verify(reservationMapper, never()).insertReservationPenalty(
+                eq(31L),
+                eq("NO_SHOW"),
+                any(String.class));
+        verify(messagingTemplate, never()).convertAndSendToUser(
+                eq("31"),
+                eq("/queue/reservations/seats"),
+                any());
     }
 }

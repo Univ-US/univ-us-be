@@ -23,6 +23,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     private static final String DEFAULT_ROOM_STATUS = "RESERVED";
     private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
     private static final String ROOM_REALTIME_TOPIC = "/sub/reservations/rooms";
+    private static final String USER_SEAT_REALTIME_QUEUE = "/queue/reservations/seats";
+    private static final String USER_ROOM_REALTIME_QUEUE = "/queue/reservations/rooms";
     private static final String REALTIME_ACTION_RESERVED = "RESERVED";
     private static final String REALTIME_ACTION_CANCELLED = "CANCELLED";
     private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
@@ -241,14 +243,18 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         ReservationDto.ReadingSeatRealtimeEventDto event =
                 ReservationDto.ReadingSeatRealtimeEventDto.builder()
                         .action(action)
-                        .reservationId(reservation.getReservationId())
-                        .memberId(reservation.getMemberId())
                         .seatId(reservation.getSeatId())
                         .readingRoomId(reservation.getReadingRoomId())
                         .startTime(reservation.getStartTime())
                         .endTime(reservation.getEndTime())
                         .build();
-        runAfterCommit(() -> messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event));
+        runAfterCommit(() -> {
+            messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event);
+            messagingTemplate.convertAndSendToUser(
+                    reservation.getMemberId().toString(),
+                    USER_SEAT_REALTIME_QUEUE,
+                    event);
+        });
     }
 
     private void publishRoomRealtimeEventAfterCommit(
@@ -261,13 +267,17 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         ReservationDto.RoomReservationRealtimeEventDto event =
                 ReservationDto.RoomReservationRealtimeEventDto.builder()
                         .action(action)
-                        .reservationId(reservation.getReservationId())
-                        .memberId(reservation.getMemberId())
                         .roomId(reservation.getRoomId())
                         .startTime(reservation.getStartTime())
                         .endTime(reservation.getEndTime())
                         .build();
-        runAfterCommit(() -> messagingTemplate.convertAndSend(ROOM_REALTIME_TOPIC, event));
+        runAfterCommit(() -> {
+            messagingTemplate.convertAndSend(ROOM_REALTIME_TOPIC, event);
+            messagingTemplate.convertAndSendToUser(
+                    reservation.getMemberId().toString(),
+                    USER_ROOM_REALTIME_QUEUE,
+                    event);
+        });
     }
 
     private void runAfterCommit(Runnable action) {

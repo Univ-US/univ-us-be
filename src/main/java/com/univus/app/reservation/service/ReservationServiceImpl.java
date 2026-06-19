@@ -550,7 +550,7 @@ public class ReservationServiceImpl implements ReservationService {
                         ? checkInWindowStart.plusMinutes(CHECK_IN_WINDOW_MINUTES)
                         : endTime;
 
-        if (now.isAfter(checkInDeadline)) {
+        if (!now.isBefore(checkInDeadline)) {
             throw new IllegalArgumentException("입실 가능 시간이 지나 노쇼 처리 대상입니다. 예약 내역을 새로고침해주세요.");
         }
     }
