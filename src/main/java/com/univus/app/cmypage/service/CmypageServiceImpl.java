@@ -180,10 +180,12 @@ public class CmypageServiceImpl implements CmypageService {
         }
 
         String normalizedRole = role.trim().toUpperCase();
-        return switch (normalizedRole) {
-            case CmypageConstants.TRADE_ROLE_SELLER,
-                    CmypageConstants.TRADE_ROLE_BUYER -> normalizedRole;
-            default -> CmypageConstants.TRADE_ROLE_ALL;
-        };
+        if (CmypageConstants.TRADE_ROLE_SELLER.equals(normalizedRole)) {
+            return CmypageConstants.TRADE_ROLE_SELLER;
+        }
+        if (CmypageConstants.TRADE_ROLE_BUYER.equals(normalizedRole)) {
+            return CmypageConstants.TRADE_ROLE_BUYER;
+        }
+        return CmypageConstants.TRADE_ROLE_ALL;
     }
 }
