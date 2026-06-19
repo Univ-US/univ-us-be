@@ -23,8 +23,13 @@ class CmypageServiceTest {
     private final PostListQueryService postListQueryService =
             mock(PostListQueryService.class);
     private final CmypageMapper cmypageMapper = mock(CmypageMapper.class);
+    private final CmypagePolicy cmypagePolicy =
+            new CmypagePolicyImpl();
     private final CmypageService cmypageService =
-            new CmypageServiceImpl(postListQueryService, cmypageMapper);
+            new CmypageServiceImpl(
+                    postListQueryService,
+                    cmypageMapper,
+                    cmypagePolicy);
 
     @Test
     @DisplayName("내 게시글은 타입이 있는 게시글 목록 응답을 페이지 응답으로 변환한다")

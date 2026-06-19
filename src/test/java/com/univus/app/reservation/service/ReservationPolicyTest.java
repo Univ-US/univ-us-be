@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.univus.app.exception.ConflictException;
+import com.univus.app.exception.InvalidRequestException;
 import com.univus.app.reservation.dto.ReadingSeatReservationDto;
 import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
 
@@ -22,8 +24,8 @@ class ReservationPolicyTest {
         ReadingSeatReservationRequestDto request =
                 new ReadingSeatReservationRequestDto();
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        InvalidRequestException exception = assertThrows(
+                InvalidRequestException.class,
                 () -> reservationPolicy.validateSeatReservationRequest(request));
 
         assertEquals("좌석 ID는 필수입니다.", exception.getMessage());
@@ -32,8 +34,8 @@ class ReservationPolicyTest {
     @Test
     @DisplayName("취소 가능한 예약 상태는 RESERVED와 USING뿐이다")
     void requireCancelableStatusRejectsCompletedReservation() {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        InvalidRequestException exception = assertThrows(
+                InvalidRequestException.class,
                 () -> reservationPolicy.requireCancelableStatus("COMPLETED"));
 
         assertEquals("이미 취소되었거나 완료된 예약입니다.", exception.getMessage());
@@ -42,8 +44,8 @@ class ReservationPolicyTest {
     @Test
     @DisplayName("패널티 5회 제한은 기존 409 예외 타입과 메시지를 유지한다")
     void requirePenaltyAvailableKeepsConflictException() {
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
+        ConflictException exception = assertThrows(
+                ConflictException.class,
                 () -> reservationPolicy.requirePenaltyAvailable(5));
 
         assertEquals(
@@ -54,8 +56,8 @@ class ReservationPolicyTest {
     @Test
     @DisplayName("회의실 시간 중복은 기존 409 예외 타입과 메시지를 유지한다")
     void requireNoRoomOverlapKeepsConflictException() {
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
+        ConflictException exception = assertThrows(
+                ConflictException.class,
                 () -> reservationPolicy.requireNoRoomOverlap(1));
 
         assertEquals("이미 예약된 공간입니다.", exception.getMessage());

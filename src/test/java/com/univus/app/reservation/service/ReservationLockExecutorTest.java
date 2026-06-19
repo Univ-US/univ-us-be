@@ -15,6 +15,8 @@ import org.mockito.InOrder;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 
+import com.univus.app.exception.ConflictException;
+
 class ReservationLockExecutorTest {
 
     private final RedissonClient redissonClient = mock(RedissonClient.class);
@@ -61,8 +63,8 @@ class ReservationLockExecutorTest {
         when(seatLock.tryLock(5, TimeUnit.SECONDS)).thenReturn(false);
         when(memberLock.isHeldByCurrentThread()).thenReturn(true);
 
-        IllegalStateException exception = assertThrows(
-                IllegalStateException.class,
+        ConflictException exception = assertThrows(
+                ConflictException.class,
                 () -> lockExecutor.withSeatLocks(11L, 21L, () -> "done"));
 
         assertEquals(

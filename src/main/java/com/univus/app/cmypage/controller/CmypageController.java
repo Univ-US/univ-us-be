@@ -11,7 +11,6 @@ import com.univus.app.cmypage.service.CommunityAccountStatusService;
 import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.community.dto.PostDto;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/cmypage")
@@ -33,8 +31,7 @@ public class CmypageController {
 
     @GetMapping("/profile")
     public ResponseEntity<CmypageProfileDto> getMyProfile(@AuthenticationPrincipal Long memberId) {
-        return ResponseEntity.ok(
-                cmypageService.getMyProfile(requireMemberId(memberId)));
+        return ResponseEntity.ok(cmypageService.getMyProfile(memberId));
     }
 
     @PatchMapping("/profile")
@@ -43,14 +40,13 @@ public class CmypageController {
             @RequestBody CmypageProfileUpdateDto request) {
         return ResponseEntity.ok(
                 cmypageService.updateMyProfile(
-                        requireMemberId(memberId),
+                        memberId,
                         request));
     }
 
     @GetMapping("/summary")
     public ResponseEntity<CmypageSummaryDto> getMySummary(@AuthenticationPrincipal Long memberId) {
-        return ResponseEntity.ok(
-                cmypageService.getMySummary(requireMemberId(memberId)));
+        return ResponseEntity.ok(cmypageService.getMySummary(memberId));
     }
 
     @GetMapping("/posts")
@@ -60,7 +56,7 @@ public class CmypageController {
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
         return ResponseEntity.ok(
                 cmypageService.getMyPosts(
-                        requireMemberId(memberId),
+                        memberId,
                         page,
                         size));
     }
@@ -72,7 +68,7 @@ public class CmypageController {
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
         return ResponseEntity.ok(
                 cmypageService.getMyComments(
-                        requireMemberId(memberId),
+                        memberId,
                         page,
                         size));
     }
@@ -84,7 +80,7 @@ public class CmypageController {
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
         return ResponseEntity.ok(
                 cmypageService.getLikedPosts(
-                        requireMemberId(memberId),
+                        memberId,
                         page,
                         size));
     }
@@ -97,7 +93,7 @@ public class CmypageController {
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
         return ResponseEntity.ok(
                 cmypageService.getMyTrades(
-                        requireMemberId(memberId),
+                        memberId,
                         role,
                         page,
                         size));
@@ -110,31 +106,20 @@ public class CmypageController {
             @RequestParam(value = "size", defaultValue = "6") Integer size) {
         return ResponseEntity.ok(
                 cmypageService.getMyWishlist(
-                        requireMemberId(memberId),
+                        memberId,
                         page,
                         size));
     }
 
     @PostMapping("/deactivate")
     public ResponseEntity<Void> deactivateCommunity(@AuthenticationPrincipal Long memberId) {
-        communityAccountStatusService.deactivateCommunity(
-                requireMemberId(memberId));
+        communityAccountStatusService.deactivateCommunity(memberId);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/reactivate")
     public ResponseEntity<Void> reactivateCommunity(@AuthenticationPrincipal Long memberId) {
-        communityAccountStatusService.reactivateCommunity(
-                requireMemberId(memberId));
+        communityAccountStatusService.reactivateCommunity(memberId);
         return ResponseEntity.ok().build();
-    }
-
-    private Long requireMemberId(Long memberId) {
-        if (memberId == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNAUTHORIZED,
-                    "로그인이 필요합니다.");
-        }
-        return memberId;
     }
 }

@@ -22,14 +22,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CmypageServiceImpl implements CmypageService {
 
-    private static final int MIN_NICKNAME_LENGTH = 2;
-    private static final int MAX_NICKNAME_LENGTH = 20;
-    private static final String TRADE_ROLE_ALL = "ALL";
-    private static final String TRADE_ROLE_SELLER = "SELLER";
-    private static final String TRADE_ROLE_BUYER = "BUYER";
-
     private final PostListQueryService postListQueryService;
     private final CmypageMapper cmypageMapper;
+    private final CmypagePolicy cmypagePolicy;
 
     @Override
     public PaginateUtilRestApiRes<PostDto> getMyPosts(
@@ -55,11 +50,8 @@ public class CmypageServiceImpl implements CmypageService {
 
     @Override
     public CmypageProfileDto getMyProfile(Long memberId) {
-        CmypageProfileDto profile = cmypageMapper.selectMyProfile(memberId);
-        if (profile == null) {
-            throw new IllegalArgumentException("회원 정보를 찾을 수 없습니다.");
-        }
-        return profile;
+        return cmypagePolicy.requireProfile(
+                cmypageMapper.selectMyProfile(memberId));
     }
 
     @Override
@@ -70,36 +62,25 @@ public class CmypageServiceImpl implements CmypageService {
     @Transactional
     @Override
     public CmypageProfileDto updateMyProfile(Long memberId, CmypageProfileUpdateDto request) {
-        if (request == null) {
-            throw new IllegalArgumentException("요청 본문이 필요합니다.");
-        }
-
-        String communityNickname = request.getCommunityNickname();
-        if (communityNickname == null) {
-            throw new IllegalArgumentException("닉네임을 입력해주세요.");
-        }
-
-        communityNickname = communityNickname.trim();
-        if (communityNickname.length() < MIN_NICKNAME_LENGTH
-                || communityNickname.length() > MAX_NICKNAME_LENGTH) {
-            throw new IllegalArgumentException("닉네임은 2자 이상 20자 이하로 입력해주세요.");
-        }
+        String communityNickname =
+                cmypagePolicy.getValidatedNickname(request);
 
         int duplicateCount =
                 cmypageMapper.countCommunityNicknameForOthers(memberId, communityNickname);
-        if (duplicateCount > 0) {
-            throw new IllegalStateException("이미 사용 중인 닉네임입니다.");
-        }
+        cmypagePolicy.requireAvailableNickname(duplicateCount);
 
         boolean hasMemberDetail = cmypageMapper.countMemberDetail(memberId) > 0;
-        if (!hasMemberDetail && cmypageMapper.selectDefaultDeptIdForMember(memberId) == null) {
-            throw new IllegalStateException("소속 대학의 학과 정보가 없어 커뮤니티 닉네임을 설정할 수 없습니다.");
+        Long defaultDeptId = null;
+        if (!hasMemberDetail) {
+            defaultDeptId =
+                    cmypageMapper.selectDefaultDeptIdForMember(memberId);
         }
+        cmypagePolicy.requireDepartmentAvailable(
+                hasMemberDetail,
+                defaultDeptId);
 
         int updated = cmypageMapper.updateCommunityNickname(memberId, communityNickname);
-        if (updated <= 0) {
-            throw new IllegalArgumentException("회원 상세 정보를 찾을 수 없습니다.");
-        }
+        cmypagePolicy.requireProfileUpdated(updated);
 
         return getMyProfile(memberId);
     }
@@ -146,7 +127,7 @@ public class CmypageServiceImpl implements CmypageService {
             String role,
             Integer page,
             Integer size) {
-        String normalizedRole = normalizeTradeRole(role);
+        String normalizedRole = cmypagePolicy.normalizeTradeRole(role);
         int safePage = PaginateUtilRestApi.normalizePage(page);
         int safeSize = PaginateUtilRestApi.normalizeSize(size);
         List<CmypageTradeDto> trades = cmypageMapper.selectMyTrades(
@@ -179,18 +160,4 @@ public class CmypageServiceImpl implements CmypageService {
                 safeSize);
     }
 
-    private String normalizeTradeRole(String role) {
-        if (role == null) {
-            return TRADE_ROLE_ALL;
-        }
-
-        String normalizedRole = role.trim().toUpperCase();
-        if (TRADE_ROLE_SELLER.equals(normalizedRole)) {
-            return TRADE_ROLE_SELLER;
-        }
-        if (TRADE_ROLE_BUYER.equals(normalizedRole)) {
-            return TRADE_ROLE_BUYER;
-        }
-        return TRADE_ROLE_ALL;
-    }
 }
