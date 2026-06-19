@@ -1,18 +1,21 @@
 package com.univus.app.reservation.service;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
 
 public interface ReservationCommandService {
 
-    ReservationDto.ReadingSeatReservationDto reserveReadingSeat(
+    ReadingSeatReservationDto reserveReadingSeat(
             Long memberId,
-            ReservationDto.ReadingSeatReservationRequestDto request);
+            ReadingSeatReservationRequestDto request);
 
     void cancelReadingSeatReservation(Long memberId, Long reservationId);
 
-    ReservationDto.RoomReservationDto reserveRoom(
+    RoomReservationDto reserveRoom(
             Long memberId,
-            ReservationDto.RoomReservationRequestDto request);
+            RoomReservationRequestDto request);
 
     void cancelRoomReservation(Long memberId, Long reservationId);
 
@@ -20,5 +23,5 @@ public interface ReservationCommandService {
 
     void checkInReadingSeat(Long memberId, Long reservationId);
 
-    ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId);
+    ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId);
 }

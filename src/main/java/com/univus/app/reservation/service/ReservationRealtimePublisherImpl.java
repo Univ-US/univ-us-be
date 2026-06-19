@@ -5,7 +5,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatRealtimeEventDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRealtimeEventDto;
 
 import lombok.RequiredArgsConstructor;
 
@@ -18,7 +21,7 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
     @Override
     public void publishSeatAfterCommit(
             String action,
-            ReservationDto.ReadingSeatReservationDto reservation) {
+            ReadingSeatReservationDto reservation) {
         if (reservation == null) {
             return;
         }
@@ -28,7 +31,7 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
     @Override
     public void publishRoomAfterCommit(
             String action,
-            ReservationDto.RoomReservationDto reservation) {
+            RoomReservationDto reservation) {
         if (reservation == null) {
             return;
         }
@@ -37,9 +40,9 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
 
     private void publishSeat(
             String action,
-            ReservationDto.ReadingSeatReservationDto reservation) {
-        ReservationDto.ReadingSeatRealtimeEventDto event =
-                ReservationDto.ReadingSeatRealtimeEventDto.builder()
+            ReadingSeatReservationDto reservation) {
+        ReadingSeatRealtimeEventDto event =
+                ReadingSeatRealtimeEventDto.builder()
                         .action(action)
                         .seatId(reservation.getSeatId())
                         .readingRoomId(reservation.getReadingRoomId())
@@ -58,9 +61,9 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
 
     private void publishRoom(
             String action,
-            ReservationDto.RoomReservationDto reservation) {
-        ReservationDto.RoomReservationRealtimeEventDto event =
-                ReservationDto.RoomReservationRealtimeEventDto.builder()
+            RoomReservationDto reservation) {
+        RoomReservationRealtimeEventDto event =
+                RoomReservationRealtimeEventDto.builder()
                         .action(action)
                         .roomId(reservation.getRoomId())
                         .startTime(reservation.getStartTime())

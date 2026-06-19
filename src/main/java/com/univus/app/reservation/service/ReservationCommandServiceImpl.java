@@ -5,7 +5,10 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -20,9 +23,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     @Transactional
     @Override
-    public ReservationDto.ReadingSeatReservationDto reserveReadingSeat(
+    public ReadingSeatReservationDto reserveReadingSeat(
             Long memberId,
-            ReservationDto.ReadingSeatReservationRequestDto request) {
+            ReadingSeatReservationRequestDto request) {
         reservationPolicy.requirePenaltyAvailable(
                 reservationMapper.countActiveReservationPenalties(memberId));
         reservationPolicy.requireUsableSeat(
@@ -38,8 +41,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         request.getStartTime(),
                         request.getEndTime()));
 
-        ReservationDto.ReadingSeatReservationDto reservation =
-                ReservationDto.ReadingSeatReservationDto.builder()
+        ReadingSeatReservationDto reservation =
+                ReadingSeatReservationDto.builder()
                         .memberId(memberId)
                         .seatId(request.getSeatId())
                         .startTime(request.getStartTime())
@@ -48,7 +51,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         .build();
 
         reservationMapper.insertReadingSeatReservation(reservation);
-        ReservationDto.ReadingSeatReservationDto response =
+        ReadingSeatReservationDto response =
                 reservationMapper.selectReadingSeatReservationForMember(
                         reservation.getReservationId(),
                         memberId);
@@ -66,7 +69,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     public void cancelReadingSeatReservation(
             Long memberId,
             Long reservationId) {
-        ReservationDto.ReadingSeatReservationDto reservation =
+        ReadingSeatReservationDto reservation =
                 reservationPolicy.requireSeatReservation(
                         reservationMapper.selectReadingSeatReservationForMember(
                                 reservationId,
@@ -84,9 +87,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     @Transactional
     @Override
-    public ReservationDto.RoomReservationDto reserveRoom(
+    public RoomReservationDto reserveRoom(
             Long memberId,
-            ReservationDto.RoomReservationRequestDto request) {
+            RoomReservationRequestDto request) {
         reservationPolicy.requirePenaltyAvailable(
                 reservationMapper.countActiveReservationPenalties(memberId));
         reservationPolicy.requireRoomReservationWindowOpen(
@@ -100,8 +103,8 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         request.getStartTime(),
                         request.getEndTime()));
 
-        ReservationDto.RoomReservationDto reservation =
-                ReservationDto.RoomReservationDto.builder()
+        RoomReservationDto reservation =
+                RoomReservationDto.builder()
                         .memberId(memberId)
                         .roomId(request.getRoomId())
                         .startTime(request.getStartTime())
@@ -122,7 +125,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
     public void cancelRoomReservation(
             Long memberId,
             Long reservationId) {
-        ReservationDto.RoomReservationDto reservation =
+        RoomReservationDto reservation =
                 reservationPolicy.requireRoomReservation(
                         reservationMapper.selectRoomReservationForMember(
                                 reservationId,
@@ -174,10 +177,10 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
 
     @Transactional
     @Override
-    public ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(
+    public ReadingSeatReservationDto extendReadingSeatReservation(
             Long memberId,
             Long reservationId) {
-        ReservationDto.ReadingSeatReservationDto reservation =
+        ReadingSeatReservationDto reservation =
                 reservationPolicy.requireExtendableSeat(
                         reservationMapper.selectReadingSeatReservationForMember(
                                 reservationId,
@@ -196,7 +199,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         newEndTime),
                 "연장 처리에 실패했습니다.");
 
-        ReservationDto.ReadingSeatReservationDto updatedReservation =
+        ReadingSeatReservationDto updatedReservation =
                 reservationPolicy.requireSeatReservation(
                         reservationMapper.selectReadingSeatReservationForMember(
                                 reservationId,

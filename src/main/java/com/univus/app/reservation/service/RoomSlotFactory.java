@@ -4,19 +4,20 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.RoomReservationSlotDto;
 
 public interface RoomSlotFactory {
 
-    List<ReservationDto.RoomReservationSlotDto> create(
+    List<RoomReservationSlotDto> create(
             Long roomId,
             LocalDate date,
             LocalDateTime serverNow,
-            List<ReservationDto.RoomReservationSlotDto> reservations);
+            List<RoomReservationSlotDto> reservations);
 
-    ReservationDto.RoomAvailabilityDto attachSlots(
-            ReservationDto.RoomAvailabilityDto room,
+    RoomAvailabilityDto attachSlots(
+            RoomAvailabilityDto room,
             LocalDate date,
             LocalDateTime serverNow,
-            List<ReservationDto.RoomReservationSlotDto> reservations);
+            List<RoomReservationSlotDto> reservations);
 }

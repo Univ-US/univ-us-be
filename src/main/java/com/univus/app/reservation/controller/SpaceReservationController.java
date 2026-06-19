@@ -19,17 +19,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.univus.app.common.PaginateUtilRestApiRes;
-import com.univus.app.reservation.dto.ReservationDto.ReadingRoomAvailabilityDto;
-import com.univus.app.reservation.dto.ReservationDto.ReadingSeatAvailabilityDto;
-import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationDto;
-import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationRequestDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationDateOptionsResponseDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationPenaltyPledgeRequestDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationPenaltyHistoryDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationPenaltyStatusDto;
-import com.univus.app.reservation.dto.ReservationDto.RoomAvailabilityDto;
-import com.univus.app.reservation.dto.ReservationDto.RoomReservationDto;
-import com.univus.app.reservation.dto.ReservationDto.RoomReservationRequestDto;
+import com.univus.app.reservation.dto.ReadingRoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationDateOptionsResponseDto;
+import com.univus.app.reservation.dto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyHistoryDto;
+import com.univus.app.reservation.dto.ReservationPenaltyStatusDto;
+import com.univus.app.reservation.dto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
 import com.univus.app.reservation.service.ReservationService;
 
 import lombok.RequiredArgsConstructor;

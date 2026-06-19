@@ -5,7 +5,7 @@
 <mapper namespace="com.univus.app.reservation.mapper.SeatChatMapper">
 
     <resultMap id="ActiveSeatReservationResultMap"
-               type="com.univus.app.reservation.dto.SeatChatDto$ActiveSeatReservationDto">
+               type="com.univus.app.reservation.dto.ActiveSeatReservationDto">
         <id     property="reservationId" column="RESERVATION_ID"/>
         <result property="memberId"      column="MEMBER_ID"/>
         <result property="seatId"        column="SEAT_ID"/>
@@ -18,7 +18,7 @@
     </resultMap>
 
     <resultMap id="SeatChatRoomResultMap"
-               type="com.univus.app.reservation.dto.SeatChatDto$SeatChatRoomDto">
+               type="com.univus.app.reservation.dto.SeatChatRoomDto">
         <id     property="roomId"                 column="ROOM_ID"/>
         <result property="myReservationId"        column="MY_RESERVATION_ID"/>
         <result property="targetReservationId"    column="TARGET_RESERVATION_ID"/>
@@ -34,7 +34,7 @@
     </resultMap>
 
     <resultMap id="SeatChatMessageResultMap"
-               type="com.univus.app.reservation.dto.SeatChatDto$SeatChatMessageDto">
+               type="com.univus.app.reservation.dto.SeatChatMessageDto">
         <id     property="messageId"           column="MESSAGE_ID"/>
         <result property="roomId"              column="ROOM_ID"/>
         <result property="senderReservationId" column="SENDER_RES_ID"/>
@@ -111,7 +111,7 @@
     </select>
 
     <insert id="insertSeatChatRoom"
-            parameterType="com.univus.app.reservation.dto.SeatChatDto$SeatChatRoomDto">
+            parameterType="com.univus.app.reservation.dto.SeatChatRoomDto">
         <selectKey keyProperty="roomId" resultType="long" order="BEFORE">
             SELECT SEQ_SEAT_CHAT_ROOMS.NEXTVAL FROM DUAL
         </selectKey>
@@ -265,7 +265,7 @@
     </update>
 
     <insert id="insertSeatChatMessage"
-            parameterType="com.univus.app.reservation.dto.SeatChatDto$SeatChatMessageDto">
+            parameterType="com.univus.app.reservation.dto.SeatChatMessageDto">
         <selectKey keyProperty="messageId" resultType="long" order="BEFORE">
             SELECT SEQ_SEAT_CHAT_MESSAGES.NEXTVAL FROM DUAL
         </selectKey>

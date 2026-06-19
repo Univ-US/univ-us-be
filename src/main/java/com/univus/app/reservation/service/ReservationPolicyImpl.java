@@ -6,7 +6,12 @@ import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyStatusDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
 
 @Service
 public class ReservationPolicyImpl implements ReservationPolicy {
@@ -35,8 +40,8 @@ public class ReservationPolicyImpl implements ReservationPolicy {
         }
     }
 
-    public ReservationDto.ReadingSeatReservationDto requireSeatReservation(
-            ReservationDto.ReadingSeatReservationDto reservation,
+    public ReadingSeatReservationDto requireSeatReservation(
+            ReadingSeatReservationDto reservation,
             String message) {
         if (reservation == null) {
             throw new IllegalArgumentException(message);
@@ -44,8 +49,8 @@ public class ReservationPolicyImpl implements ReservationPolicy {
         return reservation;
     }
 
-    public ReservationDto.RoomReservationDto requireRoomReservation(
-            ReservationDto.RoomReservationDto reservation,
+    public RoomReservationDto requireRoomReservation(
+            RoomReservationDto reservation,
             String message) {
         if (reservation == null) {
             throw new IllegalArgumentException(message);
@@ -54,7 +59,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     public void validateSeatReservationRequest(
-            ReservationDto.ReadingSeatReservationRequestDto request) {
+            ReadingSeatReservationRequestDto request) {
         if (request == null) {
             throw new IllegalArgumentException("예약 요청 본문은 필수입니다.");
         }
@@ -69,7 +74,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     public void validateRoomReservationRequest(
-            ReservationDto.RoomReservationRequestDto request) {
+            RoomReservationRequestDto request) {
         if (request == null) {
             throw new IllegalArgumentException("예약 요청 본문은 필수입니다.");
         }
@@ -92,7 +97,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     public void validatePenaltyPledge(
-            ReservationDto.ReservationPenaltyPledgeRequestDto request,
+            ReservationPenaltyPledgeRequestDto request,
             int activePenaltyCount) {
         if (request == null) {
             throw new IllegalArgumentException("서약 요청 본문은 필수입니다.");
@@ -127,7 +132,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     public void validateSeatCheckIn(
-            ReservationDto.ReadingSeatReservationDto reservation) {
+            ReadingSeatReservationDto reservation) {
         if (!ReservationConstants.STATUS_RESERVED.equals(
                 reservation.getStatus())) {
             throw new IllegalArgumentException("입실할 수 있는 예약 상태가 아닙니다.");
@@ -148,7 +153,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     public void validateRoomCheckIn(
-            ReservationDto.RoomReservationDto reservation) {
+            RoomReservationDto reservation) {
         if (!ReservationConstants.STATUS_RESERVED.equals(
                 reservation.getStatus())) {
             throw new IllegalArgumentException(
@@ -173,7 +178,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     public void validateRoomCancellation(
-            ReservationDto.RoomReservationDto reservation) {
+            RoomReservationDto reservation) {
         requireCancelableStatus(reservation.getStatus());
 
         LocalDateTime now = now();
@@ -237,9 +242,9 @@ public class ReservationPolicyImpl implements ReservationPolicy {
         }
     }
 
-    public ReservationDto.ReadingSeatReservationDto requireExtendableSeat(
-            ReservationDto.ReadingSeatReservationDto reservation) {
-        ReservationDto.ReadingSeatReservationDto required = requireSeatReservation(
+    public ReadingSeatReservationDto requireExtendableSeat(
+            ReadingSeatReservationDto reservation) {
+        ReadingSeatReservationDto required = requireSeatReservation(
                 reservation,
                 "연장할 수 있는 예약이 아닙니다. (현재 입실하여 사용 중인 좌석만 연장 가능)");
         if (!ReservationConstants.STATUS_USING.equals(required.getStatus())) {
@@ -250,7 +255,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     public LocalDateTime calculateExtendedEndTime(
-            ReservationDto.ReadingSeatReservationDto reservation) {
+            ReadingSeatReservationDto reservation) {
         Duration remaining = Duration.between(now(), reservation.getEndTime());
         boolean extensionTime =
                 !remaining.isNegative()
@@ -279,7 +284,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
         }
     }
 
-    public ReservationDto.ReservationPenaltyStatusDto buildPenaltyStatus(
+    public ReservationPenaltyStatusDto buildPenaltyStatus(
             int activePenaltyCount) {
         boolean blocked =
                 activePenaltyCount
@@ -289,7 +294,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
             message = ReservationConstants.PENALTY_BLOCK_MESSAGE;
         }
 
-        return ReservationDto.ReservationPenaltyStatusDto.builder()
+        return ReservationPenaltyStatusDto.builder()
                 .activePenaltyCount(activePenaltyCount)
                 .blockThreshold(ReservationConstants.PENALTY_BLOCK_THRESHOLD)
                 .blocked(blocked)
@@ -376,7 +381,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
     }
 
     private LocalDateTime seatCheckInDeadline(
-            ReservationDto.ReadingSeatReservationDto reservation) {
+            ReadingSeatReservationDto reservation) {
         LocalDateTime checkInStart = reservation.getStartTime();
         LocalDateTime createdAt = reservation.getCreatedAt();
         if (createdAt != null && createdAt.isAfter(checkInStart)) {

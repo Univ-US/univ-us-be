@@ -15,7 +15,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRealtimeEventDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
 
 class ReservationLifecycleServiceImplTest {
@@ -34,8 +36,8 @@ class ReservationLifecycleServiceImplTest {
     void processRoomCompletionAndNoShow() {
         LocalDateTime startTime = LocalDateTime.of(2026, 6, 18, 10, 0);
         LocalDateTime endTime = startTime.plusHours(2);
-        ReservationDto.RoomReservationDto expiredReservation =
-                ReservationDto.RoomReservationDto.builder()
+        RoomReservationDto expiredReservation =
+                RoomReservationDto.builder()
                         .reservationId(101L)
                         .memberId(11L)
                         .roomId(21L)
@@ -43,8 +45,8 @@ class ReservationLifecycleServiceImplTest {
                         .endTime(endTime)
                         .status("USING")
                         .build();
-        ReservationDto.RoomReservationDto noShowReservation =
-                ReservationDto.RoomReservationDto.builder()
+        RoomReservationDto noShowReservation =
+                RoomReservationDto.builder()
                         .reservationId(102L)
                         .memberId(12L)
                         .roomId(22L)
@@ -73,30 +75,30 @@ class ReservationLifecycleServiceImplTest {
         verify(messagingTemplate).convertAndSend(
                 eq("/sub/reservations/rooms"),
                 (Object) argThat(event ->
-                        event instanceof ReservationDto.RoomReservationRealtimeEventDto dto
+                        event instanceof RoomReservationRealtimeEventDto dto
                                 && "COMPLETED".equals(dto.getAction())
                                 && Long.valueOf(21L).equals(dto.getRoomId())));
         verify(messagingTemplate).convertAndSend(
                 eq("/sub/reservations/rooms"),
                 (Object) argThat(event ->
-                        event instanceof ReservationDto.RoomReservationRealtimeEventDto dto
+                        event instanceof RoomReservationRealtimeEventDto dto
                                 && "CANCELLED".equals(dto.getAction())
                                 && Long.valueOf(22L).equals(dto.getRoomId())));
         verify(messagingTemplate).convertAndSendToUser(
                 eq("11"),
                 eq("/queue/reservations/rooms"),
-                any(ReservationDto.RoomReservationRealtimeEventDto.class));
+                any(RoomReservationRealtimeEventDto.class));
         verify(messagingTemplate).convertAndSendToUser(
                 eq("12"),
                 eq("/queue/reservations/rooms"),
-                any(ReservationDto.RoomReservationRealtimeEventDto.class));
+                any(RoomReservationRealtimeEventDto.class));
     }
 
     @Test
     @DisplayName("좌석 노쇼 상태 변경이 선점되지 않으면 패널티를 중복 생성하지 않는다")
     void skipSeatNoShowPenaltyWhenConditionalUpdateMisses() {
-        ReservationDto.ReadingSeatReservationDto noShowReservation =
-                ReservationDto.ReadingSeatReservationDto.builder()
+        ReadingSeatReservationDto noShowReservation =
+                ReadingSeatReservationDto.builder()
                         .reservationId(201L)
                         .memberId(31L)
                         .seatId(41L)

@@ -10,7 +10,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.univus.app.common.PaginateUtilRestApi;
 import com.univus.app.common.PaginateUtilRestApiRes;
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingRoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationDateOptionDto;
+import com.univus.app.reservation.dto.ReservationDateOptionsResponseDto;
+import com.univus.app.reservation.dto.ReservationPenaltyHistoryDto;
+import com.univus.app.reservation.dto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyStatusDto;
+import com.univus.app.reservation.dto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
+import com.univus.app.reservation.dto.RoomReservationSlotDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -26,26 +38,26 @@ public class ReservationServiceImpl implements ReservationService {
     private final RoomSlotFactory roomSlotFactory;
 
     @Override
-    public ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(
+    public ReservationDateOptionsResponseDto getReservationDateOptions(
             int days) {
         LocalDateTime serverNow =
                 LocalDateTime.now(ReservationConstants.RESERVATION_ZONE);
         LocalDate today = serverNow.toLocalDate();
         int dateOptionDays = normalizeDateOptionDays(days);
-        List<ReservationDto.ReservationDateOptionDto> dates =
+        List<ReservationDateOptionDto> dates =
                 new ArrayList<>();
         for (int index = 0; index < dateOptionDays; index++) {
             dates.add(createDateOption(today, index));
         }
 
-        return ReservationDto.ReservationDateOptionsResponseDto.builder()
+        return ReservationDateOptionsResponseDto.builder()
                 .serverNow(serverNow)
                 .dates(dates)
                 .build();
     }
 
     @Override
-    public ReservationDto.ReservationPenaltyStatusDto getReservationPenaltyStatus(
+    public ReservationPenaltyStatusDto getReservationPenaltyStatus(
             Long memberId) {
         reservationPolicy.requireMember(memberId);
         return reservationPolicy.buildPenaltyStatus(
@@ -53,7 +65,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public PaginateUtilRestApiRes<ReservationDto.ReservationPenaltyHistoryDto>
+    public PaginateUtilRestApiRes<ReservationPenaltyHistoryDto>
             getReservationPenaltyHistory(
                     Long memberId,
                     Integer page,
@@ -61,7 +73,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservationPolicy.requireMember(memberId);
         int safePage = PaginateUtilRestApi.normalizePage(page);
         int safeSize = PaginateUtilRestApi.normalizeSize(size);
-        List<ReservationDto.ReservationPenaltyHistoryDto> history =
+        List<ReservationPenaltyHistoryDto> history =
                 reservationMapper.selectReservationPenaltyHistory(
                         memberId,
                         PaginateUtilRestApi.offset(safePage, safeSize),
@@ -76,9 +88,9 @@ public class ReservationServiceImpl implements ReservationService {
 
     @Transactional
     @Override
-    public ReservationDto.ReservationPenaltyStatusDto pledgeReservationPenalty(
+    public ReservationPenaltyStatusDto pledgeReservationPenalty(
             Long memberId,
-            ReservationDto.ReservationPenaltyPledgeRequestDto request) {
+            ReservationPenaltyPledgeRequestDto request) {
         reservationPolicy.requireMember(memberId);
         int activePenaltyCount =
                 reservationMapper.countActiveReservationPenalties(memberId);
@@ -90,7 +102,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public List<ReservationDto.ReadingRoomAvailabilityDto>
+    public List<ReadingRoomAvailabilityDto>
             getReadingRoomAvailability(
                     Long memberId,
                     LocalDateTime startTime,
@@ -104,7 +116,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public List<ReservationDto.ReadingSeatAvailabilityDto>
+    public List<ReadingSeatAvailabilityDto>
             getReadingSeatAvailability(
                     Long memberId,
                     Long readingRoomId,
@@ -121,9 +133,9 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public ReservationDto.ReadingSeatReservationDto reserveReadingSeat(
+    public ReadingSeatReservationDto reserveReadingSeat(
             Long memberId,
-            ReservationDto.ReadingSeatReservationRequestDto request) {
+            ReadingSeatReservationRequestDto request) {
         reservationPolicy.requireMember(memberId);
         reservationPolicy.validateSeatReservationRequest(request);
 
@@ -136,7 +148,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public List<ReservationDto.ReadingSeatReservationDto>
+    public List<ReadingSeatReservationDto>
             getMyReadingSeatReservations(Long memberId) {
         reservationPolicy.requireMember(memberId);
         return reservationMapper.selectMyReadingSeatReservations(memberId);
@@ -149,7 +161,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservationPolicy.requireMember(memberId);
         reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.ReadingSeatReservationDto reservation =
+        ReadingSeatReservationDto reservation =
                 reservationPolicy.requireSeatReservation(
                         reservationMapper.selectReadingSeatReservationForMember(
                                 reservationId,
@@ -172,7 +184,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservationPolicy.requireMember(memberId);
         reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.ReadingSeatReservationDto reservation =
+        ReadingSeatReservationDto reservation =
                 reservationPolicy.requireSeatReservation(
                         reservationMapper.selectReadingSeatReservationForMember(
                                 reservationId,
@@ -189,13 +201,13 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(
+    public ReadingSeatReservationDto extendReadingSeatReservation(
             Long memberId,
             Long reservationId) {
         reservationPolicy.requireMember(memberId);
         reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.ReadingSeatReservationDto reservation =
+        ReadingSeatReservationDto reservation =
                 reservationPolicy.requireSeatReservation(
                         reservationMapper.selectReadingSeatReservationForMember(
                                 reservationId,
@@ -211,7 +223,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(
+    public List<RoomAvailabilityDto> getRoomAvailability(
             Long memberId,
             LocalDate date) {
         reservationPolicy.requireMember(memberId);
@@ -221,17 +233,17 @@ public class ReservationServiceImpl implements ReservationService {
         LocalDateTime dateEnd = date.plusDays(1).atStartOfDay();
         LocalDateTime serverNow =
                 LocalDateTime.now(ReservationConstants.RESERVATION_ZONE);
-        List<ReservationDto.RoomReservationSlotDto> reservations =
+        List<RoomReservationSlotDto> reservations =
                 reservationMapper.selectRoomReservationsBetween(
                         dateStart,
                         dateEnd);
-        List<ReservationDto.RoomAvailabilityDto> rooms =
+        List<RoomAvailabilityDto> rooms =
                 reservationMapper.selectActiveReservationRooms(memberId);
-        List<ReservationDto.RoomAvailabilityDto> roomsWithSlots =
+        List<RoomAvailabilityDto> roomsWithSlots =
                 new ArrayList<>();
 
-        for (ReservationDto.RoomAvailabilityDto room : rooms) {
-            ReservationDto.RoomAvailabilityDto roomWithSlots =
+        for (RoomAvailabilityDto room : rooms) {
+            RoomAvailabilityDto roomWithSlots =
                     roomSlotFactory.attachSlots(
                             room,
                             date,
@@ -243,7 +255,7 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public List<ReservationDto.RoomReservationDto> getMyRoomReservations(
+    public List<RoomReservationDto> getMyRoomReservations(
             Long memberId) {
         reservationPolicy.requireMember(memberId);
         return reservationMapper.selectMyRoomReservations(memberId);
@@ -256,7 +268,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservationPolicy.requireMember(memberId);
         reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.RoomReservationDto reservation =
+        RoomReservationDto reservation =
                 reservationPolicy.requireRoomReservation(
                         reservationMapper.selectRoomReservationForMember(
                                 reservationId,
@@ -278,7 +290,7 @@ public class ReservationServiceImpl implements ReservationService {
         reservationPolicy.requireMember(memberId);
         reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.RoomReservationDto reservation =
+        RoomReservationDto reservation =
                 reservationPolicy.requireRoomReservation(
                         reservationMapper.selectRoomReservationForMember(
                                 reservationId,
@@ -301,9 +313,9 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     @Override
-    public ReservationDto.RoomReservationDto reserveRoom(
+    public RoomReservationDto reserveRoom(
             Long memberId,
-            ReservationDto.RoomReservationRequestDto request) {
+            RoomReservationRequestDto request) {
         reservationPolicy.requireMember(memberId);
         reservationPolicy.validateRoomReservationRequest(request);
 
@@ -312,13 +324,13 @@ public class ReservationServiceImpl implements ReservationService {
                 () -> reservationCommandService.reserveRoom(memberId, request));
     }
 
-    private ReservationDto.ReservationDateOptionDto createDateOption(
+    private ReservationDateOptionDto createDateOption(
             LocalDate today,
             int index) {
         LocalDate date = today.plusDays(index);
         int dayOfWeekValue = date.getDayOfWeek().getValue();
 
-        return ReservationDto.ReservationDateOptionDto.builder()
+        return ReservationDateOptionDto.builder()
                 .key(date.toString())
                 .date(date.toString())
                 .year(date.getYear())
