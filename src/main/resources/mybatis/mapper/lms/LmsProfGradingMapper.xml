@@ -18,7 +18,7 @@
     <!-- semId 주면 그 학기, 없으면 최신(SEM_ID DESC) -->
     <select id="findSemester" resultType="com.univus.app.lms.dto.LmsProfSemesterDto">
         SELECT * FROM (
-            SELECT SEM_ID AS semId, SEM_YEAR AS year, SEM_TERM AS termCode
+            SELECT SEM_ID AS semId, SEM_YEAR AS semYear, SEM_TERM AS semTerm
             FROM SEMESTERS
             <where>
                 <if test="semId != null">SEM_ID = #{semId}</if>
@@ -33,8 +33,8 @@
             asn.LEC_ASN_ID                              AS assignmentId,
             lc.LEC_COD_NAME                             AS courseName,
             l.LEC_SECTION                               AS lecSection,
-            asn.LEC_ASN_TITLE                           AS title,
-            TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS dueDate,
+            asn.LEC_ASN_TITLE                           AS lecAsnTitle,
+            TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS lecAsnDueDate,
             (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb
               WHERE sb.LEC_ASN_ID = asn.LEC_ASN_ID
                 AND sb.LEC_ASN_SBM_STATUS != 'NSB')      AS submittedCount,
@@ -73,7 +73,7 @@
         SELECT base.* FROM ( <include refid="gradingAssignmentBase"/> ) base
         WHERE 1 = 1
         <include refid="gradingSplitFilter"/>
-        ORDER BY base.dueDate, base.assignmentId
+        ORDER BY base.lecAsnDueDate, base.assignmentId
         OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
 
@@ -99,8 +99,8 @@
         SELECT
             asn.LEC_ASN_ID                              AS assignmentId,
             lc.LEC_COD_NAME                             AS courseName,
-            asn.LEC_ASN_TITLE                           AS title,
-            TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS dueDate
+            asn.LEC_ASN_TITLE                           AS lecAsnTitle,
+            TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY.MM.DD') AS lecAsnDueDate
         FROM LECTURE_ASSIGNMENT asn
         JOIN LECTURE l       ON l.LEC_ID       = asn.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
@@ -115,10 +115,10 @@
             m.MEMBER_ID                                       AS memberId,
             m.MEMBER_NAME                                     AS studentName,
             m.LOGIN_ID                                        AS studentNo,
-            TO_CHAR(sb.LEC_ASN_SBM_REG_DATE, 'MM.DD HH24:MI') AS submittedAt,
-            sb.LEC_ASN_SBM_STATUS                             AS submissionStatus,
-            ev.ASN_SBM_EVL_SCORE                              AS score,
-            ev.ASN_SBM_EVL_FEEDBACK                           AS feedback
+            TO_CHAR(sb.LEC_ASN_SBM_REG_DATE, 'MM.DD HH24:MI') AS lecAsnSbmRegDate,
+            sb.LEC_ASN_SBM_STATUS                             AS lecAsnSbmStatus,
+            ev.ASN_SBM_EVL_SCORE                              AS asnSbmEvlScore,
+            ev.ASN_SBM_EVL_FEEDBACK                           AS asnSbmEvlFeedback
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l     ON l.LEC_ID     = e.LEC_ID
         JOIN LMS_PROFILE p ON p.LMS_PRF_ID = e.LMS_PRF_ID
@@ -156,10 +156,10 @@
             m.MEMBER_ID                                       AS memberId,
             m.MEMBER_NAME                                     AS studentName,
             m.LOGIN_ID                                        AS studentNo,
-            TO_CHAR(sb.LEC_ASN_SBM_REG_DATE, 'MM.DD HH24:MI') AS submittedAt,
-            sb.LEC_ASN_SBM_STATUS                             AS submissionStatus,
-            ev.ASN_SBM_EVL_SCORE                              AS score,
-            ev.ASN_SBM_EVL_FEEDBACK                           AS feedback
+            TO_CHAR(sb.LEC_ASN_SBM_REG_DATE, 'MM.DD HH24:MI') AS lecAsnSbmRegDate,
+            sb.LEC_ASN_SBM_STATUS                             AS lecAsnSbmStatus,
+            ev.ASN_SBM_EVL_SCORE                              AS asnSbmEvlScore,
+            ev.ASN_SBM_EVL_FEEDBACK                           AS asnSbmEvlFeedback
         FROM LECTURE_ASSIGNMENT_SUBMISSION sb
         JOIN LECTURE_ASSIGNMENT asn ON asn.LEC_ASN_ID = sb.LEC_ASN_ID
         JOIN LECTURE l     ON l.LEC_ID     = asn.LEC_ID

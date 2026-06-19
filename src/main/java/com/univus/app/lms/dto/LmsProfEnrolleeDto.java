@@ -68,10 +68,10 @@ public final class LmsProfEnrolleeDto {
     @AllArgsConstructor
     @Builder
     public static class AssignmentScoreRow {
-        private Long assignmentId;        // LECTURE_ASSIGNMENT.LEC_ASN_ID
-        private String title;             // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
-        private Integer score;            // 채점 점수 (미제출/미채점이면 null)
-        private String submissionStatusCode; // NSB/SBM/GRD/RTN (제출 없으면 null)
+        private Long assignmentId;        // LECTURE_ASSIGNMENT.LEC_ASN_ID (자기 PK — 의미명 유지)
+        private String lecAsnTitle;       // LECTURE_ASSIGNMENT.LEC_ASN_TITLE (앵커 자기 컬럼)
+        private Integer asnSbmEvlScore;   // ASSIGNMENT_SUBMISSION_EVALUATION.ASN_SBM_EVL_SCORE (미제출/미채점이면 null)
+        private String lecAsnSbmStatus;   // LECTURE_ASSIGNMENT_SUBMISSION.LEC_ASN_SBM_STATUS (NSB/SBM/GRD/RTN, 제출 없으면 null)
     }
 
     /* ===== 응답(ResDto) — JSON 프로퍼티명 = FE 계약(불변) ===== */
@@ -153,12 +153,12 @@ public final class LmsProfEnrolleeDto {
     @Builder
     public static class AssignmentScoreResDto {
         private Long assignmentId;
-        private String title;
-        private Integer score;                // 미제출/미채점이면 null
-        private String submissionStatusCode;  // NSB/SBM/GRD/RTN (제출 없으면 null)
-        private String submissionStatusLabel; // 미사용(항상 null, FE 공통코드 매핑)
+        private String lecAsnTitle;           // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
+        private Integer asnSbmEvlScore;       // ASSIGNMENT_SUBMISSION_EVALUATION.ASN_SBM_EVL_SCORE (미제출/미채점이면 null)
+        private String lecAsnSbmStatus;       // LECTURE_ASSIGNMENT_SUBMISSION.LEC_ASN_SBM_STATUS (NSB/SBM/GRD/RTN, 제출 없으면 null)
+        private String submissionStatusLabel; // 미사용(항상 null, FE 공통코드 매핑) — 파생, 의미명 유지
         private boolean submitted;            // 제출 여부 (NSB 아님) — service
-        private boolean scored;               // 채점 여부 (score != null) — service
+        private boolean scored;               // 채점 여부 (asnSbmEvlScore != null) — service
     }
 
     /** 페이지네이션 메타 (검색·제출필터 적용 후 전체 기준, 구 LmsPageInfoDto 흡수) */

@@ -17,18 +17,20 @@ PLM-005 / PLM-005-01 교수 강의 자료 업로드 SQL
         SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
     </select>
 
-    <!-- 등록 폼 과목(강의) 드롭다운 — 담당 강의 전체(폐강 포함, 상태 라벨은 FE 공통코드 매핑) -->
+    <!-- 등록 폼 과목(강의) 드롭다운 — 담당 강의(폐강 포함, ⭐미시작 학기 제외=PLM-002/003/008 동일), 상태 라벨은 FE 공통코드 매핑 -->
     <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsProfUploadDto$LectureRow">
         SELECT l.LEC_ID         AS lecId,
                lc.LEC_COD_NAME  AS courseName,
                l.LEC_SECTION    AS lecSection,
-               s.SEM_YEAR       AS year,
-               s.SEM_TERM       AS termCode,
+               s.SEM_YEAR       AS semYear,
+               s.SEM_TERM       AS semTerm,
                l.LEC_VAL_STATUS AS lecValStatus
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
         JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
         WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+          <!-- PLM-002/003/008 동일: 아직 시작 안 한 미래 학기 강의 제외 (2026-06-19) -->
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY s.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
     </select>
 
@@ -56,11 +58,11 @@ PLM-005 / PLM-005-01 교수 강의 자료 업로드 SQL
                u.LEC_ID          AS lecId,
                lc.LEC_COD_NAME   AS courseName,
                l.LEC_SECTION     AS lecSection,
-               s.SEM_YEAR        AS year,
-               s.SEM_TERM        AS termCode,
-               u.LEC_UPL_TITLE   AS title,
-               u.LEC_UPL_CONTENT AS content,
-               TO_CHAR(u.LEC_UPL_REG_DATE, 'YYYY-MM-DD') AS uploadedAt
+               s.SEM_YEAR        AS semYear,
+               s.SEM_TERM        AS semTerm,
+               u.LEC_UPL_TITLE   AS lecUplTitle,
+               u.LEC_UPL_CONTENT AS lecUplContent,
+               TO_CHAR(u.LEC_UPL_REG_DATE, 'YYYY-MM-DD') AS lecUplRegDate
         FROM LECTURE_UPLOADING u
         JOIN LECTURE l       ON l.LEC_ID       = u.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
@@ -95,7 +97,7 @@ PLM-005 / PLM-005-01 교수 강의 자료 업로드 SQL
     <!-- 목록 필터 옵션 — 자료 보유 년도/학기 distinct (년도 내림차순; 학기 순서는 FE에서 정렬) -->
     <select id="selectDistinctMaterialSemesters"
             resultType="com.univus.app.lms.dto.LmsProfUploadDto$SemesterOptionRow">
-        SELECT DISTINCT s.SEM_YEAR AS year, s.SEM_TERM AS termCode
+        SELECT DISTINCT s.SEM_YEAR AS semYear, s.SEM_TERM AS semTerm
         FROM LECTURE_UPLOADING u
         JOIN LECTURE l   ON l.LEC_ID = u.LEC_ID
         JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID

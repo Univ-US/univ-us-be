@@ -1,7 +1,6 @@
 package com.univus.app.member.service;
 
 import com.univus.app.member.dto.AdminSessionInfoDto;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -11,19 +10,22 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class RefreshTokenRedisService {
+public class RefreshTokenRedisService implements RefreshTokenService {
 
     private static final String REFRESH_KEY_PREFIX = "auth:refresh:";
     private static final String SESSION_KEY_PREFIX = "auth:session:";
     private static final String ADMIN_SESSION_KEY_PREFIX = "auth:admin-session:";
+    private static final String MEMBER_SESSION_KEY_PREFIX = "auth:member-sessions:";
 
     private static final String FIELD_MEMBER_ID = "memberId";
     private static final String FIELD_ROLE = "role";
@@ -34,6 +36,7 @@ public class RefreshTokenRedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
+    @Override
     public LoginSession createSession(
             String refreshToken,
             Long memberId,
@@ -57,6 +60,8 @@ public class RefreshTokenRedisService {
         redisTemplate.opsForValue().set(refreshKey, sessionId, ttl);
         redisTemplate.opsForHash().putAll(sessionKey, session);
         redisTemplate.expire(sessionKey, ttl);
+        redisTemplate.opsForSet().add(memberSessionKey(memberId), sessionId);
+        redisTemplate.expire(memberSessionKey(memberId), ttl);
 
         if (isAdminRole(role)) {
             redisTemplate.opsForValue().set(adminSessionKey(memberId), sessionId, ttl);
@@ -65,6 +70,7 @@ public class RefreshTokenRedisService {
         return new LoginSession(sessionId, memberId, role);
     }
 
+    @Override
     public Optional<LoginSession> findSessionByRefreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
             return Optional.empty();
@@ -85,10 +91,12 @@ public class RefreshTokenRedisService {
         return Optional.of(toLoginSession(sessionId, session));
     }
 
+    @Override
     public Optional<Long> findMemberId(String refreshToken) {
         return findSessionByRefreshToken(refreshToken).map(LoginSession::getMemberId);
     }
 
+    @Override
     public Optional<AdminSessionInfoDto> findCurrentAdminSession(Long memberId) {
         Object sessionIdValue = redisTemplate.opsForValue().get(adminSessionKey(memberId));
         if (sessionIdValue == null) {
@@ -109,6 +117,7 @@ public class RefreshTokenRedisService {
         return Optional.of(info);
     }
 
+    @Override
     public boolean isCurrentAdminSession(Long memberId, String sessionId) {
         if (memberId == null || sessionId == null || sessionId.isBlank()) {
             return false;
@@ -118,6 +127,23 @@ public class RefreshTokenRedisService {
         return sessionId.equals(String.valueOf(currentSessionId));
     }
 
+    @Override
+    public boolean sessionExists(Long memberId, String sessionId) {
+        if (memberId == null || sessionId == null || sessionId.isBlank()) {
+            return false;
+        }
+
+        Map<Object, Object> session = redisTemplate.opsForHash().entries(sessionKey(sessionId));
+        if (session.isEmpty()) {
+            redisTemplate.opsForSet().remove(memberSessionKey(memberId), sessionId);
+            return false;
+        }
+
+        String storedMemberId = toStringValue(session.get(FIELD_MEMBER_ID));
+        return String.valueOf(memberId).equals(storedMemberId);
+    }
+
+    @Override
     public void rotate(String oldRefreshToken, String newRefreshToken, Duration ttl) {
         LoginSession session = findSessionByRefreshToken(oldRefreshToken)
                 .orElseThrow(() -> new IllegalStateException("Refresh session was not found."));
@@ -130,6 +156,7 @@ public class RefreshTokenRedisService {
         redisTemplate.opsForValue().set(newRefreshKey, session.getSessionId(), ttl);
         redisTemplate.opsForHash().put(sessionKey, FIELD_REFRESH_KEY, newRefreshKey);
         redisTemplate.expire(sessionKey, ttl);
+        redisTemplate.expire(memberSessionKey(session.getMemberId()), ttl);
 
         if (isAdminRole(session.getRole())) {
             redisTemplate.opsForValue().set(
@@ -140,6 +167,7 @@ public class RefreshTokenRedisService {
         }
     }
 
+    @Override
     public void delete(String refreshToken) {
         findSessionByRefreshToken(refreshToken).ifPresent(this::deleteSession);
         if (refreshToken != null && !refreshToken.isBlank()) {
@@ -147,6 +175,7 @@ public class RefreshTokenRedisService {
         }
     }
 
+    @Override
     public void deleteCurrentAdminSession(Long memberId) {
         Object sessionIdValue = redisTemplate.opsForValue().get(adminSessionKey(memberId));
         if (sessionIdValue == null) {
@@ -156,6 +185,41 @@ public class RefreshTokenRedisService {
         String sessionId = String.valueOf(sessionIdValue);
         Map<Object, Object> session = redisTemplate.opsForHash().entries(sessionKey(sessionId));
         deleteSession(sessionId, session);
+    }
+
+    @Override
+    public int deleteMemberSessions(Long memberId) {
+        if (memberId == null) {
+            return 0;
+        }
+
+        Set<String> sessionIds = new HashSet<>();
+        Set<Object> indexedSessionIds = redisTemplate.opsForSet().members(memberSessionKey(memberId));
+        if (indexedSessionIds != null) {
+            indexedSessionIds.forEach(value -> sessionIds.add(String.valueOf(value)));
+        }
+
+        Set<String> sessionKeys = redisTemplate.keys(SESSION_KEY_PREFIX + "*");
+        if (sessionKeys != null) {
+            for (String key : sessionKeys) {
+                Map<Object, Object> session = redisTemplate.opsForHash().entries(key);
+                if (String.valueOf(memberId).equals(toStringValue(session.get(FIELD_MEMBER_ID)))) {
+                    sessionIds.add(key.substring(SESSION_KEY_PREFIX.length()));
+                }
+            }
+        }
+
+        int deletedCount = 0;
+        for (String sessionId : sessionIds) {
+            Map<Object, Object> session = redisTemplate.opsForHash().entries(sessionKey(sessionId));
+            if (!session.isEmpty()) {
+                deletedCount++;
+            }
+            deleteSession(sessionId, session);
+        }
+
+        redisTemplate.delete(memberSessionKey(memberId));
+        return deletedCount;
     }
 
     private void deleteSession(LoginSession session) {
@@ -173,6 +237,10 @@ public class RefreshTokenRedisService {
         }
 
         redisTemplate.delete(sessionKey(sessionId));
+
+        if (memberId != null) {
+            redisTemplate.opsForSet().remove(memberSessionKey(Long.valueOf(memberId)), sessionId);
+        }
 
         if (memberId != null && isAdminRole(role)) {
             String adminSessionKey = adminSessionKey(Long.valueOf(memberId));
@@ -199,6 +267,10 @@ public class RefreshTokenRedisService {
 
     private String adminSessionKey(Long memberId) {
         return ADMIN_SESSION_KEY_PREFIX + memberId;
+    }
+
+    private String memberSessionKey(Long memberId) {
+        return MEMBER_SESSION_KEY_PREFIX + memberId;
     }
 
     private boolean isAdminRole(String role) {
@@ -260,20 +332,6 @@ public class RefreshTokenRedisService {
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is not available.", e);
-        }
-    }
-
-    @Getter
-    public static class LoginSession {
-
-        private final String sessionId;
-        private final Long memberId;
-        private final String role;
-
-        public LoginSession(String sessionId, Long memberId, String role) {
-            this.sessionId = sessionId;
-            this.memberId = memberId;
-            this.role = role;
         }
     }
 }

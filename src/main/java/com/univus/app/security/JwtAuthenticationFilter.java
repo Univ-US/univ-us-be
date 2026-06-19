@@ -2,7 +2,7 @@ package com.univus.app.security;
 
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
-import com.univus.app.member.service.RefreshTokenRedisService;
+import com.univus.app.member.service.RefreshTokenService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final MemberMapper memberMapper;
     private final AuthCookieUtil authCookieUtil;
-    private final RefreshTokenRedisService refreshTokenRedisService;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     protected void doFilterInternal(
@@ -69,10 +69,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isSessionAllowed(Long memberId, String role, String sessionId) {
-        if (!"ADM".equals(role) && !"SUA".equals(role)) {
-            return true;
+        if ("ADM".equals(role) || "SUA".equals(role)) {
+            return refreshTokenService.isCurrentAdminSession(memberId, sessionId);
         }
 
-        return refreshTokenRedisService.isCurrentAdminSession(memberId, sessionId);
+        return refreshTokenService.sessionExists(memberId, sessionId);
     }
 }

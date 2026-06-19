@@ -6,17 +6,23 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingRoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReservationPenaltyHistoryDto;
+import com.univus.app.reservation.dto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationSlotDto;
 
 @Mapper
 public interface ReservationMapper {
 
-    List<ReservationDto.ReadingRoomAvailabilityDto> selectReadingRoomAvailability(
+    List<ReadingRoomAvailabilityDto> selectReadingRoomAvailability(
             @Param("memberId") Long memberId,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
-    List<ReservationDto.ReadingSeatAvailabilityDto> selectReadingSeatAvailability(
+    List<ReadingSeatAvailabilityDto> selectReadingSeatAvailability(
             @Param("memberId") Long memberId,
             @Param("readingRoomId") Long readingRoomId,
             @Param("startTime") LocalDateTime startTime,
@@ -34,6 +40,13 @@ public interface ReservationMapper {
 
     int countActiveReservationPenalties(@Param("memberId") Long memberId);
 
+    List<ReservationPenaltyHistoryDto> selectReservationPenaltyHistory(
+            @Param("memberId") Long memberId,
+            @Param("offset") int offset,
+            @Param("size") int size);
+
+    int countReservationPenaltyHistory(@Param("memberId") Long memberId);
+
     int insertReservationPenalty(
             @Param("memberId") Long memberId,
             @Param("penaltyType") String penaltyType,
@@ -43,13 +56,13 @@ public interface ReservationMapper {
 
     int countUsableReadingSeat(@Param("seatId") Long seatId);
 
-    int insertReadingSeatReservation(ReservationDto.ReadingSeatReservationDto reservation);
+    int insertReadingSeatReservation(ReadingSeatReservationDto reservation);
 
-    ReservationDto.ReadingSeatReservationDto selectReadingSeatReservationForMember(
+    ReadingSeatReservationDto selectReadingSeatReservationForMember(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
 
-    List<ReservationDto.ReadingSeatReservationDto> selectMyReadingSeatReservations(
+    List<ReadingSeatReservationDto> selectMyReadingSeatReservations(
             @Param("memberId") Long memberId);
 
     int cancelReadingSeatReservation(
@@ -58,9 +71,9 @@ public interface ReservationMapper {
 
     int cancelAllPendingReadingSeatReservations(@Param("memberId") Long memberId);
 
-    List<ReservationDto.RoomAvailabilityDto> selectActiveReservationRooms(@Param("memberId") Long memberId);
+    List<RoomAvailabilityDto> selectActiveReservationRooms(@Param("memberId") Long memberId);
 
-    List<ReservationDto.RoomReservationSlotDto> selectRoomReservationsBetween(
+    List<RoomReservationSlotDto> selectRoomReservationsBetween(
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
@@ -71,12 +84,12 @@ public interface ReservationMapper {
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
 
-    int insertRoomReservation(ReservationDto.RoomReservationDto reservation);
+    int insertRoomReservation(RoomReservationDto reservation);
 
-    List<ReservationDto.RoomReservationDto> selectMyRoomReservations(
+    List<RoomReservationDto> selectMyRoomReservations(
             @Param("memberId") Long memberId);
 
-    ReservationDto.RoomReservationDto selectRoomReservationForMember(
+    RoomReservationDto selectRoomReservationForMember(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
 
@@ -86,9 +99,9 @@ public interface ReservationMapper {
 
     int cancelAllPendingRoomReservations(@Param("memberId") Long memberId);
 
-    List<ReservationDto.RoomReservationDto> selectExpiredRoomReservations();
+    List<RoomReservationDto> selectExpiredRoomReservations();
 
-    List<ReservationDto.RoomReservationDto> selectNoShowRoomReservations();
+    List<RoomReservationDto> selectNoShowRoomReservations();
 
     int completeExpiredRoomReservation(@Param("reservationId") Long reservationId);
 
@@ -98,13 +111,15 @@ public interface ReservationMapper {
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
 
-    List<ReservationDto.ReadingSeatReservationDto> selectExpiredReadingSeatReservations();
+    List<ReadingSeatReservationDto> selectExpiredReadingSeatReservations();
 
-    List<ReservationDto.ReadingSeatReservationDto> selectNoShowReadingSeatReservations();
+    List<ReadingSeatReservationDto> selectNoShowReadingSeatReservations();
 
-    int updateReadingSeatReservationStatus(
-            @Param("reservationId") Long reservationId,
-            @Param("status") String status);
+    int completeExpiredReadingSeatReservation(
+            @Param("reservationId") Long reservationId);
+
+    int cancelNoShowReadingSeatReservation(
+            @Param("reservationId") Long reservationId);
 
     int checkInReadingSeatReservation(
             @Param("reservationId") Long reservationId,

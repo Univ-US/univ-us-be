@@ -153,15 +153,15 @@ public class LmsProfEnrolleeServiceImpl implements LmsProfEnrolleeService {
         List<LmsProfEnrolleeDto.AssignmentScoreResDto> assignmentScores = new ArrayList<>(scoreRows.size());
         for (LmsProfEnrolleeDto.AssignmentScoreRow s : scoreRows) {
             // 제출 여부 = 미제출(NSB) 이외. 제출상태 라벨은 FE가 공통코드(LEC_ASN_SBM_STATUS)로 매핑
-            boolean submitted = s.getSubmissionStatusCode() != null
-                    && !NOT_SUBMITTED_CODE.equals(s.getSubmissionStatusCode());
+            boolean submitted = s.getLecAsnSbmStatus() != null
+                    && !NOT_SUBMITTED_CODE.equals(s.getLecAsnSbmStatus());
             assignmentScores.add(LmsProfEnrolleeDto.AssignmentScoreResDto.builder()
                     .assignmentId(s.getAssignmentId())
-                    .title(s.getTitle())
-                    .score(s.getScore())
-                    .submissionStatusCode(s.getSubmissionStatusCode())
+                    .lecAsnTitle(s.getLecAsnTitle())
+                    .asnSbmEvlScore(s.getAsnSbmEvlScore())
+                    .lecAsnSbmStatus(s.getLecAsnSbmStatus())
                     .submitted(submitted)
-                    .scored(s.getScore() != null)
+                    .scored(s.getAsnSbmEvlScore() != null)
                     .build());
         }
 

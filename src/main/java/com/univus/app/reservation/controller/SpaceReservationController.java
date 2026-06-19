@@ -18,16 +18,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.univus.app.reservation.dto.ReservationDto.ReadingRoomAvailabilityDto;
-import com.univus.app.reservation.dto.ReservationDto.ReadingSeatAvailabilityDto;
-import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationDto;
-import com.univus.app.reservation.dto.ReservationDto.ReadingSeatReservationRequestDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationDateOptionsResponseDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationPenaltyPledgeRequestDto;
-import com.univus.app.reservation.dto.ReservationDto.ReservationPenaltyStatusDto;
-import com.univus.app.reservation.dto.ReservationDto.RoomAvailabilityDto;
-import com.univus.app.reservation.dto.ReservationDto.RoomReservationDto;
-import com.univus.app.reservation.dto.ReservationDto.RoomReservationRequestDto;
+import com.univus.app.common.PaginateUtilRestApiRes;
+import com.univus.app.reservation.dto.ReadingRoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationDateOptionsResponseDto;
+import com.univus.app.reservation.dto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyHistoryDto;
+import com.univus.app.reservation.dto.ReservationPenaltyStatusDto;
+import com.univus.app.reservation.dto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
 import com.univus.app.reservation.service.ReservationService;
 
 import lombok.RequiredArgsConstructor;
@@ -49,6 +51,15 @@ public class SpaceReservationController {
     public ResponseEntity<ReservationPenaltyStatusDto> getReservationPenaltyStatus(
             @AuthenticationPrincipal Long memberId) {
         return ResponseEntity.ok(reservationService.getReservationPenaltyStatus(memberId));
+    }
+
+    @GetMapping("/penalties/history")
+    public ResponseEntity<PaginateUtilRestApiRes<ReservationPenaltyHistoryDto>> getReservationPenaltyHistory(
+            @AuthenticationPrincipal Long memberId,
+            @RequestParam(value = "page", defaultValue = "0") Integer page,
+            @RequestParam(value = "size", defaultValue = "5") Integer size) {
+        return ResponseEntity.ok(
+                reservationService.getReservationPenaltyHistory(memberId, page, size));
     }
 
     @PostMapping("/penalties/pledge")

@@ -68,13 +68,13 @@ public class LmsStuChatServiceImpl implements LmsStuChatService {
                 LmsStuChatDto.ChatMessageResDto.builder()
                         .roomId(roomId)
                         .senderLmsPrfId(lmsPrfId)
-                        .text(request.getMessageText().trim())
+                        .chtRomMsgContent(request.getMessageText().trim())
                         .build();
         lmsStuChatMapper.insertChatMessage(message);
-        lmsStuChatMapper.insertUnreadReceipt(message.getId());
+        lmsStuChatMapper.insertUnreadReceipt(message.getMessageId());
 
         LmsStuChatDto.ChatMessageResDto saved =
-                lmsStuChatMapper.selectChatMessage(message.getId(), lmsPrfId);
+                lmsStuChatMapper.selectChatMessage(message.getMessageId(), lmsPrfId);
         LmsStuChatDto.ChatMessageResDto response = saved == null ? message : saved;
 
         runAfterCommit(() -> messagingTemplate.convertAndSend(
@@ -128,10 +128,10 @@ public class LmsStuChatServiceImpl implements LmsStuChatService {
     }
 
     private String firstDateLabel(List<LmsStuChatDto.ChatMessageResDto> messages) {
-        if (messages == null || messages.isEmpty() || messages.get(0).getSentAt() == null) {
+        if (messages == null || messages.isEmpty() || messages.get(0).getChtRomMsgDate() == null) {
             return "";
         }
-        return LocalDate.parse(messages.get(0).getSentAt(), ISO_DATE_TIME).format(DATE_LABEL);
+        return LocalDate.parse(messages.get(0).getChtRomMsgDate(), ISO_DATE_TIME).format(DATE_LABEL);
     }
 
     private void runAfterCommit(Runnable action) {

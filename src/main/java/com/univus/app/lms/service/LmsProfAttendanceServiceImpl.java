@@ -82,13 +82,13 @@ public class LmsProfAttendanceServiceImpl implements LmsProfAttendanceService {
 
         if (sessions != null) {
             for (LmsProfAttendanceDto.SessionUpdateDto su : sessions) {
-                if (su.getSessionId() == null || su.getStatus() == null
-                        || !ALLOWED_STATUS.contains(su.getStatus())) {
+                if (su.getSessionId() == null || su.getStdEnrAtdStsCode() == null
+                        || !ALLOWED_STATUS.contains(su.getStdEnrAtdStsCode())) {
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                             "허용되지 않는 출결 상태입니다 (출석/지각/결석만 가능).");
                 }
                 // enrollmentId 스코프 → 본인 강의·해당 학생 회차만 변경(타 학생/강의 회차는 0행 영향)
-                lmsProfAttendanceMapper.updateSessionStatus(su.getSessionId(), enrollmentId, su.getStatus());
+                lmsProfAttendanceMapper.updateSessionStatus(su.getSessionId(), enrollmentId, su.getStdEnrAtdStsCode());
             }
         }
 
@@ -123,10 +123,10 @@ public class LmsProfAttendanceServiceImpl implements LmsProfAttendanceService {
         for (LmsProfAttendanceDto.SessionRow sr : sessionRows) {
             sessions.add(LmsProfAttendanceDto.SessionResDto.builder()
                     .sessionId(sr.getSessionId())
-                    .date(sr.getSessionDate())
-                    .status(sr.getStatus())
+                    .stdEnrAtdRegDate(sr.getStdEnrAtdRegDate())
+                    .stdEnrAtdStsCode(sr.getStdEnrAtdStsCode())
                     .build());
-            String st = sr.getStatus();
+            String st = sr.getStdEnrAtdStsCode();
             if ("PRS".equals(st)) {
                 present++;
             } else if ("LAT".equals(st)) {

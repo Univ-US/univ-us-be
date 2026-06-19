@@ -43,7 +43,7 @@ public class LmsProfAttendanceController {
 
     /** 학생 회차별 출결 상태 수정 → 갱신된 학생 행 */
     // PUT /api/lms/professor/attendance/lectures/{lecId}/students/{studentMemberId}
-    //   body: { "sessions": [ { "sessionId": 1, "status": "LAT" }, ... ] }
+    //   body: { "sessions": [ { "sessionId": 1, "stdEnrAtdStsCode": "LAT" }, ... ] }
     @PutMapping("/lectures/{lecId}/students/{studentMemberId}")
     public ResponseEntity<LmsProfAttendanceDto.StudentResDto> requestUpdateStudentAttendance(
             Authentication authentication,

@@ -19,18 +19,20 @@ PLM-006 교수 과제 관리 SQL
         SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
     </select>
 
-    <!-- 등록 폼 과목(강의) 드롭다운 — 담당 강의 전체(폐강 포함, 상태 라벨은 FE 공통코드 매핑) -->
+    <!-- 등록 폼 과목(강의) 드롭다운 — 담당 강의(폐강 포함, ⭐미시작 학기 제외=PLM-002/003/008 동일), 상태 라벨은 FE 공통코드 매핑 -->
     <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsProfAssignmentDto$LectureRow">
         SELECT l.LEC_ID         AS lecId,
                lc.LEC_COD_NAME  AS courseName,
                l.LEC_SECTION    AS lecSection,
-               s.SEM_YEAR       AS year,
-               s.SEM_TERM       AS termCode,
+               s.SEM_YEAR       AS semYear,
+               s.SEM_TERM       AS semTerm,
                l.LEC_VAL_STATUS AS lecValStatus
         FROM LECTURE l
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
         JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
         WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
+          <!-- PLM-002/003/008 동일: 아직 시작 안 한 미래 학기 강의 제외 (2026-06-19) -->
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY s.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
     </select>
 
@@ -59,12 +61,12 @@ PLM-006 교수 과제 관리 SQL
                asn.LEC_ID                                  AS lecId,
                lc.LEC_COD_NAME                             AS courseName,
                l.LEC_SECTION                               AS lecSection,
-               s.SEM_YEAR                                  AS year,
-               s.SEM_TERM                                  AS termCode,
-               asn.LEC_ASN_TITLE                           AS title,
-               asn.LEC_ASN_CONTENT                         AS description,
-               TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI') AS dueDate,
-               asn.LEC_ASN_VAL_STATUS                      AS valStatus,
+               s.SEM_YEAR                                  AS semYear,
+               s.SEM_TERM                                  AS semTerm,
+               asn.LEC_ASN_TITLE                           AS lecAsnTitle,
+               asn.LEC_ASN_CONTENT                         AS lecAsnContent,
+               TO_CHAR(asn.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI') AS lecAsnDueDate,
+               asn.LEC_ASN_VAL_STATUS                      AS lecAsnValStatus,
                (SELECT COUNT(*) FROM LECTURE_ASSIGNMENT_SUBMISSION sb
                  WHERE sb.LEC_ASN_ID = asn.LEC_ASN_ID
                    AND sb.LEC_ASN_SBM_STATUS != 'NSB')      AS submittedCount,

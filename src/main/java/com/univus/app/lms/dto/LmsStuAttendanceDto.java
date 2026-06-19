@@ -21,18 +21,18 @@ public final class LmsStuAttendanceDto {
     @AllArgsConstructor
     @Builder
     public static class CourseRow {
-        private Integer year;
-        private String termCode;
-        private Integer inProgressFlag;
-        private Long enrollmentId;
-        private Long lecId;
-        private String courseName;
-        private Integer lecSection;
-        private Integer totalSessions;
-        private Integer present;
-        private Integer late;
-        private Integer absent;
-        private Integer attendanceTotal;
+        private Integer semYear;          // SEMESTERS.SEM_YEAR
+        private String semTerm;           // SEMESTERS.SEM_TERM
+        private Integer inProgressFlag;   // 파생(SYSDATE ∈ 학기범위)
+        private Long enrollmentId;        // LECTURE_STUDENT_ENROLLMENT.LEC_STD_ENR_ID (PK)
+        private Long lecId;               // LECTURE.LEC_ID
+        private String courseName;        // LECTURE_CODE.LEC_COD_NAME (조인)
+        private Integer lecSection;       // LECTURE.LEC_SECTION (분반)
+        private Integer lecTotClasses;    // LECTURE.LEC_TOT_CLASSES (총 강의 회차)
+        private Integer present;          // 집계 COUNT(PRS)
+        private Integer late;             // 집계 COUNT(LAT)
+        private Integer absent;           // 집계 COUNT(ABS)
+        private Integer attendanceTotal;  // 집계 COUNT(전체) — 출석률 분모
     }
 
     /** 지각/결석 날짜 상세 row. */
@@ -42,9 +42,9 @@ public final class LmsStuAttendanceDto {
     @AllArgsConstructor
     @Builder
     public static class RecordRow {
-        private Long enrollmentId;
-        private String statusCode;
-        private String attendanceDate;
+        private Long enrollmentId;        // LEC_STD_ENR_ID (그룹핑 키)
+        private String stdEnrAtdStsCode;  // STUDENT_ENROLLMENT_ATTENDANCE.STD_ENR_ATD_STS_CODE
+        private String stdEnrAtdRegDate;  // STD_ENR_ATD_REG_DATE (TO_CHAR 'YYYY-MM-DD')
     }
 
     @Getter
@@ -53,7 +53,7 @@ public final class LmsStuAttendanceDto {
     @AllArgsConstructor
     @Builder
     public static class AttendanceRecordResDto {
-        private String date;
+        private String stdEnrAtdRegDate;  // STD_ENR_ATD_REG_DATE (지각/결석 날짜)
     }
 
     @Getter
@@ -65,11 +65,11 @@ public final class LmsStuAttendanceDto {
         private Long lecId;
         private String courseName;
         private Integer lecSection;
-        private Integer totalSessions;
+        private Integer lecTotClasses;    // LECTURE.LEC_TOT_CLASSES (총 강의 회차)
         private Integer present;
         private Integer late;
         private Integer absent;
-        private Integer attendanceRate;
+        private Integer attendanceRate;   // 파생 %
         private List<AttendanceRecordResDto> lateRecords;
         private List<AttendanceRecordResDto> absentRecords;
     }
@@ -80,8 +80,8 @@ public final class LmsStuAttendanceDto {
     @AllArgsConstructor
     @Builder
     public static class SemesterAttendanceResDto {
-        private Integer year;
-        private String termCode;
+        private Integer semYear;
+        private String semTerm;
         private String semesterLabel;
         private Boolean inProgress;
         private Integer courseCount;

@@ -1,21 +1,28 @@
 package com.univus.app.reservation.service;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
 
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
+import com.univus.app.reservation.dto.ReadingRoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationDateOptionDto;
+import com.univus.app.reservation.dto.ReservationDateOptionsResponseDto;
+import com.univus.app.reservation.dto.ReservationPenaltyHistoryDto;
+import com.univus.app.reservation.dto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyStatusDto;
+import com.univus.app.reservation.dto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
+import com.univus.app.reservation.dto.RoomReservationSlotDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -24,551 +31,327 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReservationServiceImpl implements ReservationService {
 
-    private static final String MEMBER_LOCK_KEY_PREFIX = "reservation:reading-seat:member:";
-    private static final String SEAT_LOCK_KEY_PREFIX = "reservation:reading-seat:";
-    private static final String ROOM_LOCK_KEY_PREFIX = "reservation:meeting-room:";
-    private static final long LOCK_WAIT_SECONDS = 5L;
-    private static final ZoneId RESERVATION_ZONE = ZoneId.of("Asia/Seoul");
-    private static final List<String> DAY_OF_WEEK_LABELS = List.of("일", "월", "화", "수", "목", "금", "토");
-    private static final int MIN_DATE_OPTION_DAYS = 1;
-    private static final int MAX_DATE_OPTION_DAYS = 14;
-    private static final LocalTime OPEN_TIME = LocalTime.of(8, 0);
-    private static final int SLOT_HOURS = 2;
-    private static final int DAILY_SLOT_COUNT = (24 - 8) / SLOT_HOURS;
-    private static final int MAX_RESERVATION_HOURS = 6;
-    private static final int CHECK_IN_WINDOW_MINUTES = 20;
-    private static final int PENALTY_BLOCK_THRESHOLD = 5;
-    private static final String PENALTY_PLEDGE_PHRASE =
-            "예약한 시설은 책임 있게 이용하며, 사전 취소 없이 이용하지 않는 일이 반복되지 않도록 유의하겠습니다.";
-    private static final String PENALTY_BLOCK_MESSAGE =
-            "노쇼 패널티가 5회 누적되어 예약이 제한되었습니다. 서약서를 확인하면 다시 예약할 수 있습니다.";
-    private static final String PENALTY_AVAILABLE_MESSAGE = "예약 이용이 가능합니다.";
-
     private final ReservationMapper reservationMapper;
     private final ReservationCommandService reservationCommandService;
-    private final RedissonClient redissonClient;
+    private final ReservationPolicy reservationPolicy;
+    private final ReservationLockExecutor lockExecutor;
+    private final RoomSlotFactory roomSlotFactory;
 
     @Override
-    public ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days) {
-        int dateOptionDays = normalizeDateOptionDays(days);
-        LocalDateTime serverNow = LocalDateTime.now(RESERVATION_ZONE);
+    public ReservationDateOptionsResponseDto getReservationDateOptions(
+            int days) {
+        LocalDateTime serverNow =
+                LocalDateTime.now(ReservationConstants.RESERVATION_ZONE);
         LocalDate today = serverNow.toLocalDate();
+        int dateOptionDays = normalizeDateOptionDays(days);
+        List<ReservationDateOptionDto> dates =
+                new ArrayList<>();
+        for (int index = 0; index < dateOptionDays; index++) {
+            dates.add(createDateOption(today, index));
+        }
 
-        List<ReservationDto.ReservationDateOptionDto> dates = IntStream.range(0, dateOptionDays)
-                .mapToObj(index -> {
-                    LocalDate date = today.plusDays(index);
-                    int dayOfWeekValue = date.getDayOfWeek().getValue();
-                    int dayLabelIndex = dayOfWeekValue % DAY_OF_WEEK_LABELS.size();
-
-                    return ReservationDto.ReservationDateOptionDto.builder()
-                            .key(date.toString())
-                            .date(date.toString())
-                            .year(date.getYear())
-                            .month(date.getMonthValue())
-                            .day(date.getDayOfMonth())
-                            .dayOfWeek(DAY_OF_WEEK_LABELS.get(dayLabelIndex))
-                            .today(index == 0)
-                            .sat(dayOfWeekValue == 6)
-                            .sun(dayOfWeekValue == 7)
-                            .build();
-                })
-                .toList();
-
-        return ReservationDto.ReservationDateOptionsResponseDto.builder()
+        return ReservationDateOptionsResponseDto.builder()
                 .serverNow(serverNow)
                 .dates(dates)
                 .build();
     }
 
     @Override
-    public ReservationDto.ReservationPenaltyStatusDto getReservationPenaltyStatus(Long memberId) {
-        validateMember(memberId);
-        return buildReservationPenaltyStatus(reservationMapper.countActiveReservationPenalties(memberId));
+    public ReservationPenaltyStatusDto getReservationPenaltyStatus(
+            Long memberId) {
+        reservationPolicy.requireMember(memberId);
+        return reservationPolicy.buildPenaltyStatus(
+                reservationMapper.countActiveReservationPenalties(memberId));
+    }
+
+    @Override
+    public PaginateUtilRestApiRes<ReservationPenaltyHistoryDto>
+            getReservationPenaltyHistory(
+                    Long memberId,
+                    Integer page,
+                    Integer size) {
+        reservationPolicy.requireMember(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<ReservationPenaltyHistoryDto> history =
+                reservationMapper.selectReservationPenaltyHistory(
+                        memberId,
+                        PaginateUtilRestApi.offset(safePage, safeSize),
+                        safeSize);
+
+        return PaginateUtilRestApi.of(
+                history,
+                reservationMapper.countReservationPenaltyHistory(memberId),
+                safePage,
+                safeSize);
     }
 
     @Transactional
     @Override
-    public ReservationDto.ReservationPenaltyStatusDto pledgeReservationPenalty(
+    public ReservationPenaltyStatusDto pledgeReservationPenalty(
             Long memberId,
-            ReservationDto.ReservationPenaltyPledgeRequestDto request) {
-        validateMember(memberId);
-        if (request == null) {
-            throw new IllegalArgumentException("서약 요청 본문은 필수입니다.");
-        }
-        if (!Boolean.TRUE.equals(request.getAgreed())) {
-            throw new IllegalArgumentException("예약 이용 정책 확인에 동의해주세요.");
-        }
-
-        String pledgeText = request.getPledgeText() == null ? "" : request.getPledgeText().trim();
-        if (!PENALTY_PLEDGE_PHRASE.equals(pledgeText)) {
-            throw new IllegalArgumentException("서약 문구를 정확히 입력해주세요.");
-        }
-
-        int activePenaltyCount = reservationMapper.countActiveReservationPenalties(memberId);
-        if (activePenaltyCount < PENALTY_BLOCK_THRESHOLD) {
-            throw new IllegalStateException("서약은 노쇼 패널티 5회 이상인 경우에만 진행할 수 있습니다.");
-        }
+            ReservationPenaltyPledgeRequestDto request) {
+        reservationPolicy.requireMember(memberId);
+        int activePenaltyCount =
+                reservationMapper.countActiveReservationPenalties(memberId);
+        reservationPolicy.validatePenaltyPledge(request, activePenaltyCount);
 
         reservationMapper.pledgeActiveReservationPenalties(memberId);
-        return buildReservationPenaltyStatus(reservationMapper.countActiveReservationPenalties(memberId));
+        return reservationPolicy.buildPenaltyStatus(
+                reservationMapper.countActiveReservationPenalties(memberId));
     }
 
     @Override
-    public List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
+    public List<ReadingRoomAvailabilityDto>
+            getReadingRoomAvailability(
+                    Long memberId,
+                    LocalDateTime startTime,
+                    LocalDateTime endTime) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.validateSeatAvailabilityRange(startTime, endTime);
+        return reservationMapper.selectReadingRoomAvailability(
+                memberId,
+                startTime,
+                endTime);
+    }
+
+    @Override
+    public List<ReadingSeatAvailabilityDto>
+            getReadingSeatAvailability(
+                    Long memberId,
+                    Long readingRoomId,
+                    LocalDateTime startTime,
+                    LocalDateTime endTime) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReadingRoom(readingRoomId);
+        reservationPolicy.validateSeatAvailabilityRange(startTime, endTime);
+        return reservationMapper.selectReadingSeatAvailability(
+                memberId,
+                readingRoomId,
+                startTime,
+                endTime);
+    }
+
+    @Override
+    public ReadingSeatReservationDto reserveReadingSeat(
             Long memberId,
-            LocalDateTime startTime,
-            LocalDateTime endTime) {
-        validateMember(memberId);
-        validateTimeRange(startTime, endTime);
-        validateReservationTimePolicy(startTime, endTime, MAX_RESERVATION_HOURS);
-        return reservationMapper.selectReadingRoomAvailability(memberId, startTime, endTime);
+            ReadingSeatReservationRequestDto request) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.validateSeatReservationRequest(request);
+
+        return lockExecutor.withSeatLocks(
+                memberId,
+                request.getSeatId(),
+                () -> reservationCommandService.reserveReadingSeat(
+                        memberId,
+                        request));
     }
 
     @Override
-    public List<ReservationDto.ReadingSeatAvailabilityDto> getReadingSeatAvailability(
-            Long memberId,
-            Long readingRoomId,
-            LocalDateTime startTime,
-            LocalDateTime endTime) {
-        validateMember(memberId);
-        if (readingRoomId == null) {
-            throw new IllegalArgumentException("독서실 ID는 필수입니다.");
-        }
-        validateTimeRange(startTime, endTime);
-        validateReservationTimePolicy(startTime, endTime, MAX_RESERVATION_HOURS);
-        return reservationMapper.selectReadingSeatAvailability(memberId, readingRoomId, startTime, endTime);
-    }
-
-    @Override
-    public ReservationDto.ReadingSeatReservationDto reserveReadingSeat(
-            Long memberId,
-            ReservationDto.ReadingSeatReservationRequestDto request) {
-        validateMember(memberId);
-        validateReservationRequest(request);
-
-        return executeWithLocks(
-                List.of(
-                        redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId),
-                        redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + request.getSeatId())),
-                () -> reservationCommandService.reserveReadingSeat(memberId, request));
-    }
-
-    @Override
-    public List<ReservationDto.ReadingSeatReservationDto> getMyReadingSeatReservations(Long memberId) {
-        validateMember(memberId);
+    public List<ReadingSeatReservationDto>
+            getMyReadingSeatReservations(Long memberId) {
+        reservationPolicy.requireMember(memberId);
         return reservationMapper.selectMyReadingSeatReservations(memberId);
     }
 
     @Override
-    public void cancelReadingSeatReservation(Long memberId, Long reservationId) {
-        validateMember(memberId);
-        if (reservationId == null) {
-            throw new IllegalArgumentException("예약 ID는 필수입니다.");
-        }
+    public void cancelReadingSeatReservation(
+            Long memberId,
+            Long reservationId) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.ReadingSeatReservationDto reservation = reservationMapper
-                .selectReadingSeatReservationForMember(reservationId, memberId);
-        if (reservation == null) {
-            throw new IllegalArgumentException("취소할 수 있는 예약을 찾을 수 없습니다.");
-        }
-        if (!isCancelableStatus(reservation.getStatus())) {
-            throw new IllegalArgumentException("이미 취소되었거나 완료된 예약입니다.");
-        }
+        ReadingSeatReservationDto reservation =
+                reservationPolicy.requireSeatReservation(
+                        reservationMapper.selectReadingSeatReservationForMember(
+                                reservationId,
+                                memberId),
+                        "취소할 수 있는 예약을 찾을 수 없습니다.");
+        reservationPolicy.requireCancelableStatus(reservation.getStatus());
 
-        executeWithLocks(
-                List.of(
-                        redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId),
-                        redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + reservation.getSeatId())),
-                () -> {
-                    reservationCommandService.cancelReadingSeatReservation(memberId, reservationId);
-                    return null;
-                });
+        lockExecutor.withSeatLocks(
+                memberId,
+                reservation.getSeatId(),
+                () -> reservationCommandService.cancelReadingSeatReservation(
+                        memberId,
+                        reservationId));
     }
 
     @Override
-    public void checkInReadingSeat(Long memberId, Long reservationId) {
-        validateMember(memberId);
-        if (reservationId == null) {
-            throw new IllegalArgumentException("예약 ID는 필수입니다.");
-        }
+    public void checkInReadingSeat(
+            Long memberId,
+            Long reservationId) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.ReadingSeatReservationDto reservation = reservationMapper
-                .selectReadingSeatReservationForMember(reservationId, memberId);
-        if (reservation == null) {
-            throw new IllegalArgumentException("입실할 수 있는 예약을 찾을 수 없습니다.");
-        }
-        validateCheckInWindow(reservation);
+        ReadingSeatReservationDto reservation =
+                reservationPolicy.requireSeatReservation(
+                        reservationMapper.selectReadingSeatReservationForMember(
+                                reservationId,
+                                memberId),
+                        "입실할 수 있는 예약을 찾을 수 없습니다.");
+        reservationPolicy.validateSeatCheckIn(reservation);
 
-        executeWithLocks(
-                List.of(
-                        redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId),
-                        redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + reservation.getSeatId())),
-                () -> {
-                    reservationCommandService.checkInReadingSeat(memberId, reservationId);
-                    return null;
-                });
+        lockExecutor.withSeatLocks(
+                memberId,
+                reservation.getSeatId(),
+                () -> reservationCommandService.checkInReadingSeat(
+                        memberId,
+                        reservationId));
     }
 
     @Override
-    public ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId) {
-        validateMember(memberId);
-        if (reservationId == null) {
-            throw new IllegalArgumentException("예약 ID는 필수입니다.");
-        }
+    public ReadingSeatReservationDto extendReadingSeatReservation(
+            Long memberId,
+            Long reservationId) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.ReadingSeatReservationDto reservation = reservationMapper
-                .selectReadingSeatReservationForMember(reservationId, memberId);
-        if (reservation == null) {
-            throw new IllegalArgumentException("연장할 수 있는 예약을 찾을 수 없습니다.");
-        }
+        ReadingSeatReservationDto reservation =
+                reservationPolicy.requireSeatReservation(
+                        reservationMapper.selectReadingSeatReservationForMember(
+                                reservationId,
+                                memberId),
+                        "연장할 수 있는 예약을 찾을 수 없습니다.");
 
-        return executeWithLocks(
-                List.of(
-                        redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId),
-                        redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + reservation.getSeatId())),
-                () -> reservationCommandService.extendReadingSeatReservation(memberId, reservationId));
+        return lockExecutor.withSeatLocks(
+                memberId,
+                reservation.getSeatId(),
+                () -> reservationCommandService.extendReadingSeatReservation(
+                        memberId,
+                        reservationId));
     }
 
     @Override
-    public List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(Long memberId, LocalDate date) {
-        validateMember(memberId);
-        if (date == null) {
-            throw new IllegalArgumentException("예약 날짜는 필수입니다.");
-        }
+    public List<RoomAvailabilityDto> getRoomAvailability(
+            Long memberId,
+            LocalDate date) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationDate(date);
 
         LocalDateTime dateStart = date.atStartOfDay();
         LocalDateTime dateEnd = date.plusDays(1).atStartOfDay();
-        LocalDateTime serverNow = LocalDateTime.now(RESERVATION_ZONE);
-        List<ReservationDto.RoomReservationSlotDto> reservations = reservationMapper
-                .selectRoomReservationsBetween(dateStart, dateEnd);
+        LocalDateTime serverNow =
+                LocalDateTime.now(ReservationConstants.RESERVATION_ZONE);
+        List<RoomReservationSlotDto> reservations =
+                reservationMapper.selectRoomReservationsBetween(
+                        dateStart,
+                        dateEnd);
+        List<RoomAvailabilityDto> rooms =
+                reservationMapper.selectActiveReservationRooms(memberId);
+        List<RoomAvailabilityDto> roomsWithSlots =
+                new ArrayList<>();
 
-        return reservationMapper.selectActiveReservationRooms(memberId).stream()
-                .map(room -> {
-                    room.setSlots(buildRoomSlots(room.getRoomId(), date, serverNow, reservations));
-                    return room;
-                })
-                .toList();
+        for (RoomAvailabilityDto room : rooms) {
+            RoomAvailabilityDto roomWithSlots =
+                    roomSlotFactory.attachSlots(
+                            room,
+                            date,
+                            serverNow,
+                            reservations);
+            roomsWithSlots.add(roomWithSlots);
+        }
+        return roomsWithSlots;
     }
 
     @Override
-    public List<ReservationDto.RoomReservationDto> getMyRoomReservations(Long memberId) {
-        validateMember(memberId);
+    public List<RoomReservationDto> getMyRoomReservations(
+            Long memberId) {
+        reservationPolicy.requireMember(memberId);
         return reservationMapper.selectMyRoomReservations(memberId);
     }
 
     @Override
-    public void cancelRoomReservation(Long memberId, Long reservationId) {
-        validateMember(memberId);
-        if (reservationId == null) {
-            throw new IllegalArgumentException("예약 ID는 필수입니다.");
-        }
+    public void cancelRoomReservation(
+            Long memberId,
+            Long reservationId) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.RoomReservationDto reservation = reservationMapper.selectRoomReservationForMember(reservationId,
-                memberId);
-        if (reservation == null) {
-            throw new IllegalArgumentException("취소할 수 있는 공간 예약을 찾을 수 없습니다.");
-        }
-        if (!isCancelableStatus(reservation.getStatus())) {
-            throw new IllegalArgumentException("이미 취소되었거나 완료된 예약입니다.");
-        }
-        LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
-        if (!now.isBefore(reservation.getEndTime())) {
-            throw new IllegalArgumentException("이미 종료된 예약입니다.");
-        }
-        if ("RESERVED".equals(reservation.getStatus())
-                && !now.isBefore(
-                        reservation.getStartTime().plusMinutes(CHECK_IN_WINDOW_MINUTES))) {
-            throw new IllegalArgumentException("입실 가능 시간이 지나 노쇼 처리 대상입니다. 예약 내역을 새로고침해주세요.");
-        }
+        RoomReservationDto reservation =
+                reservationPolicy.requireRoomReservation(
+                        reservationMapper.selectRoomReservationForMember(
+                                reservationId,
+                                memberId),
+                        "취소할 수 있는 공간 예약을 찾을 수 없습니다.");
+        reservationPolicy.validateRoomCancellation(reservation);
 
-        executeWithLocks(
-                List.of(redissonClient.getLock(ROOM_LOCK_KEY_PREFIX + reservation.getRoomId())),
-                () -> {
-                    reservationCommandService.cancelRoomReservation(memberId, reservationId);
-                    return null;
-                });
+        lockExecutor.withRoomLock(
+                reservation.getRoomId(),
+                () -> reservationCommandService.cancelRoomReservation(
+                        memberId,
+                        reservationId));
     }
 
     @Override
-    public void checkInRoom(Long memberId, Long reservationId) {
-        validateMember(memberId);
-        if (reservationId == null) {
-            throw new IllegalArgumentException("예약 ID는 필수입니다.");
-        }
+    public void checkInRoom(
+            Long memberId,
+            Long reservationId) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationId(reservationId);
 
-        ReservationDto.RoomReservationDto reservation =
-                reservationMapper.selectRoomReservationForMember(reservationId, memberId);
-        if (reservation == null) {
-            throw new IllegalArgumentException("입실할 수 있는 공간 예약을 찾을 수 없습니다.");
-        }
-        validateRoomCheckInWindow(reservation);
+        RoomReservationDto reservation =
+                reservationPolicy.requireRoomReservation(
+                        reservationMapper.selectRoomReservationForMember(
+                                reservationId,
+                                memberId),
+                        "입실할 수 있는 공간 예약을 찾을 수 없습니다.");
+        reservationPolicy.validateRoomCheckIn(reservation);
 
-        executeWithLocks(
-                List.of(redissonClient.getLock(ROOM_LOCK_KEY_PREFIX + reservation.getRoomId())),
-                () -> {
-                    reservationCommandService.checkInRoom(memberId, reservationId);
-                    return null;
-                });
+        lockExecutor.withRoomLock(
+                reservation.getRoomId(),
+                () -> reservationCommandService.checkInRoom(
+                        memberId,
+                        reservationId));
     }
 
     @Override
     public void cancelAllPendingReservations(Long memberId) {
-        validateMember(memberId);
+        reservationPolicy.requireMember(memberId);
         reservationMapper.cancelAllPendingReadingSeatReservations(memberId);
         reservationMapper.cancelAllPendingRoomReservations(memberId);
     }
 
     @Override
-    public ReservationDto.RoomReservationDto reserveRoom(
+    public RoomReservationDto reserveRoom(
             Long memberId,
-            ReservationDto.RoomReservationRequestDto request) {
-        validateMember(memberId);
-        validateRoomReservationRequest(request);
+            RoomReservationRequestDto request) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.validateRoomReservationRequest(request);
 
-        return executeWithLocks(
-                List.of(redissonClient.getLock(ROOM_LOCK_KEY_PREFIX + request.getRoomId())),
+        return lockExecutor.withRoomLock(
+                request.getRoomId(),
                 () -> reservationCommandService.reserveRoom(memberId, request));
     }
 
-    private <T> T executeWithLocks(List<RLock> locks, LockedOperation<T> operation) {
-        List<RLock> acquiredLocks = new ArrayList<>();
+    private ReservationDateOptionDto createDateOption(
+            LocalDate today,
+            int index) {
+        LocalDate date = today.plusDays(index);
+        int dayOfWeekValue = date.getDayOfWeek().getValue();
 
-        try {
-            for (RLock lock : locks) {
-                boolean locked = lock.tryLock(LOCK_WAIT_SECONDS, TimeUnit.SECONDS);
-                if (!locked) {
-                    throw new IllegalStateException("예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
-                }
-                acquiredLocks.add(lock);
-            }
-
-            return operation.execute();
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("예약 처리가 중단되었습니다.", ex);
-        } finally {
-            for (int index = acquiredLocks.size() - 1; index >= 0; index--) {
-                unlockIfHeldByCurrentThread(acquiredLocks.get(index));
-            }
-        }
-    }
-
-    private void unlockIfHeldByCurrentThread(RLock lock) {
-        if (lock.isHeldByCurrentThread()) {
-            lock.unlock();
-        }
-    }
-
-    private List<ReservationDto.RoomReservationSlotDto> buildRoomSlots(
-            Long roomId,
-            LocalDate date,
-            LocalDateTime serverNow,
-            List<ReservationDto.RoomReservationSlotDto> reservations) {
-        return IntStream.range(0, DAILY_SLOT_COUNT)
-                .mapToObj(index -> {
-                    LocalDateTime slotStart = date.atTime(OPEN_TIME.plusHours((long) index * SLOT_HOURS));
-                    LocalDateTime slotEnd = slotStart.plusHours(SLOT_HOURS);
-                    ReservationDto.RoomReservationSlotDto overlappingReservation = findOverlappingRoomReservation(
-                            roomId, slotStart, slotEnd, reservations);
-
-                    return ReservationDto.RoomReservationSlotDto.builder()
-                            .roomId(roomId)
-                            .reservationId(overlappingReservation == null
-                                    ? null
-                                    : overlappingReservation.getReservationId())
-                            .reservedMemberId(overlappingReservation == null
-                                    ? null
-                                    : overlappingReservation.getReservedMemberId())
-                            .startTime(slotStart)
-                            .endTime(slotEnd)
-                            .status(overlappingReservation == null
-                                    ? null
-                                    : overlappingReservation.getStatus())
-                            .available(overlappingReservation == null
-                                    && serverNow.isBefore(
-                                            slotStart.plusMinutes(CHECK_IN_WINDOW_MINUTES)))
-                            .build();
-                })
-                .toList();
-    }
-
-    private ReservationDto.RoomReservationSlotDto findOverlappingRoomReservation(
-            Long roomId,
-            LocalDateTime slotStart,
-            LocalDateTime slotEnd,
-            List<ReservationDto.RoomReservationSlotDto> reservations) {
-        return reservations.stream()
-                .filter(reservation -> roomId.equals(reservation.getRoomId())
-                        && reservation.getStartTime().isBefore(slotEnd)
-                        && reservation.getEndTime().isAfter(slotStart))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private void validateRoomReservationRequest(ReservationDto.RoomReservationRequestDto request) {
-        if (request == null) {
-            throw new IllegalArgumentException("예약 요청 본문은 필수입니다.");
-        }
-        if (request.getRoomId() == null) {
-            throw new IllegalArgumentException("공간 ID는 필수입니다.");
-        }
-        validateTimeRange(request.getStartTime(), request.getEndTime());
-        validateReservationTimePolicy(request.getStartTime(), request.getEndTime(), null);
-        if (!LocalDateTime.now(RESERVATION_ZONE)
-                .isBefore(request.getStartTime().plusMinutes(CHECK_IN_WINDOW_MINUTES))) {
-            throw new IllegalArgumentException("예약 시작 후 20분이 지난 시간대는 예약할 수 없습니다.");
-        }
-    }
-
-    private void validateReservationRequest(ReservationDto.ReadingSeatReservationRequestDto request) {
-        if (request == null) {
-            throw new IllegalArgumentException("예약 요청 본문은 필수입니다.");
-        }
-        if (request.getSeatId() == null) {
-            throw new IllegalArgumentException("좌석 ID는 필수입니다.");
-        }
-        validateTimeRange(request.getStartTime(), request.getEndTime());
-        validateReservationTimePolicy(request.getStartTime(), request.getEndTime(), MAX_RESERVATION_HOURS);
-    }
-
-    private void validateTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
-        if (startTime == null || endTime == null) {
-            throw new IllegalArgumentException("시작 시간과 종료 시간은 필수입니다.");
-        }
-        if (!endTime.isAfter(startTime)) {
-            throw new IllegalArgumentException("종료 시간은 시작 시간보다 뒤여야 합니다.");
-        }
-    }
-
-    private void validateReservationTimePolicy(
-            LocalDateTime startTime,
-            LocalDateTime endTime,
-            Integer maxReservationHours) {
-        if (!isEvenHourBoundary(startTime) || !isEvenHourBoundary(endTime)) {
-            throw new IllegalArgumentException("예약 시간은 짝수 시간대의 2시간 단위로 선택해야 합니다.");
-        }
-
-        if (!endTime.isAfter(LocalDateTime.now(RESERVATION_ZONE))) {
-            throw new IllegalArgumentException("이미 종료된 예약 시간입니다.");
-        }
-
-        LocalDateTime closeTime = startTime.toLocalDate().plusDays(1).atStartOfDay();
-        if (startTime.toLocalTime().isBefore(OPEN_TIME) || endTime.isAfter(closeTime)) {
-            throw new IllegalArgumentException("예약 가능 시간은 08:00부터 24:00까지입니다.");
-        }
-
-        if (!endTime.toLocalDate().equals(startTime.toLocalDate()) && !endTime.equals(closeTime)) {
-            throw new IllegalArgumentException("예약은 하루 운영 시간 안에서만 가능합니다.");
-        }
-
-        long reservationMinutes = Duration.between(startTime, endTime).toMinutes();
-        long slotMinutes = SLOT_HOURS * 60L;
-        if (reservationMinutes < slotMinutes) {
-            throw new IllegalArgumentException("예약은 최소 2시간부터 가능합니다.");
-        }
-        if (maxReservationHours != null
-                && reservationMinutes > maxReservationHours * 60L) {
-            throw new IllegalArgumentException("예약은 최대 6시간까지 가능합니다.");
-        }
-        if (reservationMinutes % slotMinutes != 0) {
-            throw new IllegalArgumentException("예약 시간은 2시간 단위여야 합니다.");
-        }
-    }
-
-    private boolean isEvenHourBoundary(LocalDateTime dateTime) {
-        return dateTime.getMinute() == 0
-                && dateTime.getSecond() == 0
-                && dateTime.getNano() == 0
-                && dateTime.getHour() % SLOT_HOURS == 0;
-    }
-
-    private int normalizeDateOptionDays(int days) {
-        if (days < MIN_DATE_OPTION_DAYS) {
-            return MIN_DATE_OPTION_DAYS;
-        }
-        return Math.min(days, MAX_DATE_OPTION_DAYS);
-    }
-
-    private void validateMember(Long memberId) {
-        if (memberId == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-    }
-
-    private boolean isCancelableStatus(String status) {
-        return "RESERVED".equals(status) || "USING".equals(status);
-    }
-
-    private void validateCheckInWindow(ReservationDto.ReadingSeatReservationDto reservation) {
-        if (!"RESERVED".equals(reservation.getStatus())) {
-            throw new IllegalArgumentException("입실할 수 있는 예약 상태가 아닙니다.");
-        }
-
-        LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
-        LocalDateTime startTime = reservation.getStartTime();
-        LocalDateTime endTime = reservation.getEndTime();
-        LocalDateTime createdAt = reservation.getCreatedAt();
-
-        if (startTime == null || endTime == null) {
-            throw new IllegalArgumentException("예약 시간 정보를 확인할 수 없습니다.");
-        }
-        if (now.isBefore(startTime)) {
-            throw new IllegalArgumentException("예약 시작 시간 이후 입실할 수 있습니다.");
-        }
-        if (!now.isBefore(endTime)) {
-            throw new IllegalArgumentException("이미 종료된 예약입니다.");
-        }
-
-        LocalDateTime checkInWindowStart = createdAt != null && createdAt.isAfter(startTime)
-                ? createdAt
-                : startTime;
-        LocalDateTime checkInDeadline = checkInWindowStart
-                .plusMinutes(CHECK_IN_WINDOW_MINUTES)
-                .isBefore(endTime)
-                        ? checkInWindowStart.plusMinutes(CHECK_IN_WINDOW_MINUTES)
-                        : endTime;
-
-        if (now.isAfter(checkInDeadline)) {
-            throw new IllegalArgumentException("입실 가능 시간이 지나 노쇼 처리 대상입니다. 예약 내역을 새로고침해주세요.");
-        }
-    }
-
-    private void validateRoomCheckInWindow(ReservationDto.RoomReservationDto reservation) {
-        if (!"RESERVED".equals(reservation.getStatus())) {
-            throw new IllegalArgumentException("입실할 수 있는 공간 예약 상태가 아닙니다.");
-        }
-
-        LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
-        LocalDateTime startTime = reservation.getStartTime();
-        LocalDateTime endTime = reservation.getEndTime();
-
-        if (startTime == null || endTime == null) {
-            throw new IllegalArgumentException("예약 시간 정보를 확인할 수 없습니다.");
-        }
-        if (now.isBefore(startTime)) {
-            throw new IllegalArgumentException("예약 시작 시간 이후 입실할 수 있습니다.");
-        }
-        if (!now.isBefore(endTime)) {
-            throw new IllegalArgumentException("이미 종료된 예약입니다.");
-        }
-        if (!now.isBefore(startTime.plusMinutes(CHECK_IN_WINDOW_MINUTES))) {
-            throw new IllegalArgumentException("입실 가능 시간이 지나 노쇼 처리 대상입니다. 예약 내역을 새로고침해주세요.");
-        }
-    }
-
-    private ReservationDto.ReservationPenaltyStatusDto buildReservationPenaltyStatus(int activePenaltyCount) {
-        boolean blocked = activePenaltyCount >= PENALTY_BLOCK_THRESHOLD;
-        return ReservationDto.ReservationPenaltyStatusDto.builder()
-                .activePenaltyCount(activePenaltyCount)
-                .blockThreshold(PENALTY_BLOCK_THRESHOLD)
-                .blocked(blocked)
-                .pledgePhrase(PENALTY_PLEDGE_PHRASE)
-                .message(blocked ? PENALTY_BLOCK_MESSAGE : PENALTY_AVAILABLE_MESSAGE)
+        return ReservationDateOptionDto.builder()
+                .key(date.toString())
+                .date(date.toString())
+                .year(date.getYear())
+                .month(date.getMonthValue())
+                .day(date.getDayOfMonth())
+                .dayOfWeek(ReservationConstants.DAY_OF_WEEK_LABELS.get(
+                        dayOfWeekValue
+                                % ReservationConstants.DAY_OF_WEEK_LABELS.size()))
+                .today(index == 0)
+                .sat(dayOfWeekValue == 6)
+                .sun(dayOfWeekValue == 7)
                 .build();
     }
 
-    @FunctionalInterface
-    private interface LockedOperation<T> {
-        T execute();
+    private int normalizeDateOptionDays(int days) {
+        if (days < ReservationConstants.MIN_DATE_OPTION_DAYS) {
+            return ReservationConstants.MIN_DATE_OPTION_DAYS;
+        }
+        if (days > ReservationConstants.MAX_DATE_OPTION_DAYS) {
+            return ReservationConstants.MAX_DATE_OPTION_DAYS;
+        }
+        return days;
     }
 }

@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.univus.app.reservation.dto.SeatChatDto.SeatChatContextDto;
-import com.univus.app.reservation.dto.SeatChatDto.SeatChatMessageDto;
-import com.univus.app.reservation.dto.SeatChatDto.SeatChatMessageRequestDto;
-import com.univus.app.reservation.dto.SeatChatDto.SeatChatRoomDto;
-import com.univus.app.reservation.dto.SeatChatDto.SeatChatRoomRequestDto;
+import com.univus.app.reservation.dto.SeatChatContextDto;
+import com.univus.app.reservation.dto.SeatChatMessageDto;
+import com.univus.app.reservation.dto.SeatChatMessageRequestDto;
+import com.univus.app.reservation.dto.SeatChatRoomDto;
+import com.univus.app.reservation.dto.SeatChatRoomRequestDto;
 import com.univus.app.reservation.service.SeatChatService;
 
 import lombok.RequiredArgsConstructor;

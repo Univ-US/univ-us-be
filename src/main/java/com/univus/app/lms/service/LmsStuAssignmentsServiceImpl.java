@@ -75,10 +75,10 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
 
         Map<String, SemesterAccumulator> semesters = new LinkedHashMap<>();
         for (LmsStuAssignmentsDto.AssignmentFlatRow row : rows) {
-            String key = row.getYear() + ":" + row.getTermCode();
+            String key = row.getSemYear() + ":" + row.getSemTerm();
             SemesterAccumulator semester = semesters.computeIfAbsent(
                     key,
-                    ignored -> new SemesterAccumulator(row.getYear(), row.getTermCode()));
+                    ignored -> new SemesterAccumulator(row.getSemYear(), row.getSemTerm()));
             semester.add(row);
         }
 
@@ -211,37 +211,37 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
     }
 
     private void validateSubmittable(LmsStuAssignmentsDto.SubmitAccessRow access) {
-        if (!SUBMITTABLE_VAL_STATUS.contains(access.getValStatus())) {
+        if (!SUBMITTABLE_VAL_STATUS.contains(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "제출할 수 없는 상태의 과제입니다.");
         }
-        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getValStatus())) {
+        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "마감된 과제는 제출할 수 없습니다.");
         }
-        String status = access.getSubmissionStatus();
+        String status = access.getLecAsnSbmStatus();
         if (status != null && !NOT_SUBMITTED.equals(status)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 제출된 과제입니다.");
         }
     }
 
     private void validateEditable(LmsStuAssignmentsDto.SubmitAccessRow access) {
-        if (!SUBMITTABLE_VAL_STATUS.contains(access.getValStatus())) {
+        if (!SUBMITTABLE_VAL_STATUS.contains(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "수정할 수 없는 상태의 과제입니다.");
         }
-        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getValStatus())) {
+        if (access.getOverdueFlag() != null && access.getOverdueFlag() == 1 && !"LAT".equals(access.getLecAsnValStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "마감된 과제는 수정할 수 없습니다.");
         }
-        if (!SUBMITTED.equals(access.getSubmissionStatus())) {
+        if (!SUBMITTED.equals(access.getLecAsnSbmStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "제출 완료 상태에서만 수정할 수 있습니다.");
         }
     }
 
     private LmsStuAssignmentsDto.SubmittableAssignmentResDto toSubmittableResponse(
             LmsStuAssignmentsDto.SubmittableRow row) {
-        boolean late = "LAT".equals(row.getValStatus());
+        boolean late = "LAT".equals(row.getLecAsnValStatus());
         String status = late ? "EXTENDED" : "OPEN";
         return LmsStuAssignmentsDto.SubmittableAssignmentResDto.builder()
                 .id(row.getAssignmentId())
-                .title(row.getTitle())
+                .lecAsnTitle(row.getLecAsnTitle())
                 .courseName(row.getCourseName())
                 .dueLabel(row.getDueLabel())
                 .status(status)
@@ -252,7 +252,7 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .guide(LmsStuAssignmentsDto.SubmitGuideResDto.builder()
                         .courseName(row.getCourseName())
                         .professor(row.getProfessor())
-                        .lines(buildGuideLines(row.getContent()))
+                        .lines(buildGuideLines(row.getLecAsnContent()))
                         .build())
                 .build();
     }
@@ -290,10 +290,10 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
     }
 
     private static String resolveStatus(LmsStuAssignmentsDto.AssignmentFlatRow row) {
-        if (row.getScore() != null || GRADED.equals(row.getSubmissionStatus())) {
+        if (row.getAsnSbmEvlScore() != null || GRADED.equals(row.getLecAsnSbmStatus())) {
             return GRADED;
         }
-        if (row.getSubmissionId() != null && !NOT_SUBMITTED.equals(row.getSubmissionStatus())) {
+        if (row.getSubmissionId() != null && !NOT_SUBMITTED.equals(row.getLecAsnSbmStatus())) {
             return SUBMITTED;
         }
         return NOT_SUBMITTED;
@@ -310,14 +310,14 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .fileUrl(row.getSubmissionId() == null ? null : String.format(SUBMISSION_DOWNLOAD_PATH, row.getSubmissionId()))
                 .contentType(row.getFileExt())
                 .build();
-        LmsStuAssignmentsDto.AssignmentFeedbackResDto feedback = row.getScore() == null
+        LmsStuAssignmentsDto.AssignmentFeedbackResDto feedback = row.getAsnSbmEvlScore() == null
                 ? null
                 : LmsStuAssignmentsDto.AssignmentFeedbackResDto.builder()
-                .score(row.getScore())
+                .asnSbmEvlScore(row.getAsnSbmEvlScore())
                 .maxScore(DEFAULT_MAX_SCORE)
                 .courseName(row.getCourseName())
                 .professor(row.getProfessor())
-                .comment(row.getFeedback() == null ? "" : row.getFeedback())
+                .asnSbmEvlFeedback(row.getAsnSbmEvlFeedback() == null ? "" : row.getAsnSbmEvlFeedback())
                 .build();
 
         return LmsStuAssignmentsDto.StudentAssignmentResDto.builder()
@@ -326,15 +326,15 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .title(row.getTitle())
-                .content(row.getContent())
-                .dueDate(row.getDueDate())
+                .lecAsnTitle(row.getLecAsnTitle())
+                .lecAsnContent(row.getLecAsnContent())
+                .lecAsnDueDate(row.getLecAsnDueDate())
                 .status(status)
                 .overdue(isOverdue(row))
-                .score(row.getScore())
+                .asnSbmEvlScore(row.getAsnSbmEvlScore())
                 .maxScore(DEFAULT_MAX_SCORE)
-                .submittedAt(row.getSubmittedAt())
-                .submissionMemo(row.getSubmissionMemo())
+                .lecAsnSbmRegDate(row.getLecAsnSbmRegDate())
+                .lecAsnSbmMemo(row.getLecAsnSbmMemo())
                 .file(file)
                 .feedback(feedback)
                 .build();
@@ -415,8 +415,8 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
 
         private LmsStuAssignmentsDto.SemesterAssignmentsResDto toResponse() {
             return LmsStuAssignmentsDto.SemesterAssignmentsResDto.builder()
-                    .year(year)
-                    .termCode(termCode)
+                    .semYear(year)
+                    .semTerm(termCode)
                     .semesterLabel(semesterLabel(year, termCode))
                     .assignments(assignments)
                     .build();

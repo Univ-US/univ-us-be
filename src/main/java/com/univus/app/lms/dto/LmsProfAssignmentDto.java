@@ -20,6 +20,10 @@ import java.util.List;
  * 과목별 제출/채점/수강생 집계(PLM-004 채점 현황과 동일 산식 재사용). 만점은 100 고정(2026-06-12 확정),
  * 상태는 LEC_ASN_VAL_STATUS 공통코드. service가 매핑 row → ResDto 변환(ungradedCount 계산·첨부 조립).
  * MyBatis resultType은 {@code ...LmsProfAssignmentDto$Inner} 형태로 참조.
+ * <p>※ 명명 규칙: BE 정본 + DTO 변수명 = DB 컬럼명 카멜(자기/앵커 LECTURE_ASSIGNMENT 테이블), 조인/파생 컬럼은 의미 별칭 — 커뮤니티 PostDto 컨벤션.
+ *    응답 JSON·요청 form key = 컬럼 카멜(lecAsnTitle·lecAsnContent·lecAsnDueDate·lecAsnValStatus·semYear·semTerm).
+ *    PK/ID(assignmentId·attachmentId)·파일 메타(fileName·fileExt·fileSize)·집계(submittedCount 등)는 의미명 유지,
+ *    InsertParam·매퍼 @Param(title·content·dueDate)은 내부 쓰기 플러밍이라 유지.
  */
 public final class LmsProfAssignmentDto {
 
@@ -36,11 +40,11 @@ public final class LmsProfAssignmentDto {
     @Builder
     public static class LectureRow {
         private Long lecId;
-        private String courseName;   // LECTURE_CODE.LEC_COD_NAME
-        private Integer lecSection;  // 분반
-        private Integer year;        // SEMESTERS.SEM_YEAR
-        private String termCode;     // SEMESTERS.SEM_TERM (공통코드 SEM_TERM)
-        private String lecValStatus; // LECTURE.LEC_VAL_STATUS (공통코드 LEC_VAL_STATUS)
+        private String courseName;   // LECTURE_CODE.LEC_COD_NAME (조인 → 의미별칭)
+        private Integer lecSection;  // LECTURE.LEC_SECTION (조인, 분반)
+        private Integer semYear;     // SEMESTERS.SEM_YEAR (조인)
+        private String semTerm;      // SEMESTERS.SEM_TERM (조인, 공통코드 SEM_TERM)
+        private String lecValStatus; // LECTURE.LEC_VAL_STATUS (조인, 공통코드 LEC_VAL_STATUS)
     }
 
     /** 과제 본체 1건 매핑 (selectAssignmentsByCoursePaged / selectAssignmentById) — 본체+집계만.
@@ -51,19 +55,19 @@ public final class LmsProfAssignmentDto {
     @AllArgsConstructor
     @Builder
     public static class AssignmentRow {
-        private Long assignmentId;     // LECTURE_ASSIGNMENT.LEC_ASN_ID
+        private Long assignmentId;     // LECTURE_ASSIGNMENT.LEC_ASN_ID (자기 PK — 의미명 유지)
         private Long lecId;
-        private String courseName;
-        private Integer lecSection;
-        private Integer year;
-        private String termCode;
-        private String title;
-        private String description;    // LEC_ASN_CONTENT (Tiptap HTML, CLOB) — sanitize는 표시단 FE
-        private String dueDate;        // "YYYY-MM-DDTHH:mm" (datetime-local 호환, TO_CHAR)
-        private String valStatus;      // LEC_ASN_VAL_STATUS (AVL/MOD/LAT/CLS/NOP)
-        private int submittedCount;    // 제출 학생 수 (LEC_ASN_SBM_STATUS != 'NSB')
+        private String courseName;     // LECTURE_CODE.LEC_COD_NAME (조인)
+        private Integer lecSection;    // LECTURE.LEC_SECTION (조인, 분반)
+        private Integer semYear;       // SEMESTERS.SEM_YEAR (조인)
+        private String semTerm;        // SEMESTERS.SEM_TERM (조인)
+        private String lecAsnTitle;    // LECTURE_ASSIGNMENT.LEC_ASN_TITLE (자기 컬럼)
+        private String lecAsnContent;  // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT (자기 컬럼, Tiptap HTML CLOB — sanitize는 표시단 FE)
+        private String lecAsnDueDate;  // LECTURE_ASSIGNMENT.LEC_ASN_DUE_DATE "YYYY-MM-DDTHH:mm" (자기 컬럼, datetime-local 호환 TO_CHAR)
+        private String lecAsnValStatus;// LECTURE_ASSIGNMENT.LEC_ASN_VAL_STATUS (자기 컬럼, AVL/MOD/LAT/CLS/NOP)
+        private int submittedCount;    // 제출 학생 수 (LEC_ASN_SBM_STATUS != 'NSB') — 집계
         private int gradedCount;       // 채점완료 수 (평가 점수 not null) — ungraded 계산용
-        private int totalStudents;     // 수강생 수 (LEC_STD_ENR_STATUS != 'DRP')
+        private int totalStudents;     // 수강생 수 (LEC_STD_ENR_STATUS != 'DRP') — 집계
     }
 
     /** 유효(ACT) 첨부 1행 매핑 (selectActiveAttachmentsByAssignmentId... — assignmentId 포함, 서비스 그룹핑용) */
@@ -117,8 +121,8 @@ public final class LmsProfAssignmentDto {
         private Long lecId;
         private String courseName;
         private Integer lecSection;
-        private Integer year;
-        private String termCode;
+        private Integer semYear;     // SEMESTERS.SEM_YEAR
+        private String semTerm;      // SEMESTERS.SEM_TERM
         private String lecValStatus;
     }
 
@@ -133,12 +137,12 @@ public final class LmsProfAssignmentDto {
         private Long lecId;
         private String courseName;
         private Integer lecSection;
-        private Integer year;
-        private String termCode;
-        private String title;
-        private String description;
-        private String dueDate;
-        private String valStatus;      // 라벨은 FE 공통코드
+        private Integer semYear;       // SEMESTERS.SEM_YEAR
+        private String semTerm;        // SEMESTERS.SEM_TERM
+        private String lecAsnTitle;    // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
+        private String lecAsnContent;  // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT
+        private String lecAsnDueDate;  // LECTURE_ASSIGNMENT.LEC_ASN_DUE_DATE "YYYY-MM-DDTHH:mm"
+        private String lecAsnValStatus;// LECTURE_ASSIGNMENT.LEC_ASN_VAL_STATUS (라벨은 FE 공통코드)
         private int submittedCount;
         private int gradedCount;       // FE 미사용, ungraded 계산 산식 노출
         private int ungradedCount;     // max(0, submitted - graded) — service 계산
@@ -171,13 +175,13 @@ public final class LmsProfAssignmentDto {
 
         @NotBlank(message = "과제명을 입력해 주세요.")
         @Size(max = 200, message = "과제명은 200자 이내여야 합니다.") // DB LEC_ASN_TITLE VARCHAR2(200)
-        private String title;
+        private String lecAsnTitle;   // LECTURE_ASSIGNMENT.LEC_ASN_TITLE (멀티파트 form key)
 
         @NotBlank(message = "마감 일시를 입력해 주세요.")
-        private String dueDate; // "YYYY-MM-DDTHH:mm"
+        private String lecAsnDueDate; // LECTURE_ASSIGNMENT.LEC_ASN_DUE_DATE "YYYY-MM-DDTHH:mm"
 
         @Size(max = 20000, message = "과제 설명이 너무 깁니다.") // FE 텍스트 4000자, HTML은 더 길어 넉넉한 상한만(CLOB)
-        private String description;
+        private String lecAsnContent; // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT (에디터 HTML)
 
         private List<MultipartFile> files; // 선택·다중 — 있을 때만 검증·저장
     }
@@ -190,13 +194,13 @@ public final class LmsProfAssignmentDto {
     public static class UpdateReqDto {
         @NotBlank(message = "과제명을 입력해 주세요.")
         @Size(max = 200, message = "과제명은 200자 이내여야 합니다.")
-        private String title;
+        private String lecAsnTitle;   // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
 
         @NotBlank(message = "마감 일시를 입력해 주세요.")
-        private String dueDate;
+        private String lecAsnDueDate; // LECTURE_ASSIGNMENT.LEC_ASN_DUE_DATE
 
         @Size(max = 20000, message = "과제 설명이 너무 깁니다.")
-        private String description;
+        private String lecAsnContent; // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT
 
         private List<MultipartFile> files;            // 추가 첨부 (교체 아님)
         private List<Long> removeAttachmentIds;       // 제거할 기존 첨부 ID

@@ -37,7 +37,7 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
 
         Map<String, SemesterGroup> groups = new LinkedHashMap<>();
         for (LmsStuAttendanceDto.CourseRow row : courseRows) {
-            String key = row.getYear() + "-" + row.getTermCode();
+            String key = row.getSemYear() + "-" + row.getSemTerm();
             SemesterGroup group = groups.computeIfAbsent(key, ignored -> new SemesterGroup(row));
             group.courses.add(toCourse(row, recordsByEnrollment.getOrDefault(row.getEnrollmentId(), List.of())));
         }
@@ -45,8 +45,8 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
         List<LmsStuAttendanceDto.SemesterAttendanceResDto> response = new ArrayList<>(groups.size());
         for (SemesterGroup group : groups.values()) {
             response.add(LmsStuAttendanceDto.SemesterAttendanceResDto.builder()
-                    .year(group.year)
-                    .termCode(group.termCode)
+                    .semYear(group.year)
+                    .semTerm(group.termCode)
                     .semesterLabel(semesterLabel(group.year, group.termCode))
                     .inProgress(group.inProgress)
                     .courseCount(group.courses.size())
@@ -61,11 +61,11 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
             LmsStuAttendanceDto.CourseRow row,
             List<LmsStuAttendanceDto.RecordRow> records) {
         List<LmsStuAttendanceDto.AttendanceRecordResDto> lateRecords = records.stream()
-                .filter(r -> STATUS_LATE.equals(r.getStatusCode()))
+                .filter(r -> STATUS_LATE.equals(r.getStdEnrAtdStsCode()))
                 .map(this::toRecord)
                 .toList();
         List<LmsStuAttendanceDto.AttendanceRecordResDto> absentRecords = records.stream()
-                .filter(r -> STATUS_ABSENT.equals(r.getStatusCode()))
+                .filter(r -> STATUS_ABSENT.equals(r.getStdEnrAtdStsCode()))
                 .map(this::toRecord)
                 .toList();
 
@@ -73,7 +73,7 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(safe(row.getLecSection()))
-                .totalSessions(safe(row.getTotalSessions()))
+                .lecTotClasses(safe(row.getLecTotClasses()))
                 .present(safe(row.getPresent()))
                 .late(safe(row.getLate()))
                 .absent(safe(row.getAbsent()))
@@ -85,7 +85,7 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
 
     private LmsStuAttendanceDto.AttendanceRecordResDto toRecord(LmsStuAttendanceDto.RecordRow row) {
         return LmsStuAttendanceDto.AttendanceRecordResDto.builder()
-                .date(row.getAttendanceDate())
+                .stdEnrAtdRegDate(row.getStdEnrAtdRegDate())
                 .build();
     }
 
@@ -129,8 +129,8 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
         private final List<LmsStuAttendanceDto.AttendanceCourseResDto> courses = new ArrayList<>();
 
         private SemesterGroup(LmsStuAttendanceDto.CourseRow row) {
-            this.year = row.getYear();
-            this.termCode = row.getTermCode();
+            this.year = row.getSemYear();
+            this.termCode = row.getSemTerm();
             this.inProgress = row.getInProgressFlag() != null && row.getInProgressFlag() == 1;
         }
     }

@@ -115,12 +115,12 @@
 
     <select id="selectChatMessages"
             resultType="com.univus.app.lms.dto.LmsProfChatDto$ChatMessageResDto">
-        SELECT m.CHT_ROM_MSG_ID AS id,
+        SELECT m.CHT_ROM_MSG_ID AS messageId,
                m.CHT_ROM_ID AS roomId,
                m.LMS_PRF_ID AS senderLmsPrfId,
                CASE WHEN m.LMS_PRF_ID = #{professorLmsPrfId} THEN 'me' ELSE 'student' END AS sender,
-               m.CHT_ROM_MSG_CONTENT AS text,
-               TO_CHAR(m.CHT_ROM_MSG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS sentAt,
+               m.CHT_ROM_MSG_CONTENT AS chtRomMsgContent,
+               TO_CHAR(m.CHT_ROM_MSG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS chtRomMsgDate,
                CASE WHEN NVL(rr.ROM_MSG_RED_YN, 0) = 1 THEN 1 ELSE 0 END AS read
         FROM CHAT_ROOM_MESSAGES m
         LEFT JOIN ROOM_MESSAGES_READ rr ON rr.CHT_ROM_MSG_ID = m.CHT_ROM_MSG_ID
@@ -159,7 +159,7 @@
 
     <insert id="insertChatMessage"
             parameterType="com.univus.app.lms.dto.LmsProfChatDto$ChatMessageResDto">
-        <selectKey keyProperty="id" resultType="long" order="BEFORE">
+        <selectKey keyProperty="messageId" resultType="long" order="BEFORE">
             SELECT SEQ_CHAT_ROOM_MESSAGES.NEXTVAL FROM DUAL
         </selectKey>
         INSERT INTO CHAT_ROOM_MESSAGES (
@@ -170,11 +170,11 @@
             CHT_ROM_MSG_CONTENT,
             CHT_ROM_MSG_STATUS
         ) VALUES (
-            #{id},
+            #{messageId},
             #{roomId},
             #{senderLmsPrfId},
             SYSTIMESTAMP,
-            #{text},
+            #{chtRomMsgContent},
             'SNT'
         )
     </insert>
@@ -195,12 +195,12 @@
 
     <select id="selectChatMessage"
             resultType="com.univus.app.lms.dto.LmsProfChatDto$ChatMessageResDto">
-        SELECT m.CHT_ROM_MSG_ID AS id,
+        SELECT m.CHT_ROM_MSG_ID AS messageId,
                m.CHT_ROM_ID AS roomId,
                m.LMS_PRF_ID AS senderLmsPrfId,
                CASE WHEN m.LMS_PRF_ID = #{professorLmsPrfId} THEN 'me' ELSE 'student' END AS sender,
-               m.CHT_ROM_MSG_CONTENT AS text,
-               TO_CHAR(m.CHT_ROM_MSG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS sentAt,
+               m.CHT_ROM_MSG_CONTENT AS chtRomMsgContent,
+               TO_CHAR(m.CHT_ROM_MSG_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS chtRomMsgDate,
                CASE WHEN NVL(rr.ROM_MSG_RED_YN, 0) = 1 THEN 1 ELSE 0 END AS read
         FROM CHAT_ROOM_MESSAGES m
         LEFT JOIN ROOM_MESSAGES_READ rr ON rr.CHT_ROM_MSG_ID = m.CHT_ROM_MSG_ID

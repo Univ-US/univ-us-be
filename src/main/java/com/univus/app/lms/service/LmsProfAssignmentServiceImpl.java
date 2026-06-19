@@ -109,8 +109,8 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
     public LmsProfAssignmentDto.AssignmentResDto createAssignment(Long memberId, LmsProfAssignmentDto.CreateReqDto request) {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
 
-        String title = requireTitle(request.getTitle());
-        String dueDate = requireDueDate(request.getDueDate());
+        String title = requireTitle(request.getLecAsnTitle());
+        String dueDate = requireDueDate(request.getLecAsnDueDate());
         List<MultipartFile> files = normalizeFiles(request.getFiles());
         validateFiles(files);
 
@@ -123,7 +123,7 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
                 .lecId(request.getLecId())
                 .title(title)
                 .dueDate(dueDate)
-                .description(normalizeContent(request.getDescription()))
+                .description(normalizeContent(request.getLecAsnContent()))
                 .build();
         lmsProfAssignmentMapper.insertAssignment(param);
 
@@ -143,10 +143,10 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
         requireOwnedAssignment(assignmentId, lmsPrfId);
 
-        String title = requireTitle(request.getTitle());
-        String dueDate = requireDueDate(request.getDueDate());
+        String title = requireTitle(request.getLecAsnTitle());
+        String dueDate = requireDueDate(request.getLecAsnDueDate());
         lmsProfAssignmentMapper.updateAssignment(
-                assignmentId, title, dueDate, normalizeContent(request.getDescription()));
+                assignmentId, title, dueDate, normalizeContent(request.getLecAsnContent()));
 
         // 기존 첨부 개별 제거 (소프트 무효화 — assignmentId 조건으로 본 과제의 첨부만)
         List<Long> removeIds = request.getRemoveAttachmentIds() == null
@@ -213,8 +213,8 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .year(row.getYear())
-                .termCode(row.getTermCode())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
                 .lecValStatus(row.getLecValStatus())
                 .build();
     }
@@ -228,12 +228,12 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
                 .lecId(row.getLecId())
                 .courseName(row.getCourseName())
                 .lecSection(row.getLecSection())
-                .year(row.getYear())
-                .termCode(row.getTermCode())
-                .title(row.getTitle())
-                .description(row.getDescription())
-                .dueDate(row.getDueDate())
-                .valStatus(row.getValStatus())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .lecAsnTitle(row.getLecAsnTitle())
+                .lecAsnContent(row.getLecAsnContent())
+                .lecAsnDueDate(row.getLecAsnDueDate())
+                .lecAsnValStatus(row.getLecAsnValStatus())
                 .submittedCount(row.getSubmittedCount())
                 .gradedCount(row.getGradedCount())
                 .ungradedCount(ungraded)

@@ -35,8 +35,8 @@ public final class LmsProfCoursesDto {
     public static class CourseFlatRow {
         private Long lecId;             // LECTURE.LEC_ID
         private Long semId;             // SEMESTERS.SEM_ID
-        private Integer year;           // SEMESTERS.SEM_YEAR
-        private String termCode;        // SEMESTERS.SEM_TERM (SM1/SM2/SMR/WNT)
+        private Integer semYear;           // SEMESTERS.SEM_YEAR
+        private String semTerm;        // SEMESTERS.SEM_TERM (SM1/SM2/SMR/WNT)
         private int inProgressFlag;     // 1=진행중 학기(SYSDATE ∈ [STR,END]) / 0=아님
         private String courseName;      // LECTURE_CODE.LEC_COD_NAME
         private Integer lecSection;     // LECTURE.LEC_SECTION (분반)
@@ -78,8 +78,8 @@ public final class LmsProfCoursesDto {
     @AllArgsConstructor
     @Builder
     public static class SemesterResDto {
-        private int year;
-        private String termCode;
+        private int semYear;
+        private String semTerm;
         private String semesterLabel;   // "2026년 1학기"
         private boolean inProgress;
         private int courseCount;        // 학기 강의 수 (화면 미사용이나 FE 타입 계약 유지)
@@ -96,7 +96,7 @@ public final class LmsProfCoursesDto {
     public static class CourseResDto {
         private Long lecId;
         private String courseName;
-        private int section;            // 분반 (LECTURE.LEC_SECTION)
+        private int lecSection;            // 분반 (LECTURE.LEC_SECTION)
         private int studentCount;
         private String schedule;        // 시간표 없으면 "" (FE는 schedule || "-")
         private int attendanceRate;     // %

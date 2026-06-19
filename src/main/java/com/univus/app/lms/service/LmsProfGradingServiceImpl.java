@@ -79,8 +79,8 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
                     .assignmentId(row.getAssignmentId())
                     .courseName(row.getCourseName())
                     .lecSection(row.getLecSection())
-                    .title(row.getTitle())
-                    .dueDate(row.getDueDate())
+                    .lecAsnTitle(row.getLecAsnTitle())
+                    .lecAsnDueDate(row.getLecAsnDueDate())
                     .submittedCount(row.getSubmittedCount())
                     .gradedCount(row.getGradedCount())
                     .ungradedCount(Math.max(0, row.getTotalStudents() - row.getGradedCount())) // 미채점=총원−채점(2026-06-16 통일)
@@ -132,8 +132,8 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
         return LmsProfGradingDto.DetailResDto.builder()
                 .assignmentId(header.getAssignmentId())
                 .courseName(header.getCourseName())
-                .title(header.getTitle())
-                .dueDate(header.getDueDate())
+                .lecAsnTitle(header.getLecAsnTitle())
+                .lecAsnDueDate(header.getLecAsnDueDate())
                 .maxScore(DEFAULT_MAX_SCORE)
                 .gradedCount(gradedCount)
                 .ungradedCount(ungradedCount)
@@ -153,8 +153,8 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
 
         // 점수 검증(0~100·소수 2자리)은 SaveReqDto의 Bean Validation(@Valid)에서 수행 →
         // 위반 시 LmsRestExceptionHandler가 400으로 응답. null = 미채점 되돌림(검증 통과).
-        BigDecimal score = request != null ? request.getScore() : null;
-        String feedback = request != null ? request.getFeedback() : null;
+        BigDecimal score = request != null ? request.getAsnSbmEvlScore() : null;
+        String feedback = request != null ? request.getAsnSbmEvlFeedback() : null;
 
         gradingMapper.upsertEvaluation(submissionId, score, feedback);
         log.info("채점 저장 memberId={} assignmentId={} submissionId={} scored={}",
@@ -228,11 +228,11 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
                 .memberId(row.getMemberId())
                 .studentName(row.getStudentName())
                 .studentNo(row.getStudentNo())
-                .submittedAt(row.getSubmittedAt())
-                .submissionStatus(row.getSubmissionStatus())
-                .score(row.getScore())
-                .feedback(row.getFeedback() == null ? "" : row.getFeedback()) // FE는 feedback 비null 문자열 기대
-                .graded(row.getScore() != null)
+                .lecAsnSbmRegDate(row.getLecAsnSbmRegDate())
+                .lecAsnSbmStatus(row.getLecAsnSbmStatus())
+                .asnSbmEvlScore(row.getAsnSbmEvlScore())
+                .asnSbmEvlFeedback(row.getAsnSbmEvlFeedback() == null ? "" : row.getAsnSbmEvlFeedback()) // FE는 비null 문자열 기대
+                .graded(row.getAsnSbmEvlScore() != null)
                 .file(file)
                 .build();
     }

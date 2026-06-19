@@ -72,7 +72,7 @@ public class LmsStuNoticeServiceImpl implements LmsStuNoticeService {
         }
 
         List<Long> noticeIds = notices.stream()
-                .map(LmsStuNoticeDto.NoticeResDto::getId)
+                .map(LmsStuNoticeDto.NoticeResDto::getNoticeId)
                 .toList();
         Map<Long, List<LmsStuNoticeDto.NoticeAttachmentResDto>> grouped =
                 lmsStuNoticeMapper.selectActiveAttachmentsByNoticeIds(noticeIds).stream()
@@ -81,7 +81,7 @@ public class LmsStuNoticeServiceImpl implements LmsStuNoticeService {
                                 Collectors.mapping(this::toAttachmentResDto, Collectors.toList())));
 
         for (LmsStuNoticeDto.NoticeResDto notice : notices) {
-            notice.setAttachments(grouped.getOrDefault(notice.getId(), Collections.emptyList()));
+            notice.setAttachments(grouped.getOrDefault(notice.getNoticeId(), Collections.emptyList()));
         }
     }
 
@@ -95,21 +95,21 @@ public class LmsStuNoticeServiceImpl implements LmsStuNoticeService {
 
     private LmsStuNoticeDto.NoticeResDto toNoticeResDto(LmsStuNoticeDto.NoticeRow row) {
         return LmsStuNoticeDto.NoticeResDto.builder()
-                .id(row.getId())
-                .year(row.getYear())
-                .termCode(row.getTermCode())
-                .semesterLabel(semesterLabel(row.getYear(), row.getTermCode()))
+                .noticeId(row.getNoticeId())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .semesterLabel(semesterLabel(row.getSemYear(), row.getSemTerm()))
                 .lecId(row.getLecId())
                 .lecSection(row.getLecSection())
                 .courseName(row.getCourseName())
                 .courseFullName(row.getCourseFullName() == null ? row.getCourseName() : row.getCourseFullName())
-                .title(row.getTitle())
+                .lecAnnTitle(row.getLecAnnTitle())
                 .author(formatAuthor(row.getAuthor()))
                 .authorImageUrl(row.getAuthorImageUrl())
-                .date(row.getRegDate())
+                .lecAnnRegDate(row.getLecAnnRegDate())
                 .listDate(row.getListDate())
                 .featured(false)
-                .content(row.getContent())
+                .lecAnnContent(row.getLecAnnContent())
                 .attachments(Collections.emptyList())
                 .build();
     }
