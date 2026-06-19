@@ -10,7 +10,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.redisson.api.RedissonClient;
 
 import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.reservation.dto.ReservationDto;
@@ -21,12 +20,17 @@ class ReservationServiceImplTest {
     private final ReservationMapper reservationMapper = mock(ReservationMapper.class);
     private final ReservationCommandService reservationCommandService =
             mock(ReservationCommandService.class);
-    private final RedissonClient redissonClient = mock(RedissonClient.class);
+    private final ReservationPolicy reservationPolicy = new ReservationPolicy();
+    private final ReservationLockExecutor lockExecutor =
+            mock(ReservationLockExecutor.class);
+    private final RoomSlotFactory roomSlotFactory = mock(RoomSlotFactory.class);
     private final ReservationServiceImpl reservationService =
             new ReservationServiceImpl(
                     reservationMapper,
                     reservationCommandService,
-                    redissonClient);
+                    reservationPolicy,
+                    lockExecutor,
+                    roomSlotFactory);
 
     @Test
     @DisplayName("패널티 이력은 발생 최신순 페이지와 전체 개수를 반환한다")

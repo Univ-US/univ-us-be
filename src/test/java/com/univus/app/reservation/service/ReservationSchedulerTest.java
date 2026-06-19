@@ -22,8 +22,10 @@ class ReservationSchedulerTest {
 
     private final ReservationMapper reservationMapper = mock(ReservationMapper.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
+    private final ReservationRealtimePublisher realtimePublisher =
+            new ReservationRealtimePublisher(messagingTemplate);
     private final ReservationScheduler reservationScheduler =
-            new ReservationScheduler(reservationMapper, messagingTemplate);
+            new ReservationScheduler(reservationMapper, realtimePublisher);
 
     @Test
     @DisplayName("회의실 만료 예약은 완료되고 노쇼 예약은 패널티와 함께 취소된다")
