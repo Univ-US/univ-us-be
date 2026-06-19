@@ -66,6 +66,7 @@ public class MarketServiceImpl implements MarketService {
     private static final String CLOSED_TRADE_CHAT_STATUS = "CLOSED";
     private static final String DELETED_TRADE_CHAT_STATUS = "DELETED";
     private static final String MARKET_CHAT_TOPIC_PREFIX = "/sub/market-chats/";
+    private static final String MARKET_CHAT_NOTIFICATION_QUEUE = "/queue/market-chat-notifications";
     private static final int MAX_CHAT_MESSAGE_LENGTH = 2000;
 
     // ── 상품 ──────────────────────────────────────────────────
@@ -432,10 +433,23 @@ public class MarketServiceImpl implements MarketService {
                 marketMapper.selectTradeChatMessage(messageDto.getMessageId());
         MarketDto.TradeChatMessageDto response =
                 savedMessage == null ? messageDto : savedMessage;
+        Long receiverId = room.getSellerId().equals(memberId)
+                ? room.getBuyerId()
+                : room.getSellerId();
+        MarketDto.TradeChatRoomDto receiverRoom =
+                marketMapper.selectTradeChatRoomForMember(roomId, receiverId);
 
-        runAfterCommit(() -> messagingTemplate.convertAndSend(
-                MARKET_CHAT_TOPIC_PREFIX + roomId,
-                response));
+        runAfterCommit(() -> {
+            messagingTemplate.convertAndSend(
+                    MARKET_CHAT_TOPIC_PREFIX + roomId,
+                    response);
+            if (receiverRoom != null) {
+                messagingTemplate.convertAndSendToUser(
+                        receiverId.toString(),
+                        MARKET_CHAT_NOTIFICATION_QUEUE,
+                        receiverRoom);
+            }
+        });
 
         return response;
     }
