@@ -3,6 +3,7 @@ package com.univus.app.controller;
 import com.univus.app.admin.dto.AdminDto;
 import com.univus.app.admin.mapper.AdminMapper;
 import com.univus.app.admin.service.AdminService;
+import com.univus.app.domain.dto.HomeProfileResponseDto;
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
 import lombok.RequiredArgsConstructor;

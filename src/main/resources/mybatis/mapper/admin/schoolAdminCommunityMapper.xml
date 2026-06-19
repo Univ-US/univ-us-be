@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminCommunityMapper">
+<mapper namespace="com.univus.app.admin.mapper.SchoolAdminCommunityMapper">
 
     <sql id="postFilters">
         WHERE P.IS_DELETED = 0
@@ -33,7 +33,7 @@
         </if>
     </sql>
 
-    <select id="selectPosts" resultType="com.univus.app.serviceadmin.dto.ServiceAdminCommunityDto$Post">
+    <select id="selectPosts" resultType="com.univus.app.admin.dto.SchoolAdminCommunityDto$Post">
         SELECT
             P.POST_ID,
             P.MEMBER_ID,
@@ -63,7 +63,7 @@
         <include refid="postFilters"/>
     </select>
 
-    <select id="selectPostById" resultType="com.univus.app.serviceadmin.dto.ServiceAdminCommunityDto$Post">
+    <select id="selectPostById" resultType="com.univus.app.admin.dto.SchoolAdminCommunityDto$Post">
         SELECT
             P.POST_ID,
             P.MEMBER_ID,
@@ -115,7 +115,7 @@
         </if>
     </sql>
 
-    <select id="selectMembers" resultType="com.univus.app.serviceadmin.dto.ServiceAdminCommunityDto$MemberReportSummary">
+    <select id="selectMembers" resultType="com.univus.app.admin.dto.SchoolAdminCommunityDto$MemberReportSummary">
         SELECT
             M.MEMBER_ID,
             M.UNIV_ID,
@@ -148,7 +148,7 @@
         <include refid="memberFilters"/>
     </select>
 
-    <select id="selectMemberById" resultType="com.univus.app.serviceadmin.dto.ServiceAdminCommunityDto$MemberReportSummary">
+    <select id="selectMemberById" resultType="com.univus.app.admin.dto.SchoolAdminCommunityDto$MemberReportSummary">
         SELECT
             M.MEMBER_ID,
             M.UNIV_ID,

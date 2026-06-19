@@ -1,7 +1,7 @@
-package com.univus.app.serviceadmin.controller;
+package com.univus.app.admin.controller;
 
-import com.univus.app.serviceadmin.dto.ServiceAdminReservationPenaltyDto;
-import com.univus.app.serviceadmin.service.ServiceAdminReservationPenaltyService;
+import com.univus.app.admin.dto.SchoolAdminReservationPenaltyDto;
+import com.univus.app.admin.service.SchoolAdminReservationPenaltyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/service-admin/reservations/penalties")
 @RequiredArgsConstructor
-public class ServiceAdminReservationPenaltyController {
+public class SchoolAdminReservationPenaltyController {
 
-    private final ServiceAdminReservationPenaltyService serviceAdminReservationPenaltyService;
+    private final SchoolAdminReservationPenaltyService schoolAdminReservationPenaltyService;
 
     @GetMapping
-    public ResponseEntity<ServiceAdminReservationPenaltyDto.PenaltyPage> getPenalties(
+    public ResponseEntity<SchoolAdminReservationPenaltyDto.PenaltyPage> getPenalties(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false) Long memberId,
             @RequestParam(required = false) String keyword,
@@ -31,39 +31,39 @@ public class ServiceAdminReservationPenaltyController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminReservationPenaltyService.getPenalties(
+                schoolAdminReservationPenaltyService.getPenalties(
                         page, memberId, keyword, status, requesterId(authentication))
         );
     }
 
     @GetMapping("/members/{memberId}/status")
-    public ResponseEntity<ServiceAdminReservationPenaltyDto.MemberPenaltyStatus> getMemberStatus(
+    public ResponseEntity<SchoolAdminReservationPenaltyDto.MemberPenaltyStatus> getMemberStatus(
             @PathVariable Long memberId,
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminReservationPenaltyService.getMemberStatus(memberId, requesterId(authentication))
+                schoolAdminReservationPenaltyService.getMemberStatus(memberId, requesterId(authentication))
         );
     }
 
     @PostMapping
-    public ResponseEntity<ServiceAdminReservationPenaltyDto.Penalty> grantPenalty(
-            @Valid @RequestBody ServiceAdminReservationPenaltyDto.GrantRequest request,
+    public ResponseEntity<SchoolAdminReservationPenaltyDto.Penalty> grantPenalty(
+            @Valid @RequestBody SchoolAdminReservationPenaltyDto.GrantRequest request,
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminReservationPenaltyService.grantPenalty(
+                schoolAdminReservationPenaltyService.grantPenalty(
                         request.getMemberId(), request.getReason(), requesterId(authentication))
         );
     }
 
     @PatchMapping("/{penaltyId}/release")
-    public ResponseEntity<ServiceAdminReservationPenaltyDto.Penalty> releasePenalty(
+    public ResponseEntity<SchoolAdminReservationPenaltyDto.Penalty> releasePenalty(
             @PathVariable Long penaltyId,
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminReservationPenaltyService.releasePenalty(penaltyId, requesterId(authentication))
+                schoolAdminReservationPenaltyService.releasePenalty(penaltyId, requesterId(authentication))
         );
     }
 

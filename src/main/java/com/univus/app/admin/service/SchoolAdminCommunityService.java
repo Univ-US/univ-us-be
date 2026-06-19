@@ -1,9 +1,9 @@
-package com.univus.app.serviceadmin.service;
+package com.univus.app.admin.service;
 
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
-import com.univus.app.serviceadmin.dto.ServiceAdminCommunityDto;
-import com.univus.app.serviceadmin.mapper.ServiceAdminCommunityMapper;
+import com.univus.app.admin.dto.SchoolAdminCommunityDto;
+import com.univus.app.admin.mapper.SchoolAdminCommunityMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class ServiceAdminCommunityService {
+public class SchoolAdminCommunityService {
 
     private static final int PAGE_SIZE = 10;
     private static final Set<String> BLIND_FILTERS = Set.of("ALL", "BLIND", "VISIBLE");
@@ -24,11 +24,11 @@ public class ServiceAdminCommunityService {
     private static final Set<String> MEMBER_MUTABLE_STATUSES = Set.of("ACTIVE", "SUSPENDED");
     private static final String ROLE_ADM = "ADM";
 
-    private final ServiceAdminCommunityMapper serviceAdminCommunityMapper;
+    private final SchoolAdminCommunityMapper schoolAdminCommunityMapper;
     private final MemberMapper memberMapper;
 
     @Transactional(readOnly = true)
-    public ServiceAdminCommunityDto.PostPage getPosts(
+    public SchoolAdminCommunityDto.PostPage getPosts(
             int page,
             String keyword,
             Long boardId,
@@ -39,7 +39,7 @@ public class ServiceAdminCommunityService {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
 
         int safePage = Math.max(page, 0);
-        ServiceAdminCommunityDto.PostSearch search = new ServiceAdminCommunityDto.PostSearch();
+        SchoolAdminCommunityDto.PostSearch search = new SchoolAdminCommunityDto.PostSearch();
         search.setKeyword(normalizeKeyword(keyword));
         search.setBoardId(boardId);
         search.setBlindFilter(normalizeFilter(blindFilter, BLIND_FILTERS, "지원하지 않는 블라인드 필터입니다."));
@@ -47,16 +47,16 @@ public class ServiceAdminCommunityService {
         search.setUnivId(scopeUnivId);
         search.setOffset(safePage * PAGE_SIZE);
 
-        List<ServiceAdminCommunityDto.Post> posts = serviceAdminCommunityMapper.selectPosts(search);
-        long totalElements = serviceAdminCommunityMapper.countPosts(search);
-        return new ServiceAdminCommunityDto.PostPage(posts, safePage, PAGE_SIZE, totalElements);
+        List<SchoolAdminCommunityDto.Post> posts = schoolAdminCommunityMapper.selectPosts(search);
+        long totalElements = schoolAdminCommunityMapper.countPosts(search);
+        return new SchoolAdminCommunityDto.PostPage(posts, safePage, PAGE_SIZE, totalElements);
     }
 
     @Transactional
-    public ServiceAdminCommunityDto.Post setPostBlind(Long postId, boolean blind, Long requesterId) {
+    public SchoolAdminCommunityDto.Post setPostBlind(Long postId, boolean blind, Long requesterId) {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
         requirePost(postId, scopeUnivId);
-        serviceAdminCommunityMapper.updatePostBlind(postId, blind ? 1 : 0);
+        schoolAdminCommunityMapper.updatePostBlind(postId, blind ? 1 : 0);
         return requirePost(postId, scopeUnivId);
     }
 
@@ -64,14 +64,14 @@ public class ServiceAdminCommunityService {
     public void deletePost(Long postId, Long requesterId) {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
         requirePost(postId, scopeUnivId);
-        int updated = serviceAdminCommunityMapper.softDeletePost(postId);
+        int updated = schoolAdminCommunityMapper.softDeletePost(postId);
         if (updated != 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "게시글을 삭제하지 못했습니다.");
         }
     }
 
     @Transactional(readOnly = true)
-    public ServiceAdminCommunityDto.MemberPage getMembers(
+    public SchoolAdminCommunityDto.MemberPage getMembers(
             int page,
             String keyword,
             String status,
@@ -80,35 +80,35 @@ public class ServiceAdminCommunityService {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
 
         int safePage = Math.max(page, 0);
-        ServiceAdminCommunityDto.MemberSearch search = new ServiceAdminCommunityDto.MemberSearch();
+        SchoolAdminCommunityDto.MemberSearch search = new SchoolAdminCommunityDto.MemberSearch();
         search.setKeyword(normalizeKeyword(keyword));
         search.setStatus(normalizeFilterStatus(status));
         search.setUnivId(scopeUnivId);
         search.setOffset(safePage * PAGE_SIZE);
 
-        List<ServiceAdminCommunityDto.MemberReportSummary> members = serviceAdminCommunityMapper.selectMembers(search);
-        long totalElements = serviceAdminCommunityMapper.countMembers(search);
-        return new ServiceAdminCommunityDto.MemberPage(members, safePage, PAGE_SIZE, totalElements);
+        List<SchoolAdminCommunityDto.MemberReportSummary> members = schoolAdminCommunityMapper.selectMembers(search);
+        long totalElements = schoolAdminCommunityMapper.countMembers(search);
+        return new SchoolAdminCommunityDto.MemberPage(members, safePage, PAGE_SIZE, totalElements);
     }
 
     @Transactional
-    public ServiceAdminCommunityDto.MemberReportSummary changeMemberStatus(
+    public SchoolAdminCommunityDto.MemberReportSummary changeMemberStatus(
             Long memberId,
             String requestedStatus,
             Long requesterId
     ) {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
         String status = normalizeMutableStatus(requestedStatus);
-        ServiceAdminCommunityDto.MemberReportSummary member = requireMember(memberId, scopeUnivId);
+        SchoolAdminCommunityDto.MemberReportSummary member = requireMember(memberId, scopeUnivId);
         if (status.equals(member.getStatus())) {
             return member;
         }
 
-        int updated = serviceAdminCommunityMapper.updateMemberStatus(memberId, status);
+        int updated = schoolAdminCommunityMapper.updateMemberStatus(memberId, status);
         if (updated != 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "회원 상태를 변경하지 못했습니다.");
         }
-        return serviceAdminCommunityMapper.selectMemberById(memberId);
+        return schoolAdminCommunityMapper.selectMemberById(memberId);
     }
 
     /**
@@ -122,8 +122,8 @@ public class ServiceAdminCommunityService {
         return ROLE_ADM.equals(requester.getRole()) ? requester.getUnivId() : null;
     }
 
-    private ServiceAdminCommunityDto.Post requirePost(Long postId, Long scopeUnivId) {
-        ServiceAdminCommunityDto.Post post = serviceAdminCommunityMapper.selectPostById(postId);
+    private SchoolAdminCommunityDto.Post requirePost(Long postId, Long scopeUnivId) {
+        SchoolAdminCommunityDto.Post post = schoolAdminCommunityMapper.selectPostById(postId);
         if (post == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다.");
         }
@@ -133,8 +133,8 @@ public class ServiceAdminCommunityService {
         return post;
     }
 
-    private ServiceAdminCommunityDto.MemberReportSummary requireMember(Long memberId, Long scopeUnivId) {
-        ServiceAdminCommunityDto.MemberReportSummary member = serviceAdminCommunityMapper.selectMemberById(memberId);
+    private SchoolAdminCommunityDto.MemberReportSummary requireMember(Long memberId, Long scopeUnivId) {
+        SchoolAdminCommunityDto.MemberReportSummary member = schoolAdminCommunityMapper.selectMemberById(memberId);
         if (member == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "회원을 찾을 수 없습니다.");
         }
