@@ -15,6 +15,8 @@ import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.reservation.dto.ReservationDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
 
@@ -84,6 +86,26 @@ public class ReservationServiceImpl implements ReservationService {
     public ReservationDto.ReservationPenaltyStatusDto getReservationPenaltyStatus(Long memberId) {
         validateMember(memberId);
         return buildReservationPenaltyStatus(reservationMapper.countActiveReservationPenalties(memberId));
+    }
+
+    @Override
+    public PaginateUtilRestApiRes<ReservationDto.ReservationPenaltyHistoryDto> getReservationPenaltyHistory(
+            Long memberId,
+            Integer page,
+            Integer size) {
+        validateMember(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<ReservationDto.ReservationPenaltyHistoryDto> history =
+                reservationMapper.selectReservationPenaltyHistory(
+                        memberId,
+                        PaginateUtilRestApi.offset(safePage, safeSize),
+                        safeSize);
+        return PaginateUtilRestApi.of(
+                history,
+                reservationMapper.countReservationPenaltyHistory(memberId),
+                safePage,
+                safeSize);
     }
 
     @Transactional

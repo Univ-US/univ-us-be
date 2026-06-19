@@ -34,6 +34,13 @@ public interface ReservationMapper {
 
     int countActiveReservationPenalties(@Param("memberId") Long memberId);
 
+    List<ReservationDto.ReservationPenaltyHistoryDto> selectReservationPenaltyHistory(
+            @Param("memberId") Long memberId,
+            @Param("offset") int offset,
+            @Param("size") int size);
+
+    int countReservationPenaltyHistory(@Param("memberId") Long memberId);
+
     int insertReservationPenalty(
             @Param("memberId") Long memberId,
             @Param("penaltyType") String penaltyType,

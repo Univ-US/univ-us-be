@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.reservation.dto.ReservationDto;
 
 public interface ReservationService {
@@ -11,6 +12,11 @@ public interface ReservationService {
     ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days);
 
     ReservationDto.ReservationPenaltyStatusDto getReservationPenaltyStatus(Long memberId);
+
+    PaginateUtilRestApiRes<ReservationDto.ReservationPenaltyHistoryDto> getReservationPenaltyHistory(
+            Long memberId,
+            Integer page,
+            Integer size);
 
     ReservationDto.ReservationPenaltyStatusDto pledgeReservationPenalty(
             Long memberId,

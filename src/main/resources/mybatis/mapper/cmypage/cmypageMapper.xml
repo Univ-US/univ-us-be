@@ -85,6 +85,17 @@
           AND P.IS_DELETED = 0
           AND P.IS_BLIND = 0
         ORDER BY C.CREATED_AT DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMyComments" resultType="int">
+        SELECT COUNT(*)
+        FROM POST_COMMENT C
+        JOIN POST P ON C.POST_ID = P.POST_ID
+        WHERE C.MEMBER_ID = #{memberId}
+          AND C.IS_DELETED = 0
+          AND P.IS_DELETED = 0
+          AND P.IS_BLIND = 0
     </select>
 
     <select id="selectLikedPosts" resultType="com.univus.app.community.dto.PostDto">
@@ -101,10 +112,21 @@
           AND P.IS_DELETED = 0
           AND P.IS_BLIND = 0
         ORDER BY L.PRESSED_AT DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countLikedPosts" resultType="int">
+        SELECT COUNT(*)
+        FROM POST_LIKE L
+        JOIN POST P ON L.POST_ID = P.POST_ID
+        WHERE L.MEMBER_ID = #{memberId}
+          AND P.IS_DELETED = 0
+          AND P.IS_BLIND = 0
     </select>
 
     <select id="selectMyTrades" resultType="com.univus.app.cmypage.dto.CmypageTradeDto">
-        SELECT * FROM (
+        SELECT T.*
+        FROM (
             SELECT 
                 P.PRODUCT_ID AS tradeId,
                 P.PRODUCT_ID AS productId,
@@ -113,6 +135,7 @@
                 P.PRICE AS price,
                 P.PRODUCT_STATUS AS status,
                 '판매' AS role,
+                'SELLER' AS roleCode,
                 (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS reportCount,
                 CASE
                     WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
@@ -133,6 +156,7 @@
                 P.PRICE AS price,
                 P.PRODUCT_STATUS AS status,
                 '구매' AS role,
+                'BUYER' AS roleCode,
                 (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) AS reportCount,
                 CASE
                     WHEN (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) >= 5 THEN 1
@@ -144,8 +168,29 @@
             WHERE T.BUYER_ID = #{memberId}
               AND P.IS_DELETED = 0
             GROUP BY P.PRODUCT_ID, P.PRODUCT_NAME, P.PRICE, P.PRODUCT_STATUS
-        )
-        ORDER BY createdAt DESC
+        ) T
+        WHERE (#{role} = 'ALL' OR T.roleCode = #{role})
+        ORDER BY T.createdAt DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMyTrades" resultType="int">
+        SELECT
+            CASE WHEN #{role} IN ('ALL', 'SELLER') THEN (
+                SELECT COUNT(*)
+                FROM PRODUCT P
+                WHERE P.MEMBER_ID = #{memberId}
+                  AND P.IS_DELETED = 0
+            ) ELSE 0 END
+            +
+            CASE WHEN #{role} IN ('ALL', 'BUYER') THEN (
+                SELECT COUNT(DISTINCT T.PRODUCT_ID)
+                FROM TRADE_CHAT_ROOM T
+                JOIN PRODUCT P ON T.PRODUCT_ID = P.PRODUCT_ID
+                WHERE T.BUYER_ID = #{memberId}
+                  AND P.IS_DELETED = 0
+            ) ELSE 0 END
+        FROM DUAL
     </select>
 
     <select id="selectMyWishlist" resultType="com.univus.app.cmypage.dto.CmypageWishlistDto">
@@ -161,6 +206,16 @@
           AND P.IS_DELETED = 0
           AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
         ORDER BY L.PRESSED_AT DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMyWishlist" resultType="int">
+        SELECT COUNT(*)
+        FROM PRODUCT_LIKE L
+        JOIN PRODUCT P ON L.PRODUCT_ID = P.PRODUCT_ID
+        WHERE L.MEMBER_ID = #{memberId}
+          AND P.IS_DELETED = 0
+          AND (SELECT COUNT(*) FROM PRODUCT_REPORT PR WHERE PR.PRODUCT_ID = P.PRODUCT_ID) &lt; 5
     </select>
 
     <select id="countCommunityNicknameForOthers" resultType="int">

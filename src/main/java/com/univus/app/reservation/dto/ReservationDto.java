@@ -54,6 +54,20 @@ public class ReservationDto {
     @Getter
     @Setter
     @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ReservationPenaltyHistoryDto {
+        private Long penaltyId;
+        private String penaltyType;
+        private String reason;
+        private String status;
+        private LocalDateTime createdAt;
+        private LocalDateTime resolvedAt;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
     public static class ReservationPenaltyPledgeRequestDto {
         private String pledgeText;
         private Boolean agreed;
