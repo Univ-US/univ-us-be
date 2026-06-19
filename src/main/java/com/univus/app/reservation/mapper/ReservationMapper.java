@@ -109,9 +109,11 @@ public interface ReservationMapper {
 
     List<ReservationDto.ReadingSeatReservationDto> selectNoShowReadingSeatReservations();
 
-    int updateReadingSeatReservationStatus(
-            @Param("reservationId") Long reservationId,
-            @Param("status") String status);
+    int completeExpiredReadingSeatReservation(
+            @Param("reservationId") Long reservationId);
+
+    int cancelNoShowReadingSeatReservation(
+            @Param("reservationId") Long reservationId);
 
     int checkInReadingSeatReservation(
             @Param("reservationId") Long reservationId,

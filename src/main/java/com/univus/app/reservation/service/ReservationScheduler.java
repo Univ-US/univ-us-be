@@ -26,6 +26,8 @@ public class ReservationScheduler {
 
     private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
     private static final String ROOM_REALTIME_TOPIC = "/sub/reservations/rooms";
+    private static final String USER_SEAT_REALTIME_QUEUE = "/queue/reservations/seats";
+    private static final String USER_ROOM_REALTIME_QUEUE = "/queue/reservations/rooms";
     private static final String NO_SHOW_PENALTY_TYPE = "NO_SHOW";
     private static final String NO_SHOW_PENALTY_REASON = "독서실 좌석 입실 가능 시간 내 입실하지 않아 자동 취소되었습니다.";
     private static final String ROOM_NO_SHOW_PENALTY_REASON =
@@ -42,8 +44,8 @@ public class ReservationScheduler {
                 reservationMapper.selectExpiredReadingSeatReservations();
                 
         for (ReservationDto.ReadingSeatReservationDto reservation : expiredReservations) {
-            int updated = reservationMapper.updateReadingSeatReservationStatus(
-                    reservation.getReservationId(), "COMPLETED");
+            int updated = reservationMapper.completeExpiredReadingSeatReservation(
+                    reservation.getReservationId());
             if (updated > 0) {
                 log.info("만료된 좌석 예약 자동 완료 처리 (reservationId={})", reservation.getReservationId());
                 publishSeatRealtimeEventAfterCommit("COMPLETED", reservation);
@@ -55,8 +57,8 @@ public class ReservationScheduler {
                 reservationMapper.selectNoShowReadingSeatReservations();
                 
         for (ReservationDto.ReadingSeatReservationDto reservation : noShowReservations) {
-            int updated = reservationMapper.updateReadingSeatReservationStatus(
-                    reservation.getReservationId(), "CANCELLED");
+            int updated = reservationMapper.cancelNoShowReadingSeatReservation(
+                    reservation.getReservationId());
             if (updated > 0) {
                 reservationMapper.insertReservationPenalty(
                         reservation.getMemberId(),
@@ -102,14 +104,18 @@ public class ReservationScheduler {
         ReservationDto.ReadingSeatRealtimeEventDto event =
                 ReservationDto.ReadingSeatRealtimeEventDto.builder()
                         .action(action)
-                        .reservationId(reservation.getReservationId())
-                        .memberId(reservation.getMemberId())
                         .seatId(reservation.getSeatId())
                         .readingRoomId(reservation.getReadingRoomId())
                         .startTime(reservation.getStartTime())
                         .endTime(reservation.getEndTime())
                         .build();
-        runAfterCommit(() -> messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event));
+        runAfterCommit(() -> {
+            messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event);
+            messagingTemplate.convertAndSendToUser(
+                    reservation.getMemberId().toString(),
+                    USER_SEAT_REALTIME_QUEUE,
+                    event);
+        });
     }
 
     private void publishRoomRealtimeEventAfterCommit(
@@ -118,13 +124,17 @@ public class ReservationScheduler {
         ReservationDto.RoomReservationRealtimeEventDto event =
                 ReservationDto.RoomReservationRealtimeEventDto.builder()
                         .action(action)
-                        .reservationId(reservation.getReservationId())
-                        .memberId(reservation.getMemberId())
                         .roomId(reservation.getRoomId())
                         .startTime(reservation.getStartTime())
                         .endTime(reservation.getEndTime())
                         .build();
-        runAfterCommit(() -> messagingTemplate.convertAndSend(ROOM_REALTIME_TOPIC, event));
+        runAfterCommit(() -> {
+            messagingTemplate.convertAndSend(ROOM_REALTIME_TOPIC, event);
+            messagingTemplate.convertAndSendToUser(
+                    reservation.getMemberId().toString(),
+                    USER_ROOM_REALTIME_QUEUE,
+                    event);
+        });
     }
 
     private void runAfterCommit(Runnable action) {

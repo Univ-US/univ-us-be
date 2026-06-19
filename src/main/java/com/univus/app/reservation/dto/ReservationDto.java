@@ -144,8 +144,6 @@ public class ReservationDto {
     @Builder
     public static class ReadingSeatRealtimeEventDto {
         private String action;
-        private Long reservationId;
-        private Long memberId;
         private Long seatId;
         private Long readingRoomId;
         private LocalDateTime startTime;
@@ -223,8 +221,6 @@ public class ReservationDto {
     @Builder
     public static class RoomReservationRealtimeEventDto {
         private String action;
-        private Long reservationId;
-        private Long memberId;
         private Long roomId;
         private LocalDateTime startTime;
         private LocalDateTime endTime;

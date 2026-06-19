@@ -626,10 +626,23 @@
               ) <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
     </select>
 
-    <update id="updateReadingSeatReservationStatus">
+    <update id="completeExpiredReadingSeatReservation">
         UPDATE READING_SEAT_RESERVATIONS
-        SET STATUS = #{status}
+        SET STATUS = 'COMPLETED'
         WHERE RESERVATION_ID = #{reservationId}
+          AND STATUS = 'USING'
+          AND END_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+    </update>
+
+    <update id="cancelNoShowReadingSeatReservation">
+        UPDATE READING_SEAT_RESERVATIONS
+        SET STATUS = 'CANCELLED'
+        WHERE RESERVATION_ID = #{reservationId}
+          AND STATUS = 'RESERVED'
+          AND LEAST(
+                GREATEST(NVL(CREATED_AT, START_TIME), START_TIME) + INTERVAL '20' MINUTE,
+                END_TIME
+              ) <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
     </update>
 
     <update id="checkInReadingSeatReservation">
@@ -638,6 +651,12 @@
         WHERE RESERVATION_ID = #{reservationId}
           AND MEMBER_ID = #{memberId}
           AND STATUS = 'RESERVED'
+          AND START_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND LEAST(
+                GREATEST(NVL(CREATED_AT, START_TIME), START_TIME) + INTERVAL '20' MINUTE,
+                END_TIME
+              ) <![CDATA[ > ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+          AND END_TIME <![CDATA[ > ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
     </update>
 
     <update id="extendReadingSeatReservation">
