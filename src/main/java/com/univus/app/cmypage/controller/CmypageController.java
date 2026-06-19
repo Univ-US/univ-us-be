@@ -7,6 +7,7 @@ import com.univus.app.cmypage.dto.CmypageSummaryDto;
 import com.univus.app.cmypage.dto.CmypageTradeDto;
 import com.univus.app.cmypage.dto.CmypageWishlistDto;
 import com.univus.app.cmypage.service.CmypageService;
+import com.univus.app.cmypage.service.CommunityAccountStatusService;
 import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.community.dto.PostDto;
 import lombok.RequiredArgsConstructor;
@@ -28,25 +29,28 @@ import org.springframework.web.server.ResponseStatusException;
 public class CmypageController {
 
     private final CmypageService cmypageService;
+    private final CommunityAccountStatusService communityAccountStatusService;
 
     @GetMapping("/profile")
     public ResponseEntity<CmypageProfileDto> getMyProfile(@AuthenticationPrincipal Long memberId) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.getMyProfile(memberId));
+        return ResponseEntity.ok(
+                cmypageService.getMyProfile(requireMemberId(memberId)));
     }
 
     @PatchMapping("/profile")
     public ResponseEntity<CmypageProfileDto> updateMyProfile(
             @AuthenticationPrincipal Long memberId,
             @RequestBody CmypageProfileUpdateDto request) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.updateMyProfile(memberId, request));
+        return ResponseEntity.ok(
+                cmypageService.updateMyProfile(
+                        requireMemberId(memberId),
+                        request));
     }
 
     @GetMapping("/summary")
     public ResponseEntity<CmypageSummaryDto> getMySummary(@AuthenticationPrincipal Long memberId) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.getMySummary(memberId));
+        return ResponseEntity.ok(
+                cmypageService.getMySummary(requireMemberId(memberId)));
     }
 
     @GetMapping("/posts")
@@ -54,8 +58,11 @@ public class CmypageController {
             @AuthenticationPrincipal Long memberId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.getMyPosts(memberId, page, size));
+        return ResponseEntity.ok(
+                cmypageService.getMyPosts(
+                        requireMemberId(memberId),
+                        page,
+                        size));
     }
 
     @GetMapping("/comments")
@@ -63,8 +70,11 @@ public class CmypageController {
             @AuthenticationPrincipal Long memberId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.getMyComments(memberId, page, size));
+        return ResponseEntity.ok(
+                cmypageService.getMyComments(
+                        requireMemberId(memberId),
+                        page,
+                        size));
     }
 
     @GetMapping("/liked-posts")
@@ -72,8 +82,11 @@ public class CmypageController {
             @AuthenticationPrincipal Long memberId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.getLikedPosts(memberId, page, size));
+        return ResponseEntity.ok(
+                cmypageService.getLikedPosts(
+                        requireMemberId(memberId),
+                        page,
+                        size));
     }
 
     @GetMapping("/trades")
@@ -82,8 +95,12 @@ public class CmypageController {
             @RequestParam(value = "role", defaultValue = "ALL") String role,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "8") Integer size) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.getMyTrades(memberId, role, page, size));
+        return ResponseEntity.ok(
+                cmypageService.getMyTrades(
+                        requireMemberId(memberId),
+                        role,
+                        page,
+                        size));
     }
 
     @GetMapping("/wishlist")
@@ -91,21 +108,33 @@ public class CmypageController {
             @AuthenticationPrincipal Long memberId,
             @RequestParam(value = "page", defaultValue = "0") Integer page,
             @RequestParam(value = "size", defaultValue = "6") Integer size) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        return ResponseEntity.ok(cmypageService.getMyWishlist(memberId, page, size));
+        return ResponseEntity.ok(
+                cmypageService.getMyWishlist(
+                        requireMemberId(memberId),
+                        page,
+                        size));
     }
 
     @PostMapping("/deactivate")
     public ResponseEntity<Void> deactivateCommunity(@AuthenticationPrincipal Long memberId) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        cmypageService.deactivateCommunity(memberId);
+        communityAccountStatusService.deactivateCommunity(
+                requireMemberId(memberId));
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/reactivate")
     public ResponseEntity<Void> reactivateCommunity(@AuthenticationPrincipal Long memberId) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        cmypageService.reactivateCommunity(memberId);
+        communityAccountStatusService.reactivateCommunity(
+                requireMemberId(memberId));
         return ResponseEntity.ok().build();
+    }
+
+    private Long requireMemberId(Long memberId) {
+        if (memberId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "로그인이 필요합니다.");
+        }
+        return memberId;
     }
 }

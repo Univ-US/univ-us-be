@@ -66,6 +66,4 @@ public interface ReservationService {
     void cancelRoomReservation(Long memberId, Long reservationId);
 
     void checkInRoom(Long memberId, Long reservationId);
-
-    void cancelAllPendingReservations(Long memberId);
 }

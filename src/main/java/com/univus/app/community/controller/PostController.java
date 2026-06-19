@@ -1,6 +1,7 @@
 package com.univus.app.community.controller;
 
 import com.univus.app.community.dto.PostDto;
+import com.univus.app.community.dto.PostListResponseDto;
 import com.univus.app.community.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,10 +27,11 @@ public class PostController {
 
     // GET /api/posts?page=1&size=10&keyword=검색어&boardId=1
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getPostList(
+    public ResponseEntity<PostListResponseDto> getPostList(
             PostDto postDto,
             @AuthenticationPrincipal Long memberId) {
-        Map<String, Object> result = postService.getPostList(postDto, requireMemberId(memberId));
+        PostListResponseDto result =
+                postService.getPostList(postDto, requireMemberId(memberId));
         return ResponseEntity.ok(result);
     }
 
