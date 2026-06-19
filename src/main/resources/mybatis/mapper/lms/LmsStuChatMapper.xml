@@ -90,6 +90,12 @@
         WHERE cr.LMS_PRF_ID = #{lmsPrfId}
           AND cr.CHT_ROM_VAL_STATUS = 'ACT'
           AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND EXISTS (
+              SELECT 1
+              FROM CHAT_ROOM_MESSAGES m
+              WHERE m.CHT_ROM_ID = cr.CHT_ROM_ID
+                AND m.CHT_ROM_MSG_STATUS != 'DEL'
+          )
         ORDER BY lastAt DESC, cr.CHT_ROM_ID DESC
     </select>
 
