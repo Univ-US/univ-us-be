@@ -14,14 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ReservationLifecycleServiceImpl implements ReservationLifecycleService {
 
-    private static final String ACTION_COMPLETED = "COMPLETED";
-    private static final String ACTION_CANCELLED = "CANCELLED";
-    private static final String NO_SHOW_PENALTY_TYPE = "NO_SHOW";
-    private static final String SEAT_NO_SHOW_REASON =
-            "독서실 좌석 입실 가능 시간 내 입실하지 않아 자동 취소되었습니다.";
-    private static final String ROOM_NO_SHOW_REASON =
-            "회의실 예약 시작 후 20분 이내 입실하지 않아 자동 취소되었습니다.";
-
     private final ReservationMapper reservationMapper;
     private final ReservationRealtimePublisher realtimePublisher;
 
@@ -45,7 +37,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
                         "만료된 좌석 예약 자동 완료 처리 (reservationId={})",
                         reservation.getReservationId());
                 realtimePublisher.publishSeatAfterCommit(
-                        ACTION_COMPLETED,
+                        ReservationConstants.ACTION_COMPLETED,
                         reservation);
             }
         }
@@ -58,12 +50,14 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
                     reservationMapper.cancelNoShowReadingSeatReservation(
                             reservation.getReservationId());
             if (updated > 0) {
-                insertNoShowPenalty(reservation.getMemberId(), SEAT_NO_SHOW_REASON);
+                insertNoShowPenalty(
+                        reservation.getMemberId(),
+                        ReservationConstants.SEAT_NO_SHOW_REASON);
                 log.info(
                         "노쇼 좌석 예약 자동 취소 처리 (reservationId={})",
                         reservation.getReservationId());
                 realtimePublisher.publishSeatAfterCommit(
-                        ACTION_CANCELLED,
+                        ReservationConstants.ACTION_CANCELLED,
                         reservation);
             }
         }
@@ -80,7 +74,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
                         "만료된 회의실 예약 자동 완료 처리 (reservationId={})",
                         reservation.getReservationId());
                 realtimePublisher.publishRoomAfterCommit(
-                        ACTION_COMPLETED,
+                        ReservationConstants.ACTION_COMPLETED,
                         reservation);
             }
         }
@@ -93,12 +87,14 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
                     reservationMapper.cancelNoShowRoomReservation(
                             reservation.getReservationId());
             if (updated > 0) {
-                insertNoShowPenalty(reservation.getMemberId(), ROOM_NO_SHOW_REASON);
+                insertNoShowPenalty(
+                        reservation.getMemberId(),
+                        ReservationConstants.ROOM_NO_SHOW_REASON);
                 log.info(
                         "노쇼 회의실 예약 자동 취소 처리 (reservationId={})",
                         reservation.getReservationId());
                 realtimePublisher.publishRoomAfterCommit(
-                        ACTION_CANCELLED,
+                        ReservationConstants.ACTION_CANCELLED,
                         reservation);
             }
         }
@@ -107,7 +103,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     private void insertNoShowPenalty(Long memberId, String reason) {
         reservationMapper.insertReservationPenalty(
                 memberId,
-                NO_SHOW_PENALTY_TYPE,
+                ReservationConstants.PENALTY_TYPE_NO_SHOW,
                 reason);
     }
 }

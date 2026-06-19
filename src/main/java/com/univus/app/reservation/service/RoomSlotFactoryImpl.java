@@ -12,10 +12,6 @@ import com.univus.app.reservation.dto.ReservationDto;
 @Service
 public class RoomSlotFactoryImpl implements RoomSlotFactory {
 
-    private static final int DAILY_SLOT_COUNT =
-            (24 - ReservationConstants.OPEN_TIME.getHour())
-                    / ReservationConstants.SLOT_HOURS;
-
     @Override
     public List<ReservationDto.RoomReservationSlotDto> create(
             Long roomId,
@@ -24,7 +20,9 @@ public class RoomSlotFactoryImpl implements RoomSlotFactory {
             List<ReservationDto.RoomReservationSlotDto> reservations) {
         List<ReservationDto.RoomReservationSlotDto> slots =
                 new ArrayList<>();
-        for (int index = 0; index < DAILY_SLOT_COUNT; index++) {
+        for (int index = 0;
+                index < ReservationConstants.DAILY_ROOM_SLOT_COUNT;
+                index++) {
             ReservationDto.RoomReservationSlotDto slot = createSlot(
                     roomId,
                     date,

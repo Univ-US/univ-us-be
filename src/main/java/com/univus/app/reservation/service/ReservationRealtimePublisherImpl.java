@@ -13,13 +13,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReservationRealtimePublisherImpl implements ReservationRealtimePublisher {
 
-    private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
-    private static final String ROOM_REALTIME_TOPIC = "/sub/reservations/rooms";
-    private static final String USER_SEAT_REALTIME_QUEUE =
-            "/queue/reservations/seats";
-    private static final String USER_ROOM_REALTIME_QUEUE =
-            "/queue/reservations/rooms";
-
     private final SimpMessagingTemplate messagingTemplate;
 
     @Override
@@ -54,10 +47,12 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
                         .endTime(reservation.getEndTime())
                         .build();
 
-        messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event);
+        messagingTemplate.convertAndSend(
+                ReservationConstants.SEAT_REALTIME_TOPIC,
+                event);
         messagingTemplate.convertAndSendToUser(
                 reservation.getMemberId().toString(),
-                USER_SEAT_REALTIME_QUEUE,
+                ReservationConstants.USER_SEAT_REALTIME_QUEUE,
                 event);
     }
 
@@ -72,10 +67,12 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
                         .endTime(reservation.getEndTime())
                         .build();
 
-        messagingTemplate.convertAndSend(ROOM_REALTIME_TOPIC, event);
+        messagingTemplate.convertAndSend(
+                ReservationConstants.ROOM_REALTIME_TOPIC,
+                event);
         messagingTemplate.convertAndSendToUser(
                 reservation.getMemberId().toString(),
-                USER_ROOM_REALTIME_QUEUE,
+                ReservationConstants.USER_ROOM_REALTIME_QUEUE,
                 event);
     }
 
