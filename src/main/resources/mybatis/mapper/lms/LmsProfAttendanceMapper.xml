@@ -14,7 +14,7 @@
         SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
     </select>
 
-    <!-- 교수 담당 강의 전체(드롭다운) + 수강생 수. 학기 무관(폐강 포함 — PLM-003 동일), FE가 년도/학기로 좁힘 -->
+    <!-- 교수 담당 강의 드롭다운 + 수강생 수. 폐강 포함하되 ⭐미시작(미래) 학기 제외(PLM-002/003 동일 — 수업 시작 전 출결 불가, 2026-06-19), FE가 년도/학기로 좁힘 -->
     <select id="selectLectures" resultType="com.univus.app.lms.dto.LmsProfAttendanceDto$LectureResDto">
         SELECT l.LEC_ID       AS lecId,
                lc.LEC_COD_NAME AS lecName,
@@ -27,6 +27,8 @@
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
         JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
         WHERE l.LMS_PRF_ID = #{lmsPrfId}
+          <!-- PLM-002/003 동일: 아직 시작 안 한 미래 학기 강의 제외 (수업 시작 전 출결 불가) -->
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY l.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
     </select>
 
