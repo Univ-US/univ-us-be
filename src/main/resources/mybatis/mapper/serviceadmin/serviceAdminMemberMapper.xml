@@ -30,7 +30,12 @@
             M.PHONE_NUMBER,
             M.STATUS,
             M.CREATED_AT,
-            M.LOGTIME_AT
+            (
+                SELECT MAX(LL.LOG_TIME)
+                FROM LOGIN_LOG LL
+                WHERE LL.MEMBER_ID = M.MEMBER_ID
+                  AND LL.RESULT = 'SUCCESS'
+            ) AS LOGTIME_AT
         FROM MEMBER M
         JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
         <include refid="memberFilters"/>
@@ -63,7 +68,9 @@
             NVL(SUM(CASE WHEN M.STATUS = 'ACTIVE' THEN 1 ELSE 0 END), 0)
                 AS ACTIVE_COUNT,
             NVL(SUM(CASE WHEN M.STATUS = 'SUSPENDED' THEN 1 ELSE 0 END), 0)
-                AS SUSPENDED_COUNT
+                AS SUSPENDED_COUNT,
+            NVL(SUM(CASE WHEN M.STATUS = 'WITHDRAWN' THEN 1 ELSE 0 END), 0)
+                AS WITHDRAWN_COUNT
         FROM MEMBER M
         WHERE M.ROLE = 'ADM'
           AND M.UNIV_ID IS NOT NULL
@@ -80,7 +87,12 @@
             M.PHONE_NUMBER,
             M.STATUS,
             M.CREATED_AT,
-            M.LOGTIME_AT
+            (
+                SELECT MAX(LL.LOG_TIME)
+                FROM LOGIN_LOG LL
+                WHERE LL.MEMBER_ID = M.MEMBER_ID
+                  AND LL.RESULT = 'SUCCESS'
+            ) AS LOGTIME_AT
         FROM MEMBER M
         JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
         WHERE M.MEMBER_ID = #{memberId}
@@ -94,5 +106,673 @@
         WHERE MEMBER_ID = #{memberId}
           AND ROLE = 'ADM'
           AND UNIV_ID IS NOT NULL
+    </update>
+
+    <select id="selectMemberActivitySummary"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$MemberActivitySummary">
+        SELECT
+            (SELECT COUNT(*) FROM NOTICE N WHERE N.MEMBER_ID = #{memberId}) AS noticeCount,
+            (SELECT COUNT(*) FROM POST P WHERE P.MEMBER_ID = #{memberId}) AS postCount,
+            (SELECT COUNT(*) FROM POST_COMMENT C WHERE C.MEMBER_ID = #{memberId}) AS commentCount,
+            (
+                SELECT COUNT(DISTINCT IP.INQUIRY_ROOM_ID)
+                FROM INQUIRY_PARTICIPANT IP
+                WHERE IP.MEMBER_ID = #{memberId}
+            ) AS inquiryCount
+        FROM DUAL
+    </select>
+
+    <select id="selectMemberLoginLogs"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserLoginLog">
+        SELECT
+            LL.LOG_ID AS logId,
+            LL.RESULT AS result,
+            LL.FAIL_REASON AS failReason,
+            LL.LOG_TIME AS logTime
+        FROM LOGIN_LOG LL
+        WHERE LL.MEMBER_ID = #{memberId}
+        ORDER BY LL.LOG_TIME DESC, LL.LOG_ID DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="selectMemberLoginLogsPage"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserLoginLog">
+        SELECT
+            LL.LOG_ID AS logId,
+            LL.RESULT AS result,
+            LL.FAIL_REASON AS failReason,
+            LL.LOG_TIME AS logTime
+        FROM LOGIN_LOG LL
+        WHERE LL.MEMBER_ID = #{memberId}
+        ORDER BY LL.LOG_TIME DESC, LL.LOG_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMemberLoginLogs" resultType="long">
+        SELECT COUNT(*)
+        FROM LOGIN_LOG LL
+        WHERE LL.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectMemberNoticeActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'NOTICE-' || N.NOTICE_ID AS id,
+            'NOTICE' AS type,
+            N.TITLE AS title,
+            N.TARGET AS description,
+            CASE WHEN N.IS_DELETED = 1 THEN 'DELETED' ELSE 'VISIBLE' END AS status,
+            N.POSTED_AT AS occurredAt
+        FROM NOTICE N
+        WHERE N.MEMBER_ID = #{memberId}
+        ORDER BY N.POSTED_AT DESC, N.NOTICE_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMemberNoticeActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM NOTICE N
+        WHERE N.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectMemberPostActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'POST-' || P.POST_ID AS id,
+            'POST' AS type,
+            P.TITLE AS title,
+            B.BOARD_NAME AS description,
+            CASE WHEN P.IS_DELETED = 1 THEN 'DELETED' ELSE 'VISIBLE' END AS status,
+            P.CREATED_AT AS occurredAt
+        FROM POST P
+        LEFT JOIN BOARD_TYPE B ON B.BOARD_ID = P.BOARD_ID
+        WHERE P.MEMBER_ID = #{memberId}
+        ORDER BY P.CREATED_AT DESC, P.POST_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMemberPostActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM POST P
+        WHERE P.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectMemberCommentActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'COMMENT-' || C.COMMENT_ID AS id,
+            'COMMENT' AS type,
+            '댓글' AS title,
+            '댓글' AS description,
+            CASE WHEN C.IS_DELETED = 1 THEN 'DELETED' ELSE 'VISIBLE' END AS status,
+            C.CREATED_AT AS occurredAt
+        FROM POST_COMMENT C
+        WHERE C.MEMBER_ID = #{memberId}
+        ORDER BY C.CREATED_AT DESC, C.COMMENT_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMemberCommentActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM POST_COMMENT C
+        WHERE C.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectMemberInquiryActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'INQUIRY-' || R.INQUIRY_ROOM_ID AS id,
+            'INQUIRY' AS type,
+            R.TITLE AS title,
+            R.CATEGORY AS description,
+            CASE WHEN R.STATUS = 'PROGRESS' THEN 'IN_PROGRESS' ELSE R.STATUS END AS status,
+            R.CREATED_AT AS occurredAt
+        FROM INQUIRY_PARTICIPANT IP
+        JOIN INQUIRY_ROOMS R ON R.INQUIRY_ROOM_ID = IP.INQUIRY_ROOM_ID
+        WHERE IP.MEMBER_ID = #{memberId}
+        ORDER BY R.CREATED_AT DESC, R.INQUIRY_ROOM_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMemberInquiryActivities" resultType="long">
+        SELECT COUNT(DISTINCT IP.INQUIRY_ROOM_ID)
+        FROM INQUIRY_PARTICIPANT IP
+        WHERE IP.MEMBER_ID = #{memberId}
+    </select>
+
+    <sql id="userFilters">
+        WHERE M.ROLE IN ('GUEST', 'STU', 'PROF', 'ALU')
+        <if test="keyword != null and keyword != ''">
+            AND (
+                LOWER(M.MEMBER_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(M.LOGIN_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(U.UNIV_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(D.DEPT_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+            )
+        </if>
+        <if test="univId != null">
+            AND M.UNIV_ID = #{univId}
+        </if>
+        <if test="role != null and role != ''">
+            AND M.ROLE = #{role}
+        </if>
+        <if test="status != null and status != ''">
+            AND M.STATUS = #{status}
+        </if>
+    </sql>
+
+    <sql id="userColumns">
+        M.MEMBER_ID AS memberId,
+        M.UNIV_ID AS univId,
+        U.UNIV_NAME AS univName,
+        MD.DEPT_ID AS deptId,
+        D.DEPT_NAME AS deptName,
+        M.LOGIN_ID AS loginId,
+        M.MEMBER_NAME AS memberName,
+        M.ROLE AS role,
+        M.PHONE_NUMBER AS phoneNumber,
+        M.GENDER AS gender,
+        M.STATUS AS status,
+        M.CREATED_AT AS createdAt,
+        (
+            SELECT MAX(LL.LOG_TIME)
+            FROM LOGIN_LOG LL
+            WHERE LL.MEMBER_ID = M.MEMBER_ID
+              AND LL.RESULT = 'SUCCESS'
+        ) AS logtimeAt,
+        MD.COMMUNITY_NICKNAME AS communityNickname,
+        M.BIRTH AS birth
+    </sql>
+
+    <select id="selectUsers"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$User">
+        SELECT
+            <include refid="userColumns"/>
+        FROM MEMBER M
+        LEFT JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
+        LEFT JOIN MEMBER_DETAIL MD ON MD.MEMBER_ID = M.MEMBER_ID
+        LEFT JOIN DEPARTMENT D ON D.DEPT_ID = MD.DEPT_ID
+        <include refid="userFilters"/>
+        ORDER BY
+        <choose>
+            <when test="sort == 'JOINED_ASC'">
+                M.CREATED_AT ASC, M.MEMBER_ID ASC
+            </when>
+            <when test="sort == 'NAME_ASC'">
+                M.MEMBER_NAME ASC, M.MEMBER_ID ASC
+            </when>
+            <when test="sort == 'SCHOOL_ASC'">
+                U.UNIV_NAME ASC NULLS LAST, M.MEMBER_NAME ASC, M.MEMBER_ID ASC
+            </when>
+            <when test="sort == 'ROLE_ASC'">
+                M.ROLE ASC, M.MEMBER_NAME ASC, M.MEMBER_ID ASC
+            </when>
+            <when test="sort == 'LOGIN_DESC'">
+                (
+                    SELECT MAX(LL.LOG_TIME)
+                    FROM LOGIN_LOG LL
+                    WHERE LL.MEMBER_ID = M.MEMBER_ID
+                      AND LL.RESULT = 'SUCCESS'
+                ) DESC NULLS LAST,
+                M.MEMBER_ID DESC
+            </when>
+            <otherwise>
+                M.CREATED_AT DESC, M.MEMBER_ID DESC
+            </otherwise>
+        </choose>
+        OFFSET #{offset} ROWS FETCH NEXT 10 ROWS ONLY
+    </select>
+
+    <select id="countUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM MEMBER M
+        LEFT JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
+        LEFT JOIN MEMBER_DETAIL MD ON MD.MEMBER_ID = M.MEMBER_ID
+        LEFT JOIN DEPARTMENT D ON D.DEPT_ID = MD.DEPT_ID
+        <include refid="userFilters"/>
+    </select>
+
+    <select id="selectUserStats"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserStats">
+        SELECT
+            COUNT(*) AS totalCount,
+            NVL(SUM(CASE WHEN M.STATUS = 'ACTIVE' THEN 1 ELSE 0 END), 0) AS activeCount,
+            NVL(SUM(CASE WHEN M.STATUS = 'SUSPENDED' THEN 1 ELSE 0 END), 0) AS suspendedCount,
+            NVL(SUM(CASE WHEN M.STATUS = 'WITHDRAWN' THEN 1 ELSE 0 END), 0) AS withdrawnCount,
+            NVL(SUM(CASE WHEN M.ROLE = 'STU' THEN 1 ELSE 0 END), 0) AS studentCount,
+            NVL(SUM(CASE WHEN M.ROLE = 'PROF' THEN 1 ELSE 0 END), 0) AS professorCount,
+            NVL(SUM(CASE WHEN M.ROLE = 'ALU' THEN 1 ELSE 0 END), 0) AS alumniCount,
+            NVL(SUM(CASE WHEN M.ROLE = 'GUEST' THEN 1 ELSE 0 END), 0) AS guestCount
+        FROM MEMBER M
+        WHERE M.ROLE IN ('GUEST', 'STU', 'PROF', 'ALU')
+    </select>
+
+    <select id="selectUserById"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$User">
+        SELECT
+            <include refid="userColumns"/>
+        FROM MEMBER M
+        LEFT JOIN UNIVERSITY U ON U.UNIV_ID = M.UNIV_ID
+        LEFT JOIN MEMBER_DETAIL MD ON MD.MEMBER_ID = M.MEMBER_ID
+        LEFT JOIN DEPARTMENT D ON D.DEPT_ID = MD.DEPT_ID
+        WHERE M.MEMBER_ID = #{memberId}
+          AND M.ROLE IN ('GUEST', 'STU', 'PROF', 'ALU')
+    </select>
+
+    <select id="selectUserActivitySummary"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivitySummary">
+        SELECT
+            (SELECT COUNT(*) FROM POST P WHERE P.MEMBER_ID = #{memberId}) AS postCount,
+            (SELECT COUNT(*) FROM POST_COMMENT C WHERE C.MEMBER_ID = #{memberId}) AS commentCount,
+            (
+                SELECT COUNT(*)
+                FROM LMS_PROFILE LP
+                LEFT JOIN LECTURE_STUDENT_ENROLLMENT E ON E.LMS_PRF_ID = LP.LMS_PRF_ID
+                LEFT JOIN LECTURE L ON L.LMS_PRF_ID = LP.LMS_PRF_ID
+                WHERE LP.MEMBER_ID = #{memberId}
+                  AND (E.LEC_ID IS NOT NULL OR L.LEC_ID IS NOT NULL)
+            ) AS courseCount,
+            (
+                SELECT COUNT(*)
+                FROM LMS_PROFILE LP
+                JOIN LECTURE_ASSIGNMENT_SUBMISSION S ON S.LMS_PRF_ID = LP.LMS_PRF_ID
+                WHERE LP.MEMBER_ID = #{memberId}
+            ) AS submissionCount,
+            (
+                SELECT COUNT(*) FROM READING_SEAT_RESERVATIONS R WHERE R.MEMBER_ID = #{memberId}
+            ) + (
+                SELECT COUNT(*) FROM MEETING_ROOM_RESERVATIONS R WHERE R.MEMBER_ID = #{memberId}
+            ) AS reservationCount,
+            (
+                SELECT COUNT(*) FROM RESERVATION_PENALTIES P WHERE P.MEMBER_ID = #{memberId}
+            ) AS noShowCount,
+            (
+                SELECT COUNT(DISTINCT IP.INQUIRY_ROOM_ID)
+                FROM INQUIRY_PARTICIPANT IP
+                WHERE IP.MEMBER_ID = #{memberId}
+            ) AS inquiryCount
+        FROM DUAL
+    </select>
+
+    <select id="selectUserLoginLogs"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserLoginLog">
+        SELECT
+            LL.LOG_ID AS logId,
+            LL.RESULT AS result,
+            LL.FAIL_REASON AS failReason,
+            LL.LOG_TIME AS logTime
+        FROM LOGIN_LOG LL
+        WHERE LL.MEMBER_ID = #{memberId}
+        ORDER BY LL.LOG_TIME DESC, LL.LOG_ID DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="selectUserLoginLogsPage"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserLoginLog">
+        SELECT
+            LL.LOG_ID AS logId,
+            LL.RESULT AS result,
+            LL.FAIL_REASON AS failReason,
+            LL.LOG_TIME AS logTime
+        FROM LOGIN_LOG LL
+        WHERE LL.MEMBER_ID = #{memberId}
+        ORDER BY LL.LOG_TIME DESC, LL.LOG_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserLoginLogs" resultType="long">
+        SELECT COUNT(*)
+        FROM LOGIN_LOG LL
+        WHERE LL.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectUserCommunityActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT *
+        FROM (
+            SELECT
+                'POST-' || P.POST_ID AS id,
+                'POST' AS type,
+                P.TITLE AS title,
+                B.BOARD_NAME AS description,
+                CASE WHEN P.IS_DELETED = 1 THEN 'DELETED' ELSE 'VISIBLE' END AS status,
+                P.CREATED_AT AS occurredAt
+            FROM POST P
+            LEFT JOIN BOARD_TYPE B ON B.BOARD_ID = P.BOARD_ID
+            WHERE P.MEMBER_ID = #{memberId}
+            UNION ALL
+            SELECT
+                'COMMENT-' || C.COMMENT_ID AS id,
+                'COMMENT' AS type,
+                '댓글' AS title,
+                '댓글' AS description,
+                CASE WHEN C.IS_DELETED = 1 THEN 'DELETED' ELSE 'VISIBLE' END AS status,
+                C.CREATED_AT AS occurredAt
+            FROM POST_COMMENT C
+            WHERE C.MEMBER_ID = #{memberId}
+        )
+        ORDER BY occurredAt DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="selectUserPostActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'POST-' || P.POST_ID AS id,
+            'POST' AS type,
+            P.TITLE AS title,
+            B.BOARD_NAME AS description,
+            CASE WHEN P.IS_DELETED = 1 THEN 'DELETED' ELSE 'VISIBLE' END AS status,
+            P.CREATED_AT AS occurredAt
+        FROM POST P
+        LEFT JOIN BOARD_TYPE B ON B.BOARD_ID = P.BOARD_ID
+        WHERE P.MEMBER_ID = #{memberId}
+        ORDER BY P.CREATED_AT DESC, P.POST_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserPostActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM POST P
+        WHERE P.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectUserCommentActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'COMMENT-' || C.COMMENT_ID AS id,
+            'COMMENT' AS type,
+            '댓글' AS title,
+            '댓글' AS description,
+            CASE WHEN C.IS_DELETED = 1 THEN 'DELETED' ELSE 'VISIBLE' END AS status,
+            C.CREATED_AT AS occurredAt
+        FROM POST_COMMENT C
+        WHERE C.MEMBER_ID = #{memberId}
+        ORDER BY C.CREATED_AT DESC, C.COMMENT_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserCommentActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM POST_COMMENT C
+        WHERE C.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectUserCourseActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT *
+        FROM (
+            SELECT
+                'STU-COURSE-' || E.LEC_STD_ENR_ID AS id,
+                'STUDENT_COURSE' AS type,
+                LC.LEC_COD_NAME AS title,
+                TO_CHAR(S.SEM_YEAR) || ' ' || S.SEM_TERM AS description,
+                E.LEC_STD_ENR_STATUS AS status,
+                L.LEC_REG_DATE AS occurredAt
+            FROM LMS_PROFILE LP
+            JOIN LECTURE_STUDENT_ENROLLMENT E ON E.LMS_PRF_ID = LP.LMS_PRF_ID
+            JOIN LECTURE L ON L.LEC_ID = E.LEC_ID
+            JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+            JOIN SEMESTERS S ON S.SEM_ID = L.SEM_ID
+            WHERE LP.MEMBER_ID = #{memberId}
+            UNION ALL
+            SELECT
+                'PROF-COURSE-' || L.LEC_ID AS id,
+                'PROFESSOR_COURSE' AS type,
+                LC.LEC_COD_NAME AS title,
+                TO_CHAR(S.SEM_YEAR) || ' ' || S.SEM_TERM AS description,
+                L.LEC_VAL_STATUS AS status,
+                L.LEC_REG_DATE AS occurredAt
+            FROM LMS_PROFILE LP
+            JOIN LECTURE L ON L.LMS_PRF_ID = LP.LMS_PRF_ID
+            JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+            JOIN SEMESTERS S ON S.SEM_ID = L.SEM_ID
+            WHERE LP.MEMBER_ID = #{memberId}
+        )
+        ORDER BY occurredAt DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="selectUserCourseActivitiesPage"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT *
+        FROM (
+            SELECT
+                'STU-COURSE-' || E.LEC_STD_ENR_ID AS id,
+                'STUDENT_COURSE' AS type,
+                LC.LEC_COD_NAME AS title,
+                TO_CHAR(S.SEM_YEAR) || ' ' || S.SEM_TERM AS description,
+                E.LEC_STD_ENR_STATUS AS status,
+                L.LEC_REG_DATE AS occurredAt
+            FROM LMS_PROFILE LP
+            JOIN LECTURE_STUDENT_ENROLLMENT E ON E.LMS_PRF_ID = LP.LMS_PRF_ID
+            JOIN LECTURE L ON L.LEC_ID = E.LEC_ID
+            JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+            JOIN SEMESTERS S ON S.SEM_ID = L.SEM_ID
+            WHERE LP.MEMBER_ID = #{memberId}
+            UNION ALL
+            SELECT
+                'PROF-COURSE-' || L.LEC_ID AS id,
+                'PROFESSOR_COURSE' AS type,
+                LC.LEC_COD_NAME AS title,
+                TO_CHAR(S.SEM_YEAR) || ' ' || S.SEM_TERM AS description,
+                L.LEC_VAL_STATUS AS status,
+                L.LEC_REG_DATE AS occurredAt
+            FROM LMS_PROFILE LP
+            JOIN LECTURE L ON L.LMS_PRF_ID = LP.LMS_PRF_ID
+            JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+            JOIN SEMESTERS S ON S.SEM_ID = L.SEM_ID
+            WHERE LP.MEMBER_ID = #{memberId}
+        )
+        ORDER BY occurredAt DESC, id DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserCourseActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+            SELECT E.LEC_STD_ENR_ID
+            FROM LMS_PROFILE LP
+            JOIN LECTURE_STUDENT_ENROLLMENT E ON E.LMS_PRF_ID = LP.LMS_PRF_ID
+            WHERE LP.MEMBER_ID = #{memberId}
+            UNION ALL
+            SELECT L.LEC_ID
+            FROM LMS_PROFILE LP
+            JOIN LECTURE L ON L.LMS_PRF_ID = LP.LMS_PRF_ID
+            WHERE LP.MEMBER_ID = #{memberId}
+        )
+    </select>
+
+    <select id="selectUserSubmissionActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'SUBMISSION-' || S.LEC_ASN_SBM_ID AS id,
+            'SUBMISSION' AS type,
+            A.LEC_ASN_TITLE AS title,
+            LC.LEC_COD_NAME AS description,
+            S.LEC_ASN_SBM_STATUS AS status,
+            S.LEC_ASN_SBM_REG_DATE AS occurredAt
+        FROM LMS_PROFILE LP
+        JOIN LECTURE_ASSIGNMENT_SUBMISSION S ON S.LMS_PRF_ID = LP.LMS_PRF_ID
+        JOIN LECTURE_ASSIGNMENT A ON A.LEC_ASN_ID = S.LEC_ASN_ID
+        JOIN LECTURE L ON L.LEC_ID = A.LEC_ID
+        JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+        WHERE LP.MEMBER_ID = #{memberId}
+        ORDER BY S.LEC_ASN_SBM_REG_DATE DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="selectUserSubmissionActivitiesPage"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'SUBMISSION-' || S.LEC_ASN_SBM_ID AS id,
+            'SUBMISSION' AS type,
+            A.LEC_ASN_TITLE AS title,
+            LC.LEC_COD_NAME AS description,
+            S.LEC_ASN_SBM_STATUS AS status,
+            S.LEC_ASN_SBM_REG_DATE AS occurredAt
+        FROM LMS_PROFILE LP
+        JOIN LECTURE_ASSIGNMENT_SUBMISSION S ON S.LMS_PRF_ID = LP.LMS_PRF_ID
+        JOIN LECTURE_ASSIGNMENT A ON A.LEC_ASN_ID = S.LEC_ASN_ID
+        JOIN LECTURE L ON L.LEC_ID = A.LEC_ID
+        JOIN LECTURE_CODE LC ON LC.LEC_CODE_ID = L.LEC_CODE_ID
+        WHERE LP.MEMBER_ID = #{memberId}
+        ORDER BY S.LEC_ASN_SBM_REG_DATE DESC, S.LEC_ASN_SBM_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserSubmissionActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM LMS_PROFILE LP
+        JOIN LECTURE_ASSIGNMENT_SUBMISSION S ON S.LMS_PRF_ID = LP.LMS_PRF_ID
+        WHERE LP.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectUserReservationActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT *
+        FROM (
+            SELECT
+                'SEAT-' || R.RESERVATION_ID AS id,
+                'READING_SEAT' AS type,
+                RR.ROOM_NAME || ' ' || S.SEAT_NUMBER AS title,
+                TO_CHAR(R.START_TIME, 'YYYY-MM-DD HH24:MI') || ' ~ ' || TO_CHAR(R.END_TIME, 'HH24:MI') AS description,
+                R.STATUS AS status,
+                R.CREATED_AT AS occurredAt
+            FROM READING_SEAT_RESERVATIONS R
+            JOIN READING_ROOM_SEATS S ON S.SEAT_ID = R.SEAT_ID
+            JOIN READING_ROOMS RR ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+            WHERE R.MEMBER_ID = #{memberId}
+            UNION ALL
+            SELECT
+                'ROOM-' || R.RESERVATION_ID AS id,
+                'MEETING_ROOM' AS type,
+                MR.ROOM_NAME AS title,
+                TO_CHAR(R.START_TIME, 'YYYY-MM-DD HH24:MI') || ' ~ ' || TO_CHAR(R.END_TIME, 'HH24:MI') AS description,
+                R.STATUS AS status,
+                R.CREATED_AT AS occurredAt
+            FROM MEETING_ROOM_RESERVATIONS R
+            JOIN MEETING_ROOMS MR ON MR.ROOM_ID = R.ROOM_ID
+            WHERE R.MEMBER_ID = #{memberId}
+            UNION ALL
+            SELECT
+                'PENALTY-' || P.PENALTY_ID AS id,
+                'PENALTY' AS type,
+                P.PENALTY_TYPE AS title,
+                P.REASON AS description,
+                P.STATUS AS status,
+                P.CREATED_AT AS occurredAt
+            FROM RESERVATION_PENALTIES P
+            WHERE P.MEMBER_ID = #{memberId}
+        )
+        ORDER BY occurredAt DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="selectUserReservationActivitiesPage"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT *
+        FROM (
+            SELECT
+                'SEAT-' || R.RESERVATION_ID AS id,
+                'READING_SEAT' AS type,
+                RR.ROOM_NAME || ' ' || S.SEAT_NUMBER AS title,
+                TO_CHAR(R.START_TIME, 'YYYY-MM-DD HH24:MI') || ' ~ ' || TO_CHAR(R.END_TIME, 'HH24:MI') AS description,
+                R.STATUS AS status,
+                R.CREATED_AT AS occurredAt
+            FROM READING_SEAT_RESERVATIONS R
+            JOIN READING_ROOM_SEATS S ON S.SEAT_ID = R.SEAT_ID
+            JOIN READING_ROOMS RR ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+            WHERE R.MEMBER_ID = #{memberId}
+            UNION ALL
+            SELECT
+                'ROOM-' || R.RESERVATION_ID AS id,
+                'MEETING_ROOM' AS type,
+                MR.ROOM_NAME AS title,
+                TO_CHAR(R.START_TIME, 'YYYY-MM-DD HH24:MI') || ' ~ ' || TO_CHAR(R.END_TIME, 'HH24:MI') AS description,
+                R.STATUS AS status,
+                R.CREATED_AT AS occurredAt
+            FROM MEETING_ROOM_RESERVATIONS R
+            JOIN MEETING_ROOMS MR ON MR.ROOM_ID = R.ROOM_ID
+            WHERE R.MEMBER_ID = #{memberId}
+        )
+        ORDER BY occurredAt DESC, id DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserReservationActivities" resultType="long">
+        SELECT
+            (
+                SELECT COUNT(*) FROM READING_SEAT_RESERVATIONS R WHERE R.MEMBER_ID = #{memberId}
+            ) + (
+                SELECT COUNT(*) FROM MEETING_ROOM_RESERVATIONS R WHERE R.MEMBER_ID = #{memberId}
+            )
+        FROM DUAL
+    </select>
+
+    <select id="selectUserPenaltyActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'PENALTY-' || P.PENALTY_ID AS id,
+            'PENALTY' AS type,
+            P.PENALTY_TYPE AS title,
+            P.REASON AS description,
+            P.STATUS AS status,
+            P.CREATED_AT AS occurredAt
+        FROM RESERVATION_PENALTIES P
+        WHERE P.MEMBER_ID = #{memberId}
+        ORDER BY P.CREATED_AT DESC, P.PENALTY_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserPenaltyActivities" resultType="long">
+        SELECT COUNT(*)
+        FROM RESERVATION_PENALTIES P
+        WHERE P.MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="selectUserInquiryActivities"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'INQUIRY-' || R.INQUIRY_ROOM_ID AS id,
+            'INQUIRY' AS type,
+            R.TITLE AS title,
+            R.CATEGORY AS description,
+            CASE WHEN R.STATUS = 'PROGRESS' THEN 'IN_PROGRESS' ELSE R.STATUS END AS status,
+            R.CREATED_AT AS occurredAt
+        FROM INQUIRY_PARTICIPANT IP
+        JOIN INQUIRY_ROOMS R ON R.INQUIRY_ROOM_ID = IP.INQUIRY_ROOM_ID
+        WHERE IP.MEMBER_ID = #{memberId}
+        ORDER BY R.CREATED_AT DESC, R.INQUIRY_ROOM_ID DESC
+        FETCH FIRST 10 ROWS ONLY
+    </select>
+
+    <select id="selectUserInquiryActivitiesPage"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminMemberDto$UserActivityItem">
+        SELECT
+            'INQUIRY-' || R.INQUIRY_ROOM_ID AS id,
+            'INQUIRY' AS type,
+            R.TITLE AS title,
+            R.CATEGORY AS description,
+            CASE WHEN R.STATUS = 'PROGRESS' THEN 'IN_PROGRESS' ELSE R.STATUS END AS status,
+            R.CREATED_AT AS occurredAt
+        FROM INQUIRY_PARTICIPANT IP
+        JOIN INQUIRY_ROOMS R ON R.INQUIRY_ROOM_ID = IP.INQUIRY_ROOM_ID
+        WHERE IP.MEMBER_ID = #{memberId}
+        ORDER BY R.CREATED_AT DESC, R.INQUIRY_ROOM_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countUserInquiryActivities" resultType="long">
+        SELECT COUNT(DISTINCT IP.INQUIRY_ROOM_ID)
+        FROM INQUIRY_PARTICIPANT IP
+        WHERE IP.MEMBER_ID = #{memberId}
+    </select>
+
+    <update id="updateUserStatus">
+        UPDATE MEMBER
+        SET STATUS = #{status}
+        WHERE MEMBER_ID = #{memberId}
+          AND ROLE IN ('GUEST', 'STU', 'PROF', 'ALU')
     </update>
 </mapper>
