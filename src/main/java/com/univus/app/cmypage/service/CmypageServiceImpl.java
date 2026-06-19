@@ -22,6 +22,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CmypageServiceImpl implements CmypageService {
 
+    private static final int MIN_NICKNAME_LENGTH = 2;
+    private static final int MAX_NICKNAME_LENGTH = 20;
+    private static final String TRADE_ROLE_ALL = "ALL";
+    private static final String TRADE_ROLE_SELLER = "SELLER";
+    private static final String TRADE_ROLE_BUYER = "BUYER";
+
     private final PostListQueryService postListQueryService;
     private final CmypageMapper cmypageMapper;
 
@@ -74,9 +80,8 @@ public class CmypageServiceImpl implements CmypageService {
         }
 
         communityNickname = communityNickname.trim();
-        if (communityNickname.length() < CmypageConstants.MIN_NICKNAME_LENGTH
-                || communityNickname.length()
-                        > CmypageConstants.MAX_NICKNAME_LENGTH) {
+        if (communityNickname.length() < MIN_NICKNAME_LENGTH
+                || communityNickname.length() > MAX_NICKNAME_LENGTH) {
             throw new IllegalArgumentException("닉네임은 2자 이상 20자 이하로 입력해주세요.");
         }
 
@@ -176,16 +181,16 @@ public class CmypageServiceImpl implements CmypageService {
 
     private String normalizeTradeRole(String role) {
         if (role == null) {
-            return CmypageConstants.TRADE_ROLE_ALL;
+            return TRADE_ROLE_ALL;
         }
 
         String normalizedRole = role.trim().toUpperCase();
-        if (CmypageConstants.TRADE_ROLE_SELLER.equals(normalizedRole)) {
-            return CmypageConstants.TRADE_ROLE_SELLER;
+        if (TRADE_ROLE_SELLER.equals(normalizedRole)) {
+            return TRADE_ROLE_SELLER;
         }
-        if (CmypageConstants.TRADE_ROLE_BUYER.equals(normalizedRole)) {
-            return CmypageConstants.TRADE_ROLE_BUYER;
+        if (TRADE_ROLE_BUYER.equals(normalizedRole)) {
+            return TRADE_ROLE_BUYER;
         }
-        return CmypageConstants.TRADE_ROLE_ALL;
+        return TRADE_ROLE_ALL;
     }
 }

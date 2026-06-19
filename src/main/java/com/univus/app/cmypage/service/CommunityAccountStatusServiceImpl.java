@@ -13,6 +13,9 @@ import lombok.RequiredArgsConstructor;
 public class CommunityAccountStatusServiceImpl
         implements CommunityAccountStatusService {
 
+    private static final String MEMBER_STATUS_ACTIVE = "ACTIVE";
+    private static final String MEMBER_STATUS_INACTIVE = "INACTIVE";
+
     private final CmypageMapper cmypageMapper;
     private final PendingReservationCancellationService
             pendingReservationCancellationService;
@@ -22,7 +25,7 @@ public class CommunityAccountStatusServiceImpl
     public void deactivateCommunity(Long memberId) {
         cmypageMapper.updateMemberStatus(
                 memberId,
-                CmypageConstants.MEMBER_STATUS_INACTIVE);
+                MEMBER_STATUS_INACTIVE);
         pendingReservationCancellationService
                 .cancelAllPendingReservations(memberId);
     }
@@ -32,6 +35,6 @@ public class CommunityAccountStatusServiceImpl
     public void reactivateCommunity(Long memberId) {
         cmypageMapper.updateMemberStatus(
                 memberId,
-                CmypageConstants.MEMBER_STATUS_ACTIVE);
+                MEMBER_STATUS_ACTIVE);
     }
 }

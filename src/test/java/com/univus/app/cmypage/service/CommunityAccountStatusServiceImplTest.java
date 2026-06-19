@@ -34,7 +34,7 @@ class CommunityAccountStatusServiceImplTest {
                 pendingReservationCancellationService);
         order.verify(cmypageMapper).updateMemberStatus(
                 memberId,
-                CmypageConstants.MEMBER_STATUS_INACTIVE);
+                "INACTIVE");
         order.verify(pendingReservationCancellationService)
                 .cancelAllPendingReservations(memberId);
     }
@@ -48,6 +48,6 @@ class CommunityAccountStatusServiceImplTest {
 
         verify(cmypageMapper).updateMemberStatus(
                 memberId,
-                CmypageConstants.MEMBER_STATUS_ACTIVE);
+                "ACTIVE");
     }
 }
