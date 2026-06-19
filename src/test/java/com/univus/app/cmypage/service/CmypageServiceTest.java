@@ -1,6 +1,7 @@
 package com.univus.app.cmypage.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,16 +14,41 @@ import org.junit.jupiter.api.Test;
 import com.univus.app.cmypage.dto.CmypageCommentDto;
 import com.univus.app.cmypage.mapper.CmypageMapper;
 import com.univus.app.common.PaginateUtilRestApiRes;
-import com.univus.app.community.service.PostService;
-import com.univus.app.reservation.service.ReservationService;
+import com.univus.app.community.dto.PostDto;
+import com.univus.app.community.dto.PostListResponseDto;
+import com.univus.app.community.service.PostListQueryService;
 
 class CmypageServiceTest {
 
-    private final PostService postService = mock(PostService.class);
+    private final PostListQueryService postListQueryService =
+            mock(PostListQueryService.class);
     private final CmypageMapper cmypageMapper = mock(CmypageMapper.class);
-    private final ReservationService reservationService = mock(ReservationService.class);
     private final CmypageService cmypageService =
-            new CmypageService(postService, cmypageMapper, reservationService);
+            new CmypageServiceImpl(postListQueryService, cmypageMapper);
+
+    @Test
+    @DisplayName("내 게시글은 타입이 있는 게시글 목록 응답을 페이지 응답으로 변환한다")
+    void getMyPostsUsesTypedPostListResponse() {
+        Long memberId = 10L;
+        PostDto post = new PostDto();
+        PostListResponseDto postListResponse =
+                PostListResponseDto.builder()
+                        .postList(List.of(post))
+                        .totalCount(9)
+                        .todayCount(1)
+                        .totalPage(2)
+                        .currentPage(1)
+                        .build();
+        when(postListQueryService.getPostList(any(PostDto.class)))
+                .thenReturn(postListResponse);
+
+        PaginateUtilRestApiRes<PostDto> result =
+                cmypageService.getMyPosts(memberId, 0, 8);
+
+        assertEquals(List.of(post), result.getContent());
+        assertEquals(9, result.getTotalElements());
+        assertEquals(2, result.getTotalPages());
+    }
 
     @Test
     @DisplayName("댓글 목록은 서버 페이지 정보와 전체 개수를 함께 반환한다")

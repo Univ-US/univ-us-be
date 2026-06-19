@@ -29,7 +29,8 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ReservationServiceImpl implements ReservationService {
+public class ReservationServiceImpl
+        implements ReservationService, PendingReservationCancellationService {
 
     private final ReservationMapper reservationMapper;
     private final ReservationCommandService reservationCommandService;

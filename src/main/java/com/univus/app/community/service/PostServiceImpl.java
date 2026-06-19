@@ -3,6 +3,7 @@ package com.univus.app.community.service;
 import com.univus.app.common.StorageService;
 import com.univus.app.community.dto.PostDto;
 import com.univus.app.community.dto.PostImageDto;
+import com.univus.app.community.dto.PostListResponseDto;
 import com.univus.app.community.mapper.PostMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,14 +42,16 @@ public class PostServiceImpl implements PostService {
     private static final String POST_IMAGE_URL_PREFIX = "/uploads/community/post/";
 
     // 게시글 목록 조회 (페이징 + 검색)
-    public Map<String, Object> getPostList(PostDto postDto, Long memberId) {
+    @Override
+    public PostListResponseDto getPostList(PostDto postDto, Long memberId) {
         CommunityAccessScope scope = communityAccessService.getScope(memberId);
         postDto.setViewerMemberId(memberId);
         postDto.setUnivId(scope.getQueryUnivId());
         return getPostList(postDto);
     }
 
-    public Map<String, Object> getPostList(PostDto postDto) {
+    @Override
+    public PostListResponseDto getPostList(PostDto postDto) {
         // 기본값 처리
         if (postDto.getPage() == null || postDto.getPage() <= 0) postDto.setPage(1);
         if (postDto.getSize() == null || postDto.getSize() <= 0) postDto.setSize(10);
@@ -63,14 +66,13 @@ public class PostServiceImpl implements PostService {
         // 전체 페이지 수 계산
         int totalPage = (int) Math.ceil((double) totalCount / postDto.getSize());
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("postList", postList);
-        result.put("totalCount", totalCount);
-        result.put("todayCount", todayCount);
-        result.put("totalPage", totalPage);
-        result.put("currentPage", postDto.getPage());
-
-        return result;
+        return PostListResponseDto.builder()
+                .postList(postList)
+                .totalCount(totalCount)
+                .todayCount(todayCount)
+                .totalPage(totalPage)
+                .currentPage(postDto.getPage())
+                .build();
     }
 
     // 게시글 단건 조회
