@@ -15,10 +15,29 @@ import java.util.List;
 public interface CmypageMapper {
     CmypageProfileDto selectMyProfile(Long memberId);
     CmypageSummaryDto selectMySummary(Long memberId);
-    List<CmypageCommentDto> selectMyComments(Long memberId);
-    List<PostDto> selectLikedPosts(Long memberId);
-    List<CmypageTradeDto> selectMyTrades(Long memberId);
-    List<CmypageWishlistDto> selectMyWishlist(Long memberId);
+    List<CmypageCommentDto> selectMyComments(
+            @Param("memberId") Long memberId,
+            @Param("offset") int offset,
+            @Param("size") int size);
+    int countMyComments(@Param("memberId") Long memberId);
+    List<PostDto> selectLikedPosts(
+            @Param("memberId") Long memberId,
+            @Param("offset") int offset,
+            @Param("size") int size);
+    int countLikedPosts(@Param("memberId") Long memberId);
+    List<CmypageTradeDto> selectMyTrades(
+            @Param("memberId") Long memberId,
+            @Param("role") String role,
+            @Param("offset") int offset,
+            @Param("size") int size);
+    int countMyTrades(
+            @Param("memberId") Long memberId,
+            @Param("role") String role);
+    List<CmypageWishlistDto> selectMyWishlist(
+            @Param("memberId") Long memberId,
+            @Param("offset") int offset,
+            @Param("size") int size);
+    int countMyWishlist(@Param("memberId") Long memberId);
     int countCommunityNicknameForOthers(@Param("memberId") Long memberId, @Param("communityNickname") String communityNickname);
     int countMemberDetail(@Param("memberId") Long memberId);
     Long selectDefaultDeptIdForMember(@Param("memberId") Long memberId);

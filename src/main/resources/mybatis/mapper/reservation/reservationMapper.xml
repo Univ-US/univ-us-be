@@ -198,6 +198,30 @@
           AND STATUS = 'ACTIVE'
     </select>
 
+    <select id="selectReservationPenaltyHistory"
+            resultType="com.univus.app.reservation.dto.ReservationDto$ReservationPenaltyHistoryDto">
+        SELECT
+            PENALTY_ID AS penaltyId,
+            PENALTY_TYPE AS penaltyType,
+            REASON AS reason,
+            STATUS AS status,
+            CREATED_AT AS createdAt,
+            CASE
+                WHEN STATUS = 'PLEDGED' THEN END_TIME
+                ELSE NULL
+            END AS resolvedAt
+        FROM RESERVATION_PENALTIES
+        WHERE MEMBER_ID = #{memberId}
+        ORDER BY CREATED_AT DESC, PENALTY_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countReservationPenaltyHistory" resultType="int">
+        SELECT COUNT(*)
+        FROM RESERVATION_PENALTIES
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
     <insert id="insertReservationPenalty">
         INSERT INTO RESERVATION_PENALTIES (
             PENALTY_ID,

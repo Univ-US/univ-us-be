@@ -7,6 +7,8 @@ import com.univus.app.cmypage.dto.CmypageSummaryDto;
 import com.univus.app.cmypage.dto.CmypageTradeDto;
 import com.univus.app.cmypage.dto.CmypageWishlistDto;
 import com.univus.app.cmypage.mapper.CmypageMapper;
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.community.dto.PostDto;
 import com.univus.app.community.service.PostService;
 import com.univus.app.reservation.service.ReservationService;
@@ -39,10 +41,23 @@ public class CmypageService {
         cmypageMapper.updateMemberStatus(memberId, "ACTIVE");
     }
 
-    public Map<String, Object> getMyPosts(Long memberId, PostDto postDto) {
+    @SuppressWarnings("unchecked")
+    public PaginateUtilRestApiRes<PostDto> getMyPosts(
+            Long memberId,
+            Integer page,
+            Integer size) {
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        PostDto postDto = new PostDto();
         postDto.setMemberId(memberId);
         postDto.setViewerMemberId(memberId);
-        return postService.getPostList(postDto);
+        postDto.setPage(safePage + 1);
+        postDto.setSize(safeSize);
+
+        Map<String, Object> result = postService.getPostList(postDto);
+        List<PostDto> posts = (List<PostDto>) result.getOrDefault("postList", List.of());
+        Number totalCount = (Number) result.getOrDefault("totalCount", 0);
+        return PaginateUtilRestApi.of(posts, totalCount.longValue(), safePage, safeSize);
     }
 
     public CmypageProfileDto getMyProfile(Long memberId) {
@@ -93,19 +108,86 @@ public class CmypageService {
         return getMyProfile(memberId);
     }
 
-    public List<CmypageCommentDto> getMyComments(Long memberId) {
-        return cmypageMapper.selectMyComments(memberId);
+    public PaginateUtilRestApiRes<CmypageCommentDto> getMyComments(
+            Long memberId,
+            Integer page,
+            Integer size) {
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<CmypageCommentDto> comments = cmypageMapper.selectMyComments(
+                memberId,
+                PaginateUtilRestApi.offset(safePage, safeSize),
+                safeSize);
+        return PaginateUtilRestApi.of(
+                comments,
+                cmypageMapper.countMyComments(memberId),
+                safePage,
+                safeSize);
     }
 
-    public List<PostDto> getLikedPosts(Long memberId) {
-        return cmypageMapper.selectLikedPosts(memberId);
+    public PaginateUtilRestApiRes<PostDto> getLikedPosts(
+            Long memberId,
+            Integer page,
+            Integer size) {
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<PostDto> posts = cmypageMapper.selectLikedPosts(
+                memberId,
+                PaginateUtilRestApi.offset(safePage, safeSize),
+                safeSize);
+        return PaginateUtilRestApi.of(
+                posts,
+                cmypageMapper.countLikedPosts(memberId),
+                safePage,
+                safeSize);
     }
 
-    public List<CmypageTradeDto> getMyTrades(Long memberId) {
-        return cmypageMapper.selectMyTrades(memberId);
+    public PaginateUtilRestApiRes<CmypageTradeDto> getMyTrades(
+            Long memberId,
+            String role,
+            Integer page,
+            Integer size) {
+        String normalizedRole = normalizeTradeRole(role);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<CmypageTradeDto> trades = cmypageMapper.selectMyTrades(
+                memberId,
+                normalizedRole,
+                PaginateUtilRestApi.offset(safePage, safeSize),
+                safeSize);
+        return PaginateUtilRestApi.of(
+                trades,
+                cmypageMapper.countMyTrades(memberId, normalizedRole),
+                safePage,
+                safeSize);
     }
 
-    public List<CmypageWishlistDto> getMyWishlist(Long memberId) {
-        return cmypageMapper.selectMyWishlist(memberId);
+    public PaginateUtilRestApiRes<CmypageWishlistDto> getMyWishlist(
+            Long memberId,
+            Integer page,
+            Integer size) {
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<CmypageWishlistDto> wishlist = cmypageMapper.selectMyWishlist(
+                memberId,
+                PaginateUtilRestApi.offset(safePage, safeSize),
+                safeSize);
+        return PaginateUtilRestApi.of(
+                wishlist,
+                cmypageMapper.countMyWishlist(memberId),
+                safePage,
+                safeSize);
+    }
+
+    private String normalizeTradeRole(String role) {
+        if (role == null) {
+            return "ALL";
+        }
+
+        String normalizedRole = role.trim().toUpperCase();
+        return switch (normalizedRole) {
+            case "SELLER", "BUYER" -> normalizedRole;
+            default -> "ALL";
+        };
     }
 }
