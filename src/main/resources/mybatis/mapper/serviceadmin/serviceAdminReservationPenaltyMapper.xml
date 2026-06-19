@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminReservationPenaltyMapper">
+
+    <sql id="penaltyFilters">
+        WHERE 1 = 1
+        <if test="memberId != null">
+            AND RP.MEMBER_ID = #{memberId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                LOWER(M.MEMBER_NAME) LIKE '%' || LOWER(#{keyword}) || '%'
+                OR LOWER(M.LOGIN_ID) LIKE '%' || LOWER(#{keyword}) || '%'
+            )
+        </if>
+        <if test="status != null and status != ''">
+            AND RP.STATUS = #{status}
+        </if>
+        <if test="univId != null">
+            AND M.UNIV_ID = #{univId}
+        </if>
+    </sql>
+
+    <select id="selectPenalties" resultType="com.univus.app.serviceadmin.dto.ServiceAdminReservationPenaltyDto$Penalty">
+        SELECT
+            RP.PENALTY_ID,
+            RP.MEMBER_ID,
+            M.MEMBER_NAME,
+            M.LOGIN_ID,
+            RP.PENALTY_TYPE,
+            RP.REASON,
+            RP.STATUS,
+            RP.START_TIME,
+            RP.END_TIME,
+            RP.CREATED_AT
+        FROM RESERVATION_PENALTIES RP
+        JOIN MEMBER M ON M.MEMBER_ID = RP.MEMBER_ID
+        <include refid="penaltyFilters"/>
+        ORDER BY RP.CREATED_AT DESC
+        OFFSET #{offset} ROWS FETCH NEXT 10 ROWS ONLY
+    </select>
+
+    <select id="countPenalties" resultType="long">
+        SELECT COUNT(*)
+        FROM RESERVATION_PENALTIES RP
+        JOIN MEMBER M ON M.MEMBER_ID = RP.MEMBER_ID
+        <include refid="penaltyFilters"/>
+    </select>
+
+    <select id="selectPenaltyById" resultType="com.univus.app.serviceadmin.dto.ServiceAdminReservationPenaltyDto$Penalty">
+        SELECT
+            RP.PENALTY_ID,
+            RP.MEMBER_ID,
+            M.MEMBER_NAME,
+            M.LOGIN_ID,
+            RP.PENALTY_TYPE,
+            RP.REASON,
+            RP.STATUS,
+            RP.START_TIME,
+            RP.END_TIME,
+            RP.CREATED_AT
+        FROM RESERVATION_PENALTIES RP
+        JOIN MEMBER M ON M.MEMBER_ID = RP.MEMBER_ID
+        WHERE RP.PENALTY_ID = #{penaltyId}
+    </select>
+
+    <select id="selectLatestPenaltyForMember" resultType="com.univus.app.serviceadmin.dto.ServiceAdminReservationPenaltyDto$Penalty">
+        SELECT
+            RP.PENALTY_ID,
+            RP.MEMBER_ID,
+            M.MEMBER_NAME,
+            M.LOGIN_ID,
+            RP.PENALTY_TYPE,
+            RP.REASON,
+            RP.STATUS,
+            RP.START_TIME,
+            RP.END_TIME,
+            RP.CREATED_AT
+        FROM RESERVATION_PENALTIES RP
+        JOIN MEMBER M ON M.MEMBER_ID = RP.MEMBER_ID
+        WHERE RP.MEMBER_ID = #{memberId}
+        ORDER BY RP.PENALTY_ID DESC
+        FETCH FIRST 1 ROWS ONLY
+    </select>
+
+    <update id="releasePenalty">
+        UPDATE RESERVATION_PENALTIES
+        SET STATUS = 'ADMIN_RELEASED',
+            END_TIME = SYSTIMESTAMP
+        WHERE PENALTY_ID = #{penaltyId}
+          AND STATUS = 'ACTIVE'
+    </update>
+</mapper>
