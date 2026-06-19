@@ -107,6 +107,8 @@ public class SpringSecurityConfig {
             	    ).permitAll()
 					.requestMatchers("/api/service-admin/reservations/penalties/**")
 							.hasAnyRole(RoleCode.SUA.getCode(), RoleCode.ADM.getCode())
+					.requestMatchers("/api/service-admin/community/**")
+							.hasAnyRole(RoleCode.SUA.getCode(), RoleCode.ADM.getCode())
 					.requestMatchers("/api/service-admin/**").hasRole("SUA")
 							.requestMatchers(HttpMethod.POST,  "/api/subscriptions/webhooks/portone").permitAll()
 							.requestMatchers("/api/lms/professor/**").hasAnyRole(RoleCode.PROF.getCode()) // 교수 lms는 교수만 (교수 및 강의 배정 등의 관리는 BO-학교 관리자측)
