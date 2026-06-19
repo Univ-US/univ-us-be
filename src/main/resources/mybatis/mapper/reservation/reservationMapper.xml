@@ -5,7 +5,7 @@
 <mapper namespace="com.univus.app.reservation.mapper.ReservationMapper">
 
     <resultMap id="ReadingRoomAvailabilityResultMap"
-               type="com.univus.app.reservation.dto.ReservationDto$ReadingRoomAvailabilityDto">
+               type="com.univus.app.reservation.dto.ReadingRoomAvailabilityDto">
         <id     property="readingRoomId"      column="READING_ROOM_ID"/>
         <result property="roomName"           column="ROOM_NAME"/>
         <result property="floorName"          column="FLOOR_NAME"/>
@@ -19,7 +19,7 @@
     </resultMap>
 
     <resultMap id="ReadingSeatAvailabilityResultMap"
-               type="com.univus.app.reservation.dto.ReservationDto$ReadingSeatAvailabilityDto">
+               type="com.univus.app.reservation.dto.ReadingSeatAvailabilityDto">
         <id     property="seatId"           column="SEAT_ID"/>
         <result property="readingRoomId"    column="READING_ROOM_ID"/>
         <result property="roomName"         column="ROOM_NAME"/>
@@ -34,7 +34,7 @@
     </resultMap>
 
     <resultMap id="ReadingSeatReservationResultMap"
-               type="com.univus.app.reservation.dto.ReservationDto$ReadingSeatReservationDto">
+               type="com.univus.app.reservation.dto.ReadingSeatReservationDto">
         <id     property="reservationId" column="RESERVATION_ID"/>
         <result property="memberId"      column="MEMBER_ID"/>
         <result property="seatId"        column="SEAT_ID"/>
@@ -48,7 +48,7 @@
     </resultMap>
 
     <resultMap id="RoomAvailabilityResultMap"
-               type="com.univus.app.reservation.dto.ReservationDto$RoomAvailabilityDto">
+               type="com.univus.app.reservation.dto.RoomAvailabilityDto">
         <id     property="roomId"      column="ROOM_ID"/>
         <result property="roomName"    column="ROOM_NAME"/>
         <result property="roomType"    column="ROOM_TYPE"/>
@@ -61,7 +61,7 @@
     </resultMap>
 
     <resultMap id="RoomReservationSlotResultMap"
-               type="com.univus.app.reservation.dto.ReservationDto$RoomReservationSlotDto">
+               type="com.univus.app.reservation.dto.RoomReservationSlotDto">
         <id     property="reservationId"    column="RESERVATION_ID"/>
         <result property="roomId"           column="ROOM_ID"/>
         <result property="reservedMemberId" column="MEMBER_ID"/>
@@ -71,7 +71,7 @@
     </resultMap>
 
     <resultMap id="RoomReservationResultMap"
-               type="com.univus.app.reservation.dto.ReservationDto$RoomReservationDto">
+               type="com.univus.app.reservation.dto.RoomReservationDto">
         <id     property="reservationId" column="RESERVATION_ID"/>
         <result property="memberId"      column="MEMBER_ID"/>
         <result property="roomId"        column="ROOM_ID"/>
@@ -199,7 +199,7 @@
     </select>
 
     <select id="selectReservationPenaltyHistory"
-            resultType="com.univus.app.reservation.dto.ReservationDto$ReservationPenaltyHistoryDto">
+            resultType="com.univus.app.reservation.dto.ReservationPenaltyHistoryDto">
         SELECT
             PENALTY_ID AS penaltyId,
             PENALTY_TYPE AS penaltyType,
@@ -263,7 +263,7 @@
     </select>
 
     <insert id="insertReadingSeatReservation"
-            parameterType="com.univus.app.reservation.dto.ReservationDto$ReadingSeatReservationDto">
+            parameterType="com.univus.app.reservation.dto.ReadingSeatReservationDto">
         <selectKey keyProperty="reservationId" resultType="long" order="BEFORE">
             SELECT SEQ_READING_SEAT_RESERVATIONS.NEXTVAL FROM DUAL
         </selectKey>
@@ -391,7 +391,7 @@
     </select>
 
     <insert id="insertRoomReservation"
-            parameterType="com.univus.app.reservation.dto.ReservationDto$RoomReservationDto">
+            parameterType="com.univus.app.reservation.dto.RoomReservationDto">
         <selectKey keyProperty="reservationId" resultType="long" order="BEFORE">
             SELECT SEQ_MEETING_ROOM_RESERVATIONS.NEXTVAL FROM DUAL
         </selectKey>

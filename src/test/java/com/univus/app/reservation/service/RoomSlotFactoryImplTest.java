@@ -11,7 +11,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.RoomReservationSlotDto;
 
 class RoomSlotFactoryImplTest {
 
@@ -23,8 +23,8 @@ class RoomSlotFactoryImplTest {
     void createBuildsEightSlotsAndKeepsReservationData() {
         LocalDate date = LocalDate.of(2026, 6, 20);
         LocalDateTime reservedStart = date.atTime(10, 0);
-        ReservationDto.RoomReservationSlotDto reservation =
-                ReservationDto.RoomReservationSlotDto.builder()
+        RoomReservationSlotDto reservation =
+                RoomReservationSlotDto.builder()
                         .reservationId(101L)
                         .reservedMemberId(11L)
                         .roomId(21L)
@@ -33,7 +33,7 @@ class RoomSlotFactoryImplTest {
                         .status("RESERVED")
                         .build();
 
-        List<ReservationDto.RoomReservationSlotDto> slots =
+        List<RoomReservationSlotDto> slots =
                 roomSlotFactory.create(
                         21L,
                         date,

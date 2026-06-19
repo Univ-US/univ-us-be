@@ -3,7 +3,8 @@ package com.univus.app.reservation.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     }
 
     private void completeExpiredSeatReservations() {
-        for (ReservationDto.ReadingSeatReservationDto reservation
+        for (ReadingSeatReservationDto reservation
                 : reservationMapper.selectExpiredReadingSeatReservations()) {
             int updated =
                     reservationMapper.completeExpiredReadingSeatReservation(
@@ -44,7 +45,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     }
 
     private void cancelNoShowSeatReservations() {
-        for (ReservationDto.ReadingSeatReservationDto reservation
+        for (ReadingSeatReservationDto reservation
                 : reservationMapper.selectNoShowReadingSeatReservations()) {
             int updated =
                     reservationMapper.cancelNoShowReadingSeatReservation(
@@ -64,7 +65,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     }
 
     private void completeExpiredRoomReservations() {
-        for (ReservationDto.RoomReservationDto reservation
+        for (RoomReservationDto reservation
                 : reservationMapper.selectExpiredRoomReservations()) {
             int updated =
                     reservationMapper.completeExpiredRoomReservation(
@@ -81,7 +82,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     }
 
     private void cancelNoShowRoomReservations() {
-        for (ReservationDto.RoomReservationDto reservation
+        for (RoomReservationDto reservation
                 : reservationMapper.selectNoShowRoomReservations()) {
             int updated =
                     reservationMapper.cancelNoShowRoomReservation(

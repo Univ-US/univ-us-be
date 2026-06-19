@@ -3,7 +3,12 @@ package com.univus.app.reservation.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyStatusDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
 
 public interface ReservationPolicy {
 
@@ -15,38 +20,38 @@ public interface ReservationPolicy {
 
     void requireReservationDate(LocalDate date);
 
-    ReservationDto.ReadingSeatReservationDto requireSeatReservation(
-            ReservationDto.ReadingSeatReservationDto reservation,
+    ReadingSeatReservationDto requireSeatReservation(
+            ReadingSeatReservationDto reservation,
             String message);
 
-    ReservationDto.RoomReservationDto requireRoomReservation(
-            ReservationDto.RoomReservationDto reservation,
+    RoomReservationDto requireRoomReservation(
+            RoomReservationDto reservation,
             String message);
 
     void validateSeatReservationRequest(
-            ReservationDto.ReadingSeatReservationRequestDto request);
+            ReadingSeatReservationRequestDto request);
 
     void validateRoomReservationRequest(
-            ReservationDto.RoomReservationRequestDto request);
+            RoomReservationRequestDto request);
 
     void validateSeatAvailabilityRange(
             LocalDateTime startTime,
             LocalDateTime endTime);
 
     void validatePenaltyPledge(
-            ReservationDto.ReservationPenaltyPledgeRequestDto request,
+            ReservationPenaltyPledgeRequestDto request,
             int activePenaltyCount);
 
     void requireCancelableStatus(String status);
 
     void validateSeatCheckIn(
-            ReservationDto.ReadingSeatReservationDto reservation);
+            ReadingSeatReservationDto reservation);
 
     void validateRoomCheckIn(
-            ReservationDto.RoomReservationDto reservation);
+            RoomReservationDto reservation);
 
     void validateRoomCancellation(
-            ReservationDto.RoomReservationDto reservation);
+            RoomReservationDto reservation);
 
     void requirePenaltyAvailable(int activePenaltyCount);
 
@@ -62,15 +67,15 @@ public interface ReservationPolicy {
 
     void requireUpdated(int updated, String message);
 
-    ReservationDto.ReadingSeatReservationDto requireExtendableSeat(
-            ReservationDto.ReadingSeatReservationDto reservation);
+    ReadingSeatReservationDto requireExtendableSeat(
+            ReadingSeatReservationDto reservation);
 
     LocalDateTime calculateExtendedEndTime(
-            ReservationDto.ReadingSeatReservationDto reservation);
+            ReadingSeatReservationDto reservation);
 
     void requireExtensionSlotAvailable(int overlapCount);
 
-    ReservationDto.ReservationPenaltyStatusDto buildPenaltyStatus(
+    ReservationPenaltyStatusDto buildPenaltyStatus(
             int activePenaltyCount);
 
     void requireRoomReservationWindowOpen(LocalDateTime startTime);

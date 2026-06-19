@@ -11,7 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import com.univus.app.reservation.dto.SeatChatDto;
+import com.univus.app.reservation.dto.ActiveSeatReservationDto;
+import com.univus.app.reservation.dto.SeatChatContextDto;
+import com.univus.app.reservation.dto.SeatChatMessageDto;
+import com.univus.app.reservation.dto.SeatChatMessageRequestDto;
+import com.univus.app.reservation.dto.SeatChatNotificationDto;
+import com.univus.app.reservation.dto.SeatChatRoomDto;
+import com.univus.app.reservation.dto.SeatChatRoomRequestDto;
 import com.univus.app.reservation.mapper.SeatChatMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -26,31 +32,31 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional(readOnly = true)
     @Override
-    public SeatChatDto.SeatChatContextDto getSeatChatContext(Long memberId) {
+    public SeatChatContextDto getSeatChatContext(Long memberId) {
         validateMember(memberId);
 
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 seatChatMapper.selectCurrentActiveSeatReservationForMember(memberId);
         if (activeReservation == null) {
-            return SeatChatDto.SeatChatContextDto.builder()
+            return SeatChatContextDto.builder()
                     .activeReservation(null)
                     .rooms(List.of())
                     .totalUnreadCount(0)
                     .build();
         }
 
-        List<SeatChatDto.SeatChatRoomDto> rooms =
+        List<SeatChatRoomDto> rooms =
                 seatChatMapper.selectSeatChatRoomsForReservation(
                         activeReservation.getReservationId());
         int totalUnreadCount = 0;
-        for (SeatChatDto.SeatChatRoomDto room : rooms) {
+        for (SeatChatRoomDto room : rooms) {
             Integer unreadCount = room.getUnreadCount();
             if (unreadCount != null && unreadCount > 0) {
                 totalUnreadCount += unreadCount;
             }
         }
 
-        return SeatChatDto.SeatChatContextDto.builder()
+        return SeatChatContextDto.builder()
                 .activeReservation(activeReservation)
                 .rooms(rooms)
                 .totalUnreadCount(totalUnreadCount)
@@ -59,15 +65,15 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional
     @Override
-    public SeatChatDto.SeatChatRoomDto createOrGetSeatChatRoom(
+    public SeatChatRoomDto createOrGetSeatChatRoom(
             Long memberId,
-            SeatChatDto.SeatChatRoomRequestDto request) {
+            SeatChatRoomRequestDto request) {
         validateMember(memberId);
         validateRoomRequest(request);
 
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
-        SeatChatDto.ActiveSeatReservationDto targetReservation =
+        ActiveSeatReservationDto targetReservation =
                 seatChatMapper.selectCurrentActiveSeatReservationById(
                         request.getTargetReservationId());
 
@@ -79,7 +85,7 @@ public class SeatChatServiceImpl implements SeatChatService {
             throw new IllegalArgumentException("본인 좌석에는 메시지를 보낼 수 없습니다.");
         }
 
-        SeatChatDto.SeatChatRoomDto existingRoom =
+        SeatChatRoomDto existingRoom =
                 seatChatMapper.selectSeatChatRoomByPair(
                         activeReservation.getReservationId(),
                         targetReservation.getReservationId());
@@ -117,8 +123,8 @@ public class SeatChatServiceImpl implements SeatChatService {
                     activeReservation.getReservationId());
             }
 
-            SeatChatDto.SeatChatRoomDto room =
-                    SeatChatDto.SeatChatRoomDto.builder()
+            SeatChatRoomDto room =
+                    SeatChatRoomDto.builder()
                             .myReservationId(
                                     activeReservation.getReservationId())
                             .targetReservationId(
@@ -145,10 +151,10 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<SeatChatDto.SeatChatMessageDto> getSeatChatMessages(
+    public List<SeatChatMessageDto> getSeatChatMessages(
             Long memberId,
             Long roomId) {
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
         getRequiredParticipantRoom(roomId, activeReservation.getReservationId());
 
@@ -158,7 +164,7 @@ public class SeatChatServiceImpl implements SeatChatService {
     @Transactional
     @Override
     public void markSeatChatMessagesRead(Long memberId, Long roomId) {
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
         getRequiredParticipantRoom(roomId, activeReservation.getReservationId());
         seatChatMapper.markIncomingMessagesRead(
@@ -168,15 +174,15 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional
     @Override
-    public SeatChatDto.SeatChatMessageDto sendSeatChatMessage(
+    public SeatChatMessageDto sendSeatChatMessage(
             Long memberId,
             Long roomId,
-            SeatChatDto.SeatChatMessageRequestDto request) {
+            SeatChatMessageRequestDto request) {
         validateMessageRequest(request);
 
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
-        SeatChatDto.SeatChatRoomDto room = getRequiredParticipantRoom(
+        SeatChatRoomDto room = getRequiredParticipantRoom(
                 roomId,
                 activeReservation.getReservationId());
 
@@ -185,15 +191,15 @@ public class SeatChatServiceImpl implements SeatChatService {
                 .equals(activeReservation.getReservationId())) {
             targetReservationId = room.getTargetReservationId();
         }
-        SeatChatDto.ActiveSeatReservationDto targetReservation =
+        ActiveSeatReservationDto targetReservation =
                 seatChatMapper.selectCurrentActiveSeatReservationById(
                         targetReservationId);
         if (targetReservation == null) {
             throw new IllegalStateException("상대방이 이미 퇴실하여 메시지를 보낼 수 없습니다.");
         }
 
-        SeatChatDto.SeatChatMessageDto message =
-                SeatChatDto.SeatChatMessageDto.builder()
+        SeatChatMessageDto message =
+                SeatChatMessageDto.builder()
                         .roomId(roomId)
                         .senderReservationId(
                                 activeReservation.getReservationId())
@@ -203,16 +209,16 @@ public class SeatChatServiceImpl implements SeatChatService {
                         .build();
 
         seatChatMapper.insertSeatChatMessage(message);
-        SeatChatDto.SeatChatMessageDto savedMessage =
+        SeatChatMessageDto savedMessage =
                 seatChatMapper.selectSeatChatMessage(message.getMessageId());
-        SeatChatDto.SeatChatMessageDto response;
+        SeatChatMessageDto response;
         if (savedMessage == null) {
             response = message;
         } else {
             response = savedMessage;
         }
-        SeatChatDto.SeatChatNotificationDto notification =
-                SeatChatDto.SeatChatNotificationDto.builder()
+        SeatChatNotificationDto notification =
+                SeatChatNotificationDto.builder()
                         .roomId(roomId)
                         .messageId(response.getMessageId())
                         .senderReservationId(activeReservation.getReservationId())
@@ -240,11 +246,11 @@ public class SeatChatServiceImpl implements SeatChatService {
         return response;
     }
 
-    private SeatChatDto.ActiveSeatReservationDto getRequiredActiveReservation(
+    private ActiveSeatReservationDto getRequiredActiveReservation(
             Long memberId) {
         validateMember(memberId);
 
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 seatChatMapper.selectCurrentActiveSeatReservationForMember(memberId);
         if (activeReservation == null) {
             throw new IllegalStateException("현재 이용 중인 좌석 예약이 있어야 채팅할 수 있습니다.");
@@ -252,14 +258,14 @@ public class SeatChatServiceImpl implements SeatChatService {
         return activeReservation;
     }
 
-    private SeatChatDto.SeatChatRoomDto getRequiredParticipantRoom(
+    private SeatChatRoomDto getRequiredParticipantRoom(
             Long roomId,
             Long reservationId) {
         if (roomId == null) {
             throw new IllegalArgumentException("채팅방 ID는 필수입니다.");
         }
 
-        SeatChatDto.SeatChatRoomDto room =
+        SeatChatRoomDto room =
                 seatChatMapper.selectSeatChatRoomForParticipant(roomId, reservationId);
         if (room == null) {
             throw new IllegalArgumentException("참여 중인 좌석 채팅방을 찾을 수 없습니다.");
@@ -273,13 +279,13 @@ public class SeatChatServiceImpl implements SeatChatService {
         }
     }
 
-    private void validateRoomRequest(SeatChatDto.SeatChatRoomRequestDto request) {
+    private void validateRoomRequest(SeatChatRoomRequestDto request) {
         if (request == null || request.getTargetReservationId() == null) {
             throw new IllegalArgumentException("상대 좌석 예약 ID는 필수입니다.");
         }
     }
 
-    private void validateMessageRequest(SeatChatDto.SeatChatMessageRequestDto request) {
+    private void validateMessageRequest(SeatChatMessageRequestDto request) {
         if (request == null || request.getMessageText() == null
                 || request.getMessageText().trim().isEmpty()) {
             throw new IllegalArgumentException("메시지를 입력해주세요.");

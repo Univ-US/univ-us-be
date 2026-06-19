@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
 
 class ReservationPolicyTest {
 
@@ -18,8 +19,8 @@ class ReservationPolicyTest {
     @Test
     @DisplayName("좌석 예약 요청의 필수값 검증 메시지를 유지한다")
     void validateSeatReservationRequestRequiresSeatId() {
-        ReservationDto.ReadingSeatReservationRequestDto request =
-                new ReservationDto.ReadingSeatReservationRequestDto();
+        ReadingSeatReservationRequestDto request =
+                new ReadingSeatReservationRequestDto();
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
@@ -66,8 +67,8 @@ class ReservationPolicyTest {
         LocalDateTime endTime = LocalDateTime.now(
                         ReservationConstants.RESERVATION_ZONE)
                 .plusMinutes(10);
-        ReservationDto.ReadingSeatReservationDto reservation =
-                ReservationDto.ReadingSeatReservationDto.builder()
+        ReadingSeatReservationDto reservation =
+                ReadingSeatReservationDto.builder()
                         .status("USING")
                         .startTime(endTime.minusHours(2))
                         .endTime(endTime)

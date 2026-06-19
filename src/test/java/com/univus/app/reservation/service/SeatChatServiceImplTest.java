@@ -12,7 +12,11 @@ import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-import com.univus.app.reservation.dto.SeatChatDto;
+import com.univus.app.reservation.dto.ActiveSeatReservationDto;
+import com.univus.app.reservation.dto.SeatChatMessageDto;
+import com.univus.app.reservation.dto.SeatChatMessageRequestDto;
+import com.univus.app.reservation.dto.SeatChatNotificationDto;
+import com.univus.app.reservation.dto.SeatChatRoomDto;
 import com.univus.app.reservation.mapper.SeatChatMapper;
 
 class SeatChatServiceImplTest {
@@ -32,25 +36,25 @@ class SeatChatServiceImplTest {
         Long senderReservationId = 100L;
         Long targetReservationId = 200L;
 
-        SeatChatDto.ActiveSeatReservationDto senderReservation =
-                SeatChatDto.ActiveSeatReservationDto.builder()
+        ActiveSeatReservationDto senderReservation =
+                ActiveSeatReservationDto.builder()
                         .reservationId(senderReservationId)
                         .memberId(senderMemberId)
                         .roomName("중앙도서관")
                         .seatNumber("12")
                         .build();
-        SeatChatDto.ActiveSeatReservationDto targetReservation =
-                SeatChatDto.ActiveSeatReservationDto.builder()
+        ActiveSeatReservationDto targetReservation =
+                ActiveSeatReservationDto.builder()
                         .reservationId(targetReservationId)
                         .memberId(targetMemberId)
                         .build();
-        SeatChatDto.SeatChatRoomDto room = SeatChatDto.SeatChatRoomDto.builder()
+        SeatChatRoomDto room = SeatChatRoomDto.builder()
                 .roomId(roomId)
                 .myReservationId(senderReservationId)
                 .targetReservationId(targetReservationId)
                 .build();
-        SeatChatDto.SeatChatMessageDto savedMessage =
-                SeatChatDto.SeatChatMessageDto.builder()
+        SeatChatMessageDto savedMessage =
+                SeatChatMessageDto.builder()
                         .messageId(300L)
                         .roomId(roomId)
                         .senderReservationId(senderReservationId)
@@ -64,15 +68,15 @@ class SeatChatServiceImplTest {
         when(seatChatMapper.selectCurrentActiveSeatReservationById(targetReservationId))
                 .thenReturn(targetReservation);
         doAnswer(invocation -> {
-            SeatChatDto.SeatChatMessageDto message = invocation.getArgument(0);
+            SeatChatMessageDto message = invocation.getArgument(0);
             message.setMessageId(300L);
             return 1;
         }).when(seatChatMapper).insertSeatChatMessage(
-                org.mockito.ArgumentMatchers.any(SeatChatDto.SeatChatMessageDto.class));
+                org.mockito.ArgumentMatchers.any(SeatChatMessageDto.class));
         when(seatChatMapper.selectSeatChatMessage(300L)).thenReturn(savedMessage);
 
-        SeatChatDto.SeatChatMessageRequestDto request =
-                new SeatChatDto.SeatChatMessageRequestDto();
+        SeatChatMessageRequestDto request =
+                new SeatChatMessageRequestDto();
         request.setMessageText("안녕하세요");
 
         seatChatService.sendSeatChatMessage(senderMemberId, roomId, request);
@@ -90,7 +94,7 @@ class SeatChatServiceImplTest {
                 eq(targetMemberId.toString()),
                 eq("/queue/seat-chat-notifications"),
                 argThat(notification ->
-                        notification instanceof SeatChatDto.SeatChatNotificationDto dto
+                        notification instanceof SeatChatNotificationDto dto
                                 && roomId.equals(dto.getRoomId())
                                 && savedMessage.getMessageId().equals(dto.getMessageId())));
     }

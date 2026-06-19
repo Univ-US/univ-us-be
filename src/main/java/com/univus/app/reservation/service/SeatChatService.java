@@ -2,17 +2,21 @@ package com.univus.app.reservation.service;
 
 import java.util.List;
 
-import com.univus.app.reservation.dto.SeatChatDto;
+import com.univus.app.reservation.dto.SeatChatContextDto;
+import com.univus.app.reservation.dto.SeatChatMessageDto;
+import com.univus.app.reservation.dto.SeatChatMessageRequestDto;
+import com.univus.app.reservation.dto.SeatChatRoomDto;
+import com.univus.app.reservation.dto.SeatChatRoomRequestDto;
 
 public interface SeatChatService {
 
-    SeatChatDto.SeatChatContextDto getSeatChatContext(Long memberId);
+    SeatChatContextDto getSeatChatContext(Long memberId);
 
-    SeatChatDto.SeatChatRoomDto createOrGetSeatChatRoom(
+    SeatChatRoomDto createOrGetSeatChatRoom(
             Long memberId,
-            SeatChatDto.SeatChatRoomRequestDto request);
+            SeatChatRoomRequestDto request);
 
-    List<SeatChatDto.SeatChatMessageDto> getSeatChatMessages(
+    List<SeatChatMessageDto> getSeatChatMessages(
             Long memberId,
             Long roomId);
 
@@ -20,8 +24,8 @@ public interface SeatChatService {
             Long memberId,
             Long roomId);
 
-    SeatChatDto.SeatChatMessageDto sendSeatChatMessage(
+    SeatChatMessageDto sendSeatChatMessage(
             Long memberId,
             Long roomId,
-            SeatChatDto.SeatChatMessageRequestDto request);
+            SeatChatMessageRequestDto request);
 }
