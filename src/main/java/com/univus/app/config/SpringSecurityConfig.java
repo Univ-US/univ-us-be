@@ -73,7 +73,6 @@ public class SpringSecurityConfig {
             	        "/oauth2/**",
             	        "/ws-univus/**",
 
-
 						// 날씨
 						"/api/weather",
 
@@ -119,8 +118,6 @@ public class SpringSecurityConfig {
 				// JWT 인증 필터를 Spring Security 기본 로그인 필터보다 먼저 실행한다.
 				// Authorization 헤더의 Bearer 토큰을 검증하고 SecurityContext에 인증 정보를 저장하기 위해 필요하다.
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-            
-            // TODO:  oauth2Login 추가예정
 
         return http.build();
     }

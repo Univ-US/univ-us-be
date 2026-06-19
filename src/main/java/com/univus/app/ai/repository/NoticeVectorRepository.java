@@ -20,6 +20,7 @@ public class NoticeVectorRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    //Oracle에 있는 데이터를 벡터로 변환해서 pgvector에 저장/업데이트
     public void upsert(Long noticeId, Long univId, String title, String content,
                        String target, LocalDateTime postedAt, float[] embedding) {
         jdbcTemplate.update("""
@@ -39,6 +40,7 @@ public class NoticeVectorRepository {
                 toPGvector(embedding));
     }
 
+    //질문 벡터랑 유사한 공지 찾아서 반환
     public List<NoticeVectorDto> findSimilar(Long univId, float[] queryEmbedding, String role, int limit) {
         String targetClause = buildTargetClause(role);
         return jdbcTemplate.query(

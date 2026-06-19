@@ -1,4 +1,4 @@
-package com.univus.app.serviceadmin.dto;
+package com.univus.app.admin.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -10,9 +10,9 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public class ServiceAdminReservationPenaltyDto {
+public class SchoolAdminReservationPenaltyDto {
 
-    private ServiceAdminReservationPenaltyDto() {
+    private SchoolAdminReservationPenaltyDto() {
     }
 
     @Getter
