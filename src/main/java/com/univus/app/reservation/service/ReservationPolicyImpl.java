@@ -119,7 +119,8 @@ public class ReservationPolicyImpl implements ReservationPolicy {
 
     public void requireCancelableStatus(String status) {
         boolean cancelable =
-                "RESERVED".equals(status) || "USING".equals(status);
+                ReservationConstants.STATUS_RESERVED.equals(status)
+                        || ReservationConstants.STATUS_USING.equals(status);
         if (!cancelable) {
             throw new IllegalArgumentException("이미 취소되었거나 완료된 예약입니다.");
         }
@@ -127,7 +128,8 @@ public class ReservationPolicyImpl implements ReservationPolicy {
 
     public void validateSeatCheckIn(
             ReservationDto.ReadingSeatReservationDto reservation) {
-        if (!"RESERVED".equals(reservation.getStatus())) {
+        if (!ReservationConstants.STATUS_RESERVED.equals(
+                reservation.getStatus())) {
             throw new IllegalArgumentException("입실할 수 있는 예약 상태가 아닙니다.");
         }
         requireReservationTimes(reservation.getStartTime(), reservation.getEndTime());
@@ -147,7 +149,8 @@ public class ReservationPolicyImpl implements ReservationPolicy {
 
     public void validateRoomCheckIn(
             ReservationDto.RoomReservationDto reservation) {
-        if (!"RESERVED".equals(reservation.getStatus())) {
+        if (!ReservationConstants.STATUS_RESERVED.equals(
+                reservation.getStatus())) {
             throw new IllegalArgumentException(
                     "입실할 수 있는 공간 예약 상태가 아닙니다.");
         }
@@ -181,7 +184,8 @@ public class ReservationPolicyImpl implements ReservationPolicy {
         LocalDateTime checkInDeadline = reservation.getStartTime()
                 .plusMinutes(ReservationConstants.CHECK_IN_WINDOW_MINUTES);
         boolean noShowTarget =
-                "RESERVED".equals(reservation.getStatus())
+                ReservationConstants.STATUS_RESERVED.equals(
+                        reservation.getStatus())
                         && !now.isBefore(checkInDeadline);
         if (noShowTarget) {
             throw new IllegalArgumentException(
@@ -238,7 +242,7 @@ public class ReservationPolicyImpl implements ReservationPolicy {
         ReservationDto.ReadingSeatReservationDto required = requireSeatReservation(
                 reservation,
                 "연장할 수 있는 예약이 아닙니다. (현재 입실하여 사용 중인 좌석만 연장 가능)");
-        if (!"USING".equals(required.getStatus())) {
+        if (!ReservationConstants.STATUS_USING.equals(required.getStatus())) {
             throw new IllegalArgumentException(
                     "연장할 수 있는 예약이 아닙니다. (현재 입실하여 사용 중인 좌석만 연장 가능)");
         }

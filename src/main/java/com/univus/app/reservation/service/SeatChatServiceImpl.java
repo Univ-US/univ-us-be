@@ -20,10 +20,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SeatChatServiceImpl implements SeatChatService {
 
-    private static final String DEFAULT_ROOM_STATUS = "ACTIVE";
-    private static final String SEAT_CHAT_USER_QUEUE_PREFIX = "/queue/seat-chats/";
-    private static final int MAX_MESSAGE_LENGTH = 2000;
-
     private final SeatChatMapper seatChatMapper;
     private final SimpMessagingTemplate messagingTemplate;
     private final RedissonClient redissonClient;
@@ -127,7 +123,8 @@ public class SeatChatServiceImpl implements SeatChatService {
                                     activeReservation.getReservationId())
                             .targetReservationId(
                                     targetReservation.getReservationId())
-                            .status(DEFAULT_ROOM_STATUS)
+                            .status(ReservationConstants
+                                    .CHAT_ROOM_STATUS_ACTIVE)
                             .build();
             seatChatMapper.insertSeatChatRoom(room);
 
@@ -228,11 +225,11 @@ public class SeatChatServiceImpl implements SeatChatService {
         runAfterCommit(() -> {
             messagingTemplate.convertAndSendToUser(
                     memberId.toString(),
-                    SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
+                    ReservationConstants.SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
                     response);
             messagingTemplate.convertAndSendToUser(
                     targetReservation.getMemberId().toString(),
-                    SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
+                    ReservationConstants.SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
                     response);
             messagingTemplate.convertAndSendToUser(
                     targetReservation.getMemberId().toString(),
@@ -287,7 +284,8 @@ public class SeatChatServiceImpl implements SeatChatService {
                 || request.getMessageText().trim().isEmpty()) {
             throw new IllegalArgumentException("메시지를 입력해주세요.");
         }
-        if (request.getMessageText().trim().length() > MAX_MESSAGE_LENGTH) {
+        if (request.getMessageText().trim().length()
+                > ReservationConstants.MAX_SEAT_CHAT_MESSAGE_LENGTH) {
             throw new IllegalArgumentException("메시지는 2000자 이내로 입력해주세요.");
         }
     }

@@ -19,11 +19,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReservationServiceImpl implements ReservationService {
 
-    private static final List<String> DAY_OF_WEEK_LABELS =
-            List.of("일", "월", "화", "수", "목", "금", "토");
-    private static final int MIN_DATE_OPTION_DAYS = 1;
-    private static final int MAX_DATE_OPTION_DAYS = 14;
-
     private final ReservationMapper reservationMapper;
     private final ReservationCommandService reservationCommandService;
     private final ReservationPolicy reservationPolicy;
@@ -329,8 +324,9 @@ public class ReservationServiceImpl implements ReservationService {
                 .year(date.getYear())
                 .month(date.getMonthValue())
                 .day(date.getDayOfMonth())
-                .dayOfWeek(DAY_OF_WEEK_LABELS.get(
-                        dayOfWeekValue % DAY_OF_WEEK_LABELS.size()))
+                .dayOfWeek(ReservationConstants.DAY_OF_WEEK_LABELS.get(
+                        dayOfWeekValue
+                                % ReservationConstants.DAY_OF_WEEK_LABELS.size()))
                 .today(index == 0)
                 .sat(dayOfWeekValue == 6)
                 .sun(dayOfWeekValue == 7)
@@ -338,11 +334,11 @@ public class ReservationServiceImpl implements ReservationService {
     }
 
     private int normalizeDateOptionDays(int days) {
-        if (days < MIN_DATE_OPTION_DAYS) {
-            return MIN_DATE_OPTION_DAYS;
+        if (days < ReservationConstants.MIN_DATE_OPTION_DAYS) {
+            return ReservationConstants.MIN_DATE_OPTION_DAYS;
         }
-        if (days > MAX_DATE_OPTION_DAYS) {
-            return MAX_DATE_OPTION_DAYS;
+        if (days > ReservationConstants.MAX_DATE_OPTION_DAYS) {
+            return ReservationConstants.MAX_DATE_OPTION_DAYS;
         }
         return days;
     }

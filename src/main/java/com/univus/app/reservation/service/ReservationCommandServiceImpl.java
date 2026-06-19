@@ -14,12 +14,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReservationCommandServiceImpl implements ReservationCommandService {
 
-    private static final String DEFAULT_STATUS = "RESERVED";
-    private static final String ACTION_RESERVED = "RESERVED";
-    private static final String ACTION_CANCELLED = "CANCELLED";
-    private static final String ACTION_CHECKED_IN = "CHECKED_IN";
-    private static final String ACTION_EXTENDED = "EXTENDED";
-
     private final ReservationMapper reservationMapper;
     private final ReservationPolicy reservationPolicy;
     private final ReservationRealtimePublisher realtimePublisher;
@@ -50,7 +44,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         .seatId(request.getSeatId())
                         .startTime(request.getStartTime())
                         .endTime(request.getEndTime())
-                        .status(DEFAULT_STATUS)
+                        .status(ReservationConstants.STATUS_RESERVED)
                         .build();
 
         reservationMapper.insertReadingSeatReservation(reservation);
@@ -61,7 +55,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
         if (response == null) {
             response = reservation;
         }
-        realtimePublisher.publishSeatAfterCommit(ACTION_RESERVED, response);
+        realtimePublisher.publishSeatAfterCommit(
+                ReservationConstants.ACTION_RESERVED,
+                response);
         return response;
     }
 
@@ -81,7 +77,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         reservationId,
                         memberId),
                 "취소할 수 있는 예약을 찾을 수 없습니다.");
-        realtimePublisher.publishSeatAfterCommit(ACTION_CANCELLED, reservation);
+        realtimePublisher.publishSeatAfterCommit(
+                ReservationConstants.ACTION_CANCELLED,
+                reservation);
     }
 
     @Transactional
@@ -109,11 +107,13 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         .startTime(request.getStartTime())
                         .endTime(request.getEndTime())
                         .purpose(request.getPurpose())
-                        .status(DEFAULT_STATUS)
+                        .status(ReservationConstants.STATUS_RESERVED)
                         .build();
 
         reservationMapper.insertRoomReservation(reservation);
-        realtimePublisher.publishRoomAfterCommit(ACTION_RESERVED, reservation);
+        realtimePublisher.publishRoomAfterCommit(
+                ReservationConstants.ACTION_RESERVED,
+                reservation);
         return reservation;
     }
 
@@ -133,7 +133,9 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         reservationId,
                         memberId),
                 "취소할 수 있는 공간 예약을 찾을 수 없습니다.");
-        realtimePublisher.publishRoomAfterCommit(ACTION_CANCELLED, reservation);
+        realtimePublisher.publishRoomAfterCommit(
+                ReservationConstants.ACTION_CANCELLED,
+                reservation);
     }
 
     @Transactional
@@ -147,7 +149,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         memberId),
                 "입실할 수 있는 공간 예약이 아니거나 입실 가능 시간이 지났습니다.");
         realtimePublisher.publishRoomAfterCommit(
-                ACTION_CHECKED_IN,
+                ReservationConstants.ACTION_CHECKED_IN,
                 reservationMapper.selectRoomReservationForMember(
                         reservationId,
                         memberId));
@@ -164,7 +166,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                         memberId),
                 "입실할 수 있는 예약이 아니거나 이미 처리되었습니다.");
         realtimePublisher.publishSeatAfterCommit(
-                ACTION_CHECKED_IN,
+                ReservationConstants.ACTION_CHECKED_IN,
                 reservationMapper.selectReadingSeatReservationForMember(
                         reservationId,
                         memberId));
@@ -201,7 +203,7 @@ public class ReservationCommandServiceImpl implements ReservationCommandService 
                                 memberId),
                         "연장된 예약 정보를 찾을 수 없습니다.");
         realtimePublisher.publishSeatAfterCommit(
-                ACTION_EXTENDED,
+                ReservationConstants.ACTION_EXTENDED,
                 updatedReservation);
         return updatedReservation;
     }
