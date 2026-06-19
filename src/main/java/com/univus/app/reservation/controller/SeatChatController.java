@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -59,6 +60,22 @@ public class SeatChatController {
             List<SeatChatMessageDto> messages =
                     seatChatService.getSeatChatMessages(memberId, roomId);
             return ResponseEntity.ok(messages);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("success", false, "message", ex.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{roomId}/read")
+    public ResponseEntity<?> markSeatChatMessagesRead(
+            @AuthenticationPrincipal Long memberId,
+            @PathVariable("roomId") Long roomId) {
+        try {
+            seatChatService.markSeatChatMessagesRead(memberId, roomId);
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest()
                     .body(Map.of("success", false, "message", ex.getMessage()));

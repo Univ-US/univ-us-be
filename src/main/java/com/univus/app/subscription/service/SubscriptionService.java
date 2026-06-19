@@ -34,4 +34,22 @@ public interface SubscriptionService {
             Long memberId,
             SubscriptionPaymentCancelRequestDto request
     );
+
+    // school-admin(ADM)이 등록한 결제 수단(마스킹된 카드 정보 등)을 조회합니다.
+    SubscriptionPaymentMethodResponseDto getPaymentMethod(Long memberId);
+
+    // school-admin(ADM)이 자기 학교의 결제 내역을 조회합니다.
+    List<SubscriptionPaymentHistoryResponseDto> getPaymentHistory(Long memberId);
+
+    // school-admin(ADM)이 자기 학교의 구독 플랜 변경을 예약합니다.
+    // 다음 결제(webhook 성공) 시점에만 실제로 플랜이 바뀝니다.
+    SubscriptionAccessStatusDto changeMyPlan(Long memberId, Long planId);
+
+    // school-admin(ADM)이 자기 학교의 구독 취소를 예약합니다.
+    // 다음 결제일에 구독이 종료됩니다.
+    SubscriptionAccessStatusDto cancelMySubscription(Long memberId);
+
+    // school-admin(ADM)이 예약된 구독 취소를 철회합니다.
+    // 다음 결제를 다시 예약하고 pendingAction을 초기화합니다.
+    SubscriptionAccessStatusDto resumeMySubscription(Long memberId);
 }

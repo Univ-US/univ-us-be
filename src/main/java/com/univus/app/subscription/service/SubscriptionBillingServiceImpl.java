@@ -254,7 +254,8 @@ public class SubscriptionBillingServiceImpl implements SubscriptionBillingServic
         requireSingleRow(
                 subscriptionMapper.updateNextBillingAt(
                         target.getSubscriptionId(),
-                        nextBillingAt
+                        nextBillingAt,
+                        target.getPlanName()
                 ),
                 "Failed to update the next billing date."
         );

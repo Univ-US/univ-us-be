@@ -36,6 +36,7 @@ public class ReservationServiceImpl implements ReservationService {
     private static final int SLOT_HOURS = 2;
     private static final int DAILY_SLOT_COUNT = (24 - 8) / SLOT_HOURS;
     private static final int MAX_RESERVATION_HOURS = 6;
+    private static final int CHECK_IN_WINDOW_MINUTES = 20;
     private static final int PENALTY_BLOCK_THRESHOLD = 5;
     private static final String PENALTY_PLEDGE_PHRASE =
             "예약한 시설은 책임 있게 이용하며, 사전 취소 없이 이용하지 않는 일이 반복되지 않도록 유의하겠습니다.";
@@ -196,6 +197,7 @@ public class ReservationServiceImpl implements ReservationService {
         if (reservation == null) {
             throw new IllegalArgumentException("입실할 수 있는 예약을 찾을 수 없습니다.");
         }
+        validateCheckInWindow(reservation);
 
         executeWithLocks(
                 List.of(
@@ -269,11 +271,42 @@ public class ReservationServiceImpl implements ReservationService {
         if (!isCancelableStatus(reservation.getStatus())) {
             throw new IllegalArgumentException("이미 취소되었거나 완료된 예약입니다.");
         }
+        LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
+        if (!now.isBefore(reservation.getEndTime())) {
+            throw new IllegalArgumentException("이미 종료된 예약입니다.");
+        }
+        if ("RESERVED".equals(reservation.getStatus())
+                && !now.isBefore(
+                        reservation.getStartTime().plusMinutes(CHECK_IN_WINDOW_MINUTES))) {
+            throw new IllegalArgumentException("입실 가능 시간이 지나 노쇼 처리 대상입니다. 예약 내역을 새로고침해주세요.");
+        }
 
         executeWithLocks(
                 List.of(redissonClient.getLock(ROOM_LOCK_KEY_PREFIX + reservation.getRoomId())),
                 () -> {
                     reservationCommandService.cancelRoomReservation(memberId, reservationId);
+                    return null;
+                });
+    }
+
+    @Override
+    public void checkInRoom(Long memberId, Long reservationId) {
+        validateMember(memberId);
+        if (reservationId == null) {
+            throw new IllegalArgumentException("예약 ID는 필수입니다.");
+        }
+
+        ReservationDto.RoomReservationDto reservation =
+                reservationMapper.selectRoomReservationForMember(reservationId, memberId);
+        if (reservation == null) {
+            throw new IllegalArgumentException("입실할 수 있는 공간 예약을 찾을 수 없습니다.");
+        }
+        validateRoomCheckInWindow(reservation);
+
+        executeWithLocks(
+                List.of(redissonClient.getLock(ROOM_LOCK_KEY_PREFIX + reservation.getRoomId())),
+                () -> {
+                    reservationCommandService.checkInRoom(memberId, reservationId);
                     return null;
                 });
     }
@@ -351,7 +384,9 @@ public class ReservationServiceImpl implements ReservationService {
                             .status(overlappingReservation == null
                                     ? null
                                     : overlappingReservation.getStatus())
-                            .available(overlappingReservation == null && slotEnd.isAfter(serverNow))
+                            .available(overlappingReservation == null
+                                    && serverNow.isBefore(
+                                            slotStart.plusMinutes(CHECK_IN_WINDOW_MINUTES)))
                             .build();
                 })
                 .toList();
@@ -379,6 +414,10 @@ public class ReservationServiceImpl implements ReservationService {
         }
         validateTimeRange(request.getStartTime(), request.getEndTime());
         validateReservationTimePolicy(request.getStartTime(), request.getEndTime(), null);
+        if (!LocalDateTime.now(RESERVATION_ZONE)
+                .isBefore(request.getStartTime().plusMinutes(CHECK_IN_WINDOW_MINUTES))) {
+            throw new IllegalArgumentException("예약 시작 후 20분이 지난 시간대는 예약할 수 없습니다.");
+        }
     }
 
     private void validateReservationRequest(ReservationDto.ReadingSeatReservationRequestDto request) {
@@ -458,6 +497,63 @@ public class ReservationServiceImpl implements ReservationService {
 
     private boolean isCancelableStatus(String status) {
         return "RESERVED".equals(status) || "USING".equals(status);
+    }
+
+    private void validateCheckInWindow(ReservationDto.ReadingSeatReservationDto reservation) {
+        if (!"RESERVED".equals(reservation.getStatus())) {
+            throw new IllegalArgumentException("입실할 수 있는 예약 상태가 아닙니다.");
+        }
+
+        LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
+        LocalDateTime startTime = reservation.getStartTime();
+        LocalDateTime endTime = reservation.getEndTime();
+        LocalDateTime createdAt = reservation.getCreatedAt();
+
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("예약 시간 정보를 확인할 수 없습니다.");
+        }
+        if (now.isBefore(startTime)) {
+            throw new IllegalArgumentException("예약 시작 시간 이후 입실할 수 있습니다.");
+        }
+        if (!now.isBefore(endTime)) {
+            throw new IllegalArgumentException("이미 종료된 예약입니다.");
+        }
+
+        LocalDateTime checkInWindowStart = createdAt != null && createdAt.isAfter(startTime)
+                ? createdAt
+                : startTime;
+        LocalDateTime checkInDeadline = checkInWindowStart
+                .plusMinutes(CHECK_IN_WINDOW_MINUTES)
+                .isBefore(endTime)
+                        ? checkInWindowStart.plusMinutes(CHECK_IN_WINDOW_MINUTES)
+                        : endTime;
+
+        if (now.isAfter(checkInDeadline)) {
+            throw new IllegalArgumentException("입실 가능 시간이 지나 노쇼 처리 대상입니다. 예약 내역을 새로고침해주세요.");
+        }
+    }
+
+    private void validateRoomCheckInWindow(ReservationDto.RoomReservationDto reservation) {
+        if (!"RESERVED".equals(reservation.getStatus())) {
+            throw new IllegalArgumentException("입실할 수 있는 공간 예약 상태가 아닙니다.");
+        }
+
+        LocalDateTime now = LocalDateTime.now(RESERVATION_ZONE);
+        LocalDateTime startTime = reservation.getStartTime();
+        LocalDateTime endTime = reservation.getEndTime();
+
+        if (startTime == null || endTime == null) {
+            throw new IllegalArgumentException("예약 시간 정보를 확인할 수 없습니다.");
+        }
+        if (now.isBefore(startTime)) {
+            throw new IllegalArgumentException("예약 시작 시간 이후 입실할 수 있습니다.");
+        }
+        if (!now.isBefore(endTime)) {
+            throw new IllegalArgumentException("이미 종료된 예약입니다.");
+        }
+        if (!now.isBefore(startTime.plusMinutes(CHECK_IN_WINDOW_MINUTES))) {
+            throw new IllegalArgumentException("입실 가능 시간이 지나 노쇼 처리 대상입니다. 예약 내역을 새로고침해주세요.");
+        }
     }
 
     private ReservationDto.ReservationPenaltyStatusDto buildReservationPenaltyStatus(int activePenaltyCount) {

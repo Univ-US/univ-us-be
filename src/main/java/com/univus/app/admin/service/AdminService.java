@@ -3,6 +3,7 @@ package com.univus.app.admin.service;
 import com.univus.app.admin.dto.AdminDto;
 import com.univus.app.admin.mapper.AdminMapper;
 import com.univus.app.ai.service.AsyncEmbeddingService;
+import com.univus.app.commoncode.code.RoleCode;
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
 import com.univus.app.subscription.service.SubscriptionMemberLimitService;
@@ -13,12 +14,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class AdminService {
+
+    private static final int MAX_BULK_MEMBERS = 500;
+    private static final Pattern LOGIN_ID_PATTERN = Pattern.compile("^\\d+$");
+    private static final Pattern PHONE_NUMBER_PATTERN = Pattern.compile("^010\\d{8}$");
+    private static final Pattern BIRTH_PATTERN = Pattern.compile("^\\d{8}$");
 
     private final AdminMapper adminMapper;
     private final MemberMapper memberMapper;
@@ -42,7 +52,7 @@ public class AdminService {
     }
 
     @Transactional
-    public void registerBulkMembers(
+    public AdminDto.MemberBulkResponseDto registerBulkMembers(
             List<AdminDto.MemberItemDto> members,
             Long requesterId
     ) {
@@ -59,17 +69,108 @@ public class AdminService {
                     "등록할 회원이 없습니다."
             );
         }
+        if (members.size() > MAX_BULK_MEMBERS) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "한 번에 등록할 수 있는 회원은 최대 " + MAX_BULK_MEMBERS + "건입니다."
+            );
+        }
 
         subscriptionMemberLimitService.validateAdditionalMembers(
                 requester.getUnivId(),
                 members.size()
         );
-        members.forEach(member -> {
-            member.setUnivId(requester.getUnivId());
-            member.setPassword(passwordEncoder.encode(member.getPassword()));
-        });
-        adminMapper.insertMemberBulk(members);
-        adminMapper.insertMemberDetailBulk(members);
+
+        List<AdminDto.MemberBulkResultDto> results = new ArrayList<>();
+        Set<String> registeredLoginIds = new HashSet<>();
+        int successCount = 0;
+
+        for (AdminDto.MemberItemDto item : members) {
+            AdminDto.MemberBulkResultDto result = new AdminDto.MemberBulkResultDto();
+            result.setLoginId(item.getLoginId());
+            result.setMemberName(item.getMemberName());
+
+            String error = validateMemberItem(item);
+            if (error == null && !registeredLoginIds.add(item.getLoginId())) {
+                error = "요청 내에 중복된 로그인ID입니다.";
+            }
+            if (error == null && memberMapper.existsByLoginId(item.getLoginId()) > 0) {
+                error = "이미 사용 중인 로그인ID입니다.";
+            }
+
+            if (error != null) {
+                result.setSuccess(false);
+                result.setMessage(error);
+                results.add(result);
+                continue;
+            }
+
+            try {
+                insertBulkMember(item, requester.getUnivId());
+                result.setSuccess(true);
+                successCount++;
+            } catch (Exception e) {
+                result.setSuccess(false);
+                result.setMessage("회원 등록 중 오류가 발생했습니다.");
+            }
+            results.add(result);
+        }
+
+        AdminDto.MemberBulkResponseDto response = new AdminDto.MemberBulkResponseDto();
+        response.setSuccessCount(successCount);
+        response.setFailCount(results.size() - successCount);
+        response.setResults(results);
+        return response;
+    }
+
+    private void insertBulkMember(AdminDto.MemberItemDto item, Long univId) {
+        MemberDto member = new MemberDto();
+        member.setLoginId(item.getLoginId());
+        member.setPassword(passwordEncoder.encode(item.getPassword()));
+        member.setMemberName(item.getMemberName());
+        member.setRole(item.getRole());
+        member.setPhoneNumber(Long.parseLong(item.getPhoneNumber()));
+        member.setGender(item.getGender());
+        member.setBirth(item.getBirth());
+        member.setStatus("ACTIVE");
+        member.setUnivId(univId);
+
+        memberMapper.insertMember(member);
+
+        if (item.getDeptId() != null) {
+            MemberDto created = memberMapper.findByLoginId(item.getLoginId());
+            created.setDeptId(item.getDeptId());
+            memberMapper.insertMemberDetail(created);
+        }
+    }
+
+    // 엑셀 업로드 양식과 동일한 검증 규칙(FE: bulkSignupExcel.ts)을 백엔드에서 한 번 더 적용
+    private String validateMemberItem(AdminDto.MemberItemDto item) {
+        if (item.getLoginId() == null || !LOGIN_ID_PATTERN.matcher(item.getLoginId()).matches()) {
+            return "로그인ID는 숫자만 입력할 수 있습니다.";
+        }
+        if (item.getPassword() == null || item.getPassword().isBlank()) {
+            return "비밀번호를 입력해주세요.";
+        }
+        if (item.getMemberName() == null || item.getMemberName().isBlank()) {
+            return "이름을 입력해주세요.";
+        }
+        if (item.getPhoneNumber() == null || !PHONE_NUMBER_PATTERN.matcher(item.getPhoneNumber()).matches()) {
+            return "휴대폰번호 형식이 올바르지 않습니다.";
+        }
+        if (!"M".equals(item.getGender()) && !"F".equals(item.getGender())) {
+            return "성별은 M 또는 F여야 합니다.";
+        }
+        if (item.getBirth() == null || !BIRTH_PATTERN.matcher(item.getBirth()).matches()) {
+            return "생년월일 형식이 올바르지 않습니다.";
+        }
+        if (!RoleCode.STU.getCode().equals(item.getRole()) && !RoleCode.PROF.getCode().equals(item.getRole())) {
+            return "구분은 학생 또는 교수만 가능합니다.";
+        }
+        if (RoleCode.PROF.getCode().equals(item.getRole()) && item.getDeptId() == null) {
+            return "교수는 학과를 선택해야 합니다.";
+        }
+        return null;
     }
 
     @Transactional

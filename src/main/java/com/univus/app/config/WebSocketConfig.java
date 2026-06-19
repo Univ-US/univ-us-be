@@ -17,6 +17,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setAllowedOrigins(
                         "http://localhost:3000",        // 로컬 개발
                         "http://192.168.0.108",         // LAN 배포(현 HTTP) — 배포 환경 WS 핸드셰이크 403 수정
+                        "http://192.168.0.115:9090",
+                        "http://192.168.0.115:3000",
                         "https://www.univus.com",       // TLS-A(self-signed, hosts 가상도메인) 대비
                         "https://univus.com",           // TLS-A 대비
                         "https://univus.duckdns.org",   // TLS prod(Let's Encrypt, LE) - 외부/webhook 도메인
@@ -28,7 +30,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // 클라이언트가 메시지를 받을 때 사용할 프리픽스
-        registry.enableSimpleBroker("/sub");
+        registry.enableSimpleBroker("/sub", "/queue");
+        registry.setUserDestinationPrefix("/user");
         
         // 클라이언트가 서버로 메시지를 보낼 때 사용할 프리픽스
         registry.setApplicationDestinationPrefixes("/pub");

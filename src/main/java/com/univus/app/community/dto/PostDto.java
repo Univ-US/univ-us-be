@@ -30,6 +30,9 @@ public class PostDto {
     // ── MEMBER JOIN ───────────────────────────────
     private String authorName;       // MEMBER.MEMBER_NAME
     private String authorNickname;   // MEMBER.COMMUNITY_NICKNAME
+    private String authorRole;       // MEMBER.ROLE
+    private Integer isAdminNotice;   // 관리자 작성 자유/익명 게시글 여부
+    private Integer isPinned;        // 목록 상단 고정 여부
 
     // ── BOARD_TYPE JOIN ───────────────────────────
     private String boardName;        // BOARD_TYPE.BOARD_NAME
