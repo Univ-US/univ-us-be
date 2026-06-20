@@ -1,7 +1,7 @@
-package com.univus.app.serviceadmin.controller;
+package com.univus.app.admin.controller;
 
-import com.univus.app.serviceadmin.dto.ServiceAdminCommunityDto;
-import com.univus.app.serviceadmin.service.ServiceAdminCommunityService;
+import com.univus.app.admin.dto.SchoolAdminCommunityDto;
+import com.univus.app.admin.service.SchoolAdminCommunityService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/service-admin/community")
 @RequiredArgsConstructor
-public class ServiceAdminCommunityController {
+public class SchoolAdminCommunityController {
 
-    private final ServiceAdminCommunityService serviceAdminCommunityService;
+    private final SchoolAdminCommunityService schoolAdminCommunityService;
 
     @GetMapping("/posts")
-    public ResponseEntity<ServiceAdminCommunityDto.PostPage> getPosts(
+    public ResponseEntity<SchoolAdminCommunityDto.PostPage> getPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long boardId,
@@ -32,49 +32,49 @@ public class ServiceAdminCommunityController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminCommunityService.getPosts(
+                schoolAdminCommunityService.getPosts(
                         page, keyword, boardId, blind, report, requesterId(authentication))
         );
     }
 
     @PatchMapping("/posts/{postId}/blind")
-    public ResponseEntity<ServiceAdminCommunityDto.Post> changePostBlind(
+    public ResponseEntity<SchoolAdminCommunityDto.Post> changePostBlind(
             @PathVariable Long postId,
-            @Valid @RequestBody ServiceAdminCommunityDto.BlindRequest request,
+            @Valid @RequestBody SchoolAdminCommunityDto.BlindRequest request,
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminCommunityService.setPostBlind(
+                schoolAdminCommunityService.setPostBlind(
                         postId, request.getBlind(), requesterId(authentication))
         );
     }
 
     @DeleteMapping("/posts/{postId}")
     public ResponseEntity<Void> deletePost(@PathVariable Long postId, Authentication authentication) {
-        serviceAdminCommunityService.deletePost(postId, requesterId(authentication));
+        schoolAdminCommunityService.deletePost(postId, requesterId(authentication));
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/members")
-    public ResponseEntity<ServiceAdminCommunityDto.MemberPage> getMembers(
+    public ResponseEntity<SchoolAdminCommunityDto.MemberPage> getMembers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminCommunityService.getMembers(page, keyword, status, requesterId(authentication))
+                schoolAdminCommunityService.getMembers(page, keyword, status, requesterId(authentication))
         );
     }
 
     @PatchMapping("/members/{memberId}/status")
-    public ResponseEntity<ServiceAdminCommunityDto.MemberReportSummary> changeMemberStatus(
+    public ResponseEntity<SchoolAdminCommunityDto.MemberReportSummary> changeMemberStatus(
             @PathVariable Long memberId,
-            @Valid @RequestBody ServiceAdminCommunityDto.StatusChangeRequest request,
+            @Valid @RequestBody SchoolAdminCommunityDto.StatusChangeRequest request,
             Authentication authentication
     ) {
         return ResponseEntity.ok(
-                serviceAdminCommunityService.changeMemberStatus(
+                schoolAdminCommunityService.changeMemberStatus(
                         memberId, request.getStatus(), requesterId(authentication))
         );
     }

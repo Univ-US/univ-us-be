@@ -1,6 +1,6 @@
 package com.univus.app.serviceadmin.service;
 
-import com.univus.app.member.service.RefreshTokenRedisService;
+import com.univus.app.member.service.RefreshTokenService;
 import com.univus.app.serviceadmin.dto.ServiceAdminMemberDto;
 import com.univus.app.serviceadmin.mapper.ServiceAdminMemberMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class ServiceAdminMemberServiceImpl implements ServiceAdminMemberService 
             Set.of("NOTICES", "POSTS", "COMMENTS", "INQUIRIES");
 
     private final ServiceAdminMemberMapper serviceAdminMemberMapper;
-    private final RefreshTokenRedisService refreshTokenRedisService;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional(readOnly = true)
     @Override
@@ -104,7 +104,7 @@ public class ServiceAdminMemberServiceImpl implements ServiceAdminMemberService 
         }
 
         if (!"ACTIVE".equals(status)) {
-            refreshTokenRedisService.deleteMemberSessions(memberId);
+            refreshTokenService.deleteMemberSessions(memberId);
         }
 
         return serviceAdminMemberMapper.selectMemberById(memberId);
@@ -123,7 +123,7 @@ public class ServiceAdminMemberServiceImpl implements ServiceAdminMemberService 
             );
         }
 
-        int deletedCount = refreshTokenRedisService.deleteMemberSessions(memberId);
+        int deletedCount = refreshTokenService.deleteMemberSessions(memberId);
         return new ServiceAdminMemberDto.ForceLogoutResponse(memberId, deletedCount);
     }
 
@@ -375,7 +375,7 @@ public class ServiceAdminMemberServiceImpl implements ServiceAdminMemberService 
         }
 
         if (!"ACTIVE".equals(status)) {
-            refreshTokenRedisService.deleteMemberSessions(memberId);
+            refreshTokenService.deleteMemberSessions(memberId);
         }
 
         return serviceAdminMemberMapper.selectUserById(memberId);
@@ -385,7 +385,7 @@ public class ServiceAdminMemberServiceImpl implements ServiceAdminMemberService 
     @Override
     public ServiceAdminMemberDto.ForceLogoutResponse forceLogoutUser(Long memberId) {
         getUserOrThrow(memberId);
-        int deletedCount = refreshTokenRedisService.deleteMemberSessions(memberId);
+        int deletedCount = refreshTokenService.deleteMemberSessions(memberId);
         return new ServiceAdminMemberDto.ForceLogoutResponse(memberId, deletedCount);
     }
 

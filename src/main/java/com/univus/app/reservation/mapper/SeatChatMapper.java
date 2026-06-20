@@ -5,39 +5,41 @@ import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import com.univus.app.reservation.dto.SeatChatDto;
+import com.univus.app.reservation.dto.ActiveSeatReservationDto;
+import com.univus.app.reservation.dto.SeatChatMessageDto;
+import com.univus.app.reservation.dto.SeatChatRoomDto;
 
 @Mapper
 public interface SeatChatMapper {
 
-    SeatChatDto.ActiveSeatReservationDto selectCurrentActiveSeatReservationForMember(
+    ActiveSeatReservationDto selectCurrentActiveSeatReservationForMember(
             @Param("memberId") Long memberId);
 
-    SeatChatDto.ActiveSeatReservationDto selectCurrentActiveSeatReservationById(
+    ActiveSeatReservationDto selectCurrentActiveSeatReservationById(
             @Param("reservationId") Long reservationId);
 
-    SeatChatDto.SeatChatRoomDto selectSeatChatRoomByPair(
+    SeatChatRoomDto selectSeatChatRoomByPair(
             @Param("reservationId") Long reservationId,
             @Param("targetReservationId") Long targetReservationId);
 
-    int insertSeatChatRoom(SeatChatDto.SeatChatRoomDto room);
+    int insertSeatChatRoom(SeatChatRoomDto room);
 
-    SeatChatDto.SeatChatRoomDto selectSeatChatRoomForParticipant(
+    SeatChatRoomDto selectSeatChatRoomForParticipant(
             @Param("roomId") Long roomId,
             @Param("reservationId") Long reservationId);
 
-    List<SeatChatDto.SeatChatRoomDto> selectSeatChatRoomsForReservation(
+    List<SeatChatRoomDto> selectSeatChatRoomsForReservation(
             @Param("reservationId") Long reservationId);
 
-    List<SeatChatDto.SeatChatMessageDto> selectSeatChatMessages(
+    List<SeatChatMessageDto> selectSeatChatMessages(
             @Param("roomId") Long roomId);
 
     int markIncomingMessagesRead(
             @Param("roomId") Long roomId,
             @Param("reservationId") Long reservationId);
 
-    int insertSeatChatMessage(SeatChatDto.SeatChatMessageDto message);
+    int insertSeatChatMessage(SeatChatMessageDto message);
 
-    SeatChatDto.SeatChatMessageDto selectSeatChatMessage(
+    SeatChatMessageDto selectSeatChatMessage(
             @Param("messageId") Long messageId);
 }

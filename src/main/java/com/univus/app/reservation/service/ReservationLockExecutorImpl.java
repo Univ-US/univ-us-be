@@ -9,19 +9,13 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
 
+import com.univus.app.exception.ConflictException;
+
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class ReservationLockExecutorImpl implements ReservationLockExecutor {
-
-    private static final String MEMBER_LOCK_KEY_PREFIX =
-            "reservation:reading-seat:member:";
-    private static final String SEAT_LOCK_KEY_PREFIX =
-            "reservation:reading-seat:";
-    private static final String ROOM_LOCK_KEY_PREFIX =
-            "reservation:meeting-room:";
-    private static final long LOCK_WAIT_SECONDS = 5L;
 
     private final RedissonClient redissonClient;
 
@@ -31,8 +25,10 @@ public class ReservationLockExecutorImpl implements ReservationLockExecutor {
             Long seatId,
             Supplier<T> operation) {
         List<RLock> locks = new ArrayList<>();
-        locks.add(redissonClient.getLock(MEMBER_LOCK_KEY_PREFIX + memberId));
-        locks.add(redissonClient.getLock(SEAT_LOCK_KEY_PREFIX + seatId));
+        locks.add(redissonClient.getLock(
+                ReservationConstants.MEMBER_LOCK_KEY_PREFIX + memberId));
+        locks.add(redissonClient.getLock(
+                ReservationConstants.SEAT_LOCK_KEY_PREFIX + seatId));
         return execute(locks, operation);
     }
 
@@ -49,7 +45,8 @@ public class ReservationLockExecutorImpl implements ReservationLockExecutor {
             Long roomId,
             Supplier<T> operation) {
         List<RLock> locks = new ArrayList<>();
-        locks.add(redissonClient.getLock(ROOM_LOCK_KEY_PREFIX + roomId));
+        locks.add(redissonClient.getLock(
+                ReservationConstants.ROOM_LOCK_KEY_PREFIX + roomId));
         return execute(locks, operation);
     }
 
@@ -68,9 +65,11 @@ public class ReservationLockExecutorImpl implements ReservationLockExecutor {
         try {
             for (RLock lock : locks) {
                 boolean locked =
-                        lock.tryLock(LOCK_WAIT_SECONDS, TimeUnit.SECONDS);
+                        lock.tryLock(
+                                ReservationConstants.LOCK_WAIT_SECONDS,
+                                TimeUnit.SECONDS);
                 if (!locked) {
-                    throw new IllegalStateException(
+                    throw new ConflictException(
                             "예약 처리 중입니다. 잠시 후 다시 시도해주세요.");
                 }
                 acquiredLocks.add(lock);
@@ -78,7 +77,9 @@ public class ReservationLockExecutorImpl implements ReservationLockExecutor {
             return operation.get();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("예약 처리가 중단되었습니다.", exception);
+            throw new ConflictException(
+                    "예약 처리가 중단되었습니다.",
+                    exception);
         } finally {
             releaseInReverseOrder(acquiredLocks);
         }

@@ -8,11 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Map;
 
-public interface PostService {
-
-    Map<String, Object> getPostList(PostDto postDto, Long memberId);
-
-    Map<String, Object> getPostList(PostDto postDto);
+public interface PostService extends PostListQueryService {
 
     PostDto getPostById(Long postId, Long memberId);
 

@@ -5,57 +5,76 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.univus.app.common.PaginateUtilRestApiRes;
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.reservation.dto.ReadingRoomAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatAvailabilityDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationRequestDto;
+import com.univus.app.reservation.dto.ReservationDateOptionsResponseDto;
+import com.univus.app.reservation.dto.ReservationPenaltyHistoryDto;
+import com.univus.app.reservation.dto.ReservationPenaltyPledgeRequestDto;
+import com.univus.app.reservation.dto.ReservationPenaltyStatusDto;
+import com.univus.app.reservation.dto.RoomAvailabilityDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRequestDto;
 
 public interface ReservationService {
 
-    ReservationDto.ReservationDateOptionsResponseDto getReservationDateOptions(int days);
+    ReservationDateOptionsResponseDto getReservationDateOptions(int days);
 
-    ReservationDto.ReservationPenaltyStatusDto getReservationPenaltyStatus(Long memberId);
+    ReservationPenaltyStatusDto getReservationPenaltyStatus(Long memberId);
 
-    PaginateUtilRestApiRes<ReservationDto.ReservationPenaltyHistoryDto> getReservationPenaltyHistory(
+    PaginateUtilRestApiRes<ReservationPenaltyHistoryDto> getReservationPenaltyHistory(
             Long memberId,
             Integer page,
             Integer size);
 
-    ReservationDto.ReservationPenaltyStatusDto pledgeReservationPenalty(
+    ReservationPenaltyStatusDto pledgeReservationPenalty(
             Long memberId,
-            ReservationDto.ReservationPenaltyPledgeRequestDto request);
+            ReservationPenaltyPledgeRequestDto request);
 
-    List<ReservationDto.ReadingRoomAvailabilityDto> getReadingRoomAvailability(
+    List<ReadingRoomAvailabilityDto> getReadingRoomAvailability(
             Long memberId,
             LocalDateTime startTime,
             LocalDateTime endTime);
 
-    List<ReservationDto.ReadingSeatAvailabilityDto> getReadingSeatAvailability(
+    List<ReadingSeatAvailabilityDto> getReadingSeatAvailability(
             Long memberId,
             Long readingRoomId,
             LocalDateTime startTime,
             LocalDateTime endTime);
 
-    ReservationDto.ReadingSeatReservationDto reserveReadingSeat(
+    ReadingSeatReservationDto reserveReadingSeat(
             Long memberId,
-            ReservationDto.ReadingSeatReservationRequestDto request);
+            ReadingSeatReservationRequestDto request);
 
-    List<ReservationDto.ReadingSeatReservationDto> getMyReadingSeatReservations(Long memberId);
+    List<ReadingSeatReservationDto> getMyReadingSeatReservations(Long memberId);
+
+    PaginateUtilRestApiRes<ReadingSeatReservationDto>
+            getMyReadingSeatReservationHistory(
+                    Long memberId,
+                    Integer page,
+                    Integer size);
 
     void cancelReadingSeatReservation(Long memberId, Long reservationId);
 
     void checkInReadingSeat(Long memberId, Long reservationId);
 
-    ReservationDto.ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId);
+    ReadingSeatReservationDto extendReadingSeatReservation(Long memberId, Long reservationId);
 
-    List<ReservationDto.RoomAvailabilityDto> getRoomAvailability(Long memberId, LocalDate date);
+    List<RoomAvailabilityDto> getRoomAvailability(Long memberId, LocalDate date);
 
-    List<ReservationDto.RoomReservationDto> getMyRoomReservations(Long memberId);
+    List<RoomReservationDto> getMyRoomReservations(Long memberId);
 
-    ReservationDto.RoomReservationDto reserveRoom(
+    PaginateUtilRestApiRes<RoomReservationDto> getMyRoomReservationHistory(
             Long memberId,
-            ReservationDto.RoomReservationRequestDto request);
+            Integer page,
+            Integer size);
+
+    RoomReservationDto reserveRoom(
+            Long memberId,
+            RoomReservationRequestDto request);
 
     void cancelRoomReservation(Long memberId, Long reservationId);
 
     void checkInRoom(Long memberId, Long reservationId);
-
-    void cancelAllPendingReservations(Long memberId);
 }

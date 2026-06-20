@@ -1,4 +1,4 @@
-package com.univus.app.controller;
+package com.univus.app.domain.dto;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -2,10 +2,12 @@ package com.univus.app.reservation.service;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.common.AfterCommitExecutor;
+import com.univus.app.reservation.dto.ReadingSeatRealtimeEventDto;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRealtimeEventDto;
 
 import lombok.RequiredArgsConstructor;
 
@@ -13,40 +15,34 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ReservationRealtimePublisherImpl implements ReservationRealtimePublisher {
 
-    private static final String SEAT_REALTIME_TOPIC = "/sub/reservations/seats";
-    private static final String ROOM_REALTIME_TOPIC = "/sub/reservations/rooms";
-    private static final String USER_SEAT_REALTIME_QUEUE =
-            "/queue/reservations/seats";
-    private static final String USER_ROOM_REALTIME_QUEUE =
-            "/queue/reservations/rooms";
-
     private final SimpMessagingTemplate messagingTemplate;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     @Override
     public void publishSeatAfterCommit(
             String action,
-            ReservationDto.ReadingSeatReservationDto reservation) {
+            ReadingSeatReservationDto reservation) {
         if (reservation == null) {
             return;
         }
-        afterCommit(() -> publishSeat(action, reservation));
+        afterCommitExecutor.run(() -> publishSeat(action, reservation));
     }
 
     @Override
     public void publishRoomAfterCommit(
             String action,
-            ReservationDto.RoomReservationDto reservation) {
+            RoomReservationDto reservation) {
         if (reservation == null) {
             return;
         }
-        afterCommit(() -> publishRoom(action, reservation));
+        afterCommitExecutor.run(() -> publishRoom(action, reservation));
     }
 
     private void publishSeat(
             String action,
-            ReservationDto.ReadingSeatReservationDto reservation) {
-        ReservationDto.ReadingSeatRealtimeEventDto event =
-                ReservationDto.ReadingSeatRealtimeEventDto.builder()
+            ReadingSeatReservationDto reservation) {
+        ReadingSeatRealtimeEventDto event =
+                ReadingSeatRealtimeEventDto.builder()
                         .action(action)
                         .seatId(reservation.getSeatId())
                         .readingRoomId(reservation.getReadingRoomId())
@@ -54,44 +50,32 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
                         .endTime(reservation.getEndTime())
                         .build();
 
-        messagingTemplate.convertAndSend(SEAT_REALTIME_TOPIC, event);
+        messagingTemplate.convertAndSend(
+                ReservationConstants.SEAT_REALTIME_TOPIC,
+                event);
         messagingTemplate.convertAndSendToUser(
                 reservation.getMemberId().toString(),
-                USER_SEAT_REALTIME_QUEUE,
+                ReservationConstants.USER_SEAT_REALTIME_QUEUE,
                 event);
     }
 
     private void publishRoom(
             String action,
-            ReservationDto.RoomReservationDto reservation) {
-        ReservationDto.RoomReservationRealtimeEventDto event =
-                ReservationDto.RoomReservationRealtimeEventDto.builder()
+            RoomReservationDto reservation) {
+        RoomReservationRealtimeEventDto event =
+                RoomReservationRealtimeEventDto.builder()
                         .action(action)
                         .roomId(reservation.getRoomId())
                         .startTime(reservation.getStartTime())
                         .endTime(reservation.getEndTime())
                         .build();
 
-        messagingTemplate.convertAndSend(ROOM_REALTIME_TOPIC, event);
+        messagingTemplate.convertAndSend(
+                ReservationConstants.ROOM_REALTIME_TOPIC,
+                event);
         messagingTemplate.convertAndSendToUser(
                 reservation.getMemberId().toString(),
-                USER_ROOM_REALTIME_QUEUE,
+                ReservationConstants.USER_ROOM_REALTIME_QUEUE,
                 event);
-    }
-
-    private void afterCommit(Runnable action) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()
-                || !TransactionSynchronizationManager.isSynchronizationActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        action.run();
-                    }
-                });
     }
 }

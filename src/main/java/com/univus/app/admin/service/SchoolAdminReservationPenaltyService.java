@@ -1,10 +1,10 @@
-package com.univus.app.serviceadmin.service;
+package com.univus.app.admin.service;
 
 import com.univus.app.member.dto.MemberDto;
 import com.univus.app.member.mapper.MemberMapper;
 import com.univus.app.reservation.mapper.ReservationMapper;
-import com.univus.app.serviceadmin.dto.ServiceAdminReservationPenaltyDto;
-import com.univus.app.serviceadmin.mapper.ServiceAdminReservationPenaltyMapper;
+import com.univus.app.admin.dto.SchoolAdminReservationPenaltyDto;
+import com.univus.app.admin.mapper.SchoolAdminReservationPenaltyMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,20 +15,19 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class ServiceAdminReservationPenaltyServiceImpl implements ServiceAdminReservationPenaltyService {
+public class SchoolAdminReservationPenaltyService {
 
     private static final int PAGE_SIZE = 10;
     private static final int PENALTY_BLOCK_THRESHOLD = 5;
     private static final String MANUAL_PENALTY_TYPE = "MANUAL";
     private static final String ROLE_ADM = "ADM";
 
-    private final ServiceAdminReservationPenaltyMapper serviceAdminReservationPenaltyMapper;
+    private final SchoolAdminReservationPenaltyMapper schoolAdminReservationPenaltyMapper;
     private final ReservationMapper reservationMapper;
     private final MemberMapper memberMapper;
 
-    @Override
     @Transactional(readOnly = true)
-    public ServiceAdminReservationPenaltyDto.PenaltyPage getPenalties(
+    public SchoolAdminReservationPenaltyDto.PenaltyPage getPenalties(
             int page,
             Long memberId,
             String keyword,
@@ -36,28 +35,26 @@ public class ServiceAdminReservationPenaltyServiceImpl implements ServiceAdminRe
             Long requesterId
     ) {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
-
         int safePage = Math.max(page, 0);
-        ServiceAdminReservationPenaltyDto.PenaltySearch search = new ServiceAdminReservationPenaltyDto.PenaltySearch();
+        SchoolAdminReservationPenaltyDto.PenaltySearch search = new SchoolAdminReservationPenaltyDto.PenaltySearch();
         search.setMemberId(memberId);
         search.setKeyword(normalizeKeyword(keyword));
         search.setStatus(normalizeKeyword(status));
         search.setUnivId(scopeUnivId);
         search.setOffset(safePage * PAGE_SIZE);
 
-        List<ServiceAdminReservationPenaltyDto.Penalty> penalties =
-                serviceAdminReservationPenaltyMapper.selectPenalties(search);
-        long totalElements = serviceAdminReservationPenaltyMapper.countPenalties(search);
-        return new ServiceAdminReservationPenaltyDto.PenaltyPage(penalties, safePage, PAGE_SIZE, totalElements);
+        List<SchoolAdminReservationPenaltyDto.Penalty> penalties =
+                schoolAdminReservationPenaltyMapper.selectPenalties(search);
+        long totalElements = schoolAdminReservationPenaltyMapper.countPenalties(search);
+        return new SchoolAdminReservationPenaltyDto.PenaltyPage(penalties, safePage, PAGE_SIZE, totalElements);
     }
 
-    @Override
     @Transactional(readOnly = true)
-    public ServiceAdminReservationPenaltyDto.MemberPenaltyStatus getMemberStatus(Long memberId, Long requesterId) {
+    public SchoolAdminReservationPenaltyDto.MemberPenaltyStatus getMemberStatus(Long memberId, Long requesterId) {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
         MemberDto member = requireMember(memberId, scopeUnivId);
         int activePenaltyCount = reservationMapper.countActiveReservationPenalties(memberId);
-        return new ServiceAdminReservationPenaltyDto.MemberPenaltyStatus(
+        return new SchoolAdminReservationPenaltyDto.MemberPenaltyStatus(
                 memberId,
                 member.getMemberName(),
                 activePenaltyCount,
@@ -66,21 +63,19 @@ public class ServiceAdminReservationPenaltyServiceImpl implements ServiceAdminRe
         );
     }
 
-    @Override
     @Transactional
-    public ServiceAdminReservationPenaltyDto.Penalty grantPenalty(Long memberId, String reason, Long requesterId) {
+    public SchoolAdminReservationPenaltyDto.Penalty grantPenalty(Long memberId, String reason, Long requesterId) {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
         requireMember(memberId, scopeUnivId);
         reservationMapper.insertReservationPenalty(memberId, MANUAL_PENALTY_TYPE, reason);
-        return serviceAdminReservationPenaltyMapper.selectLatestPenaltyForMember(memberId);
+        return schoolAdminReservationPenaltyMapper.selectLatestPenaltyForMember(memberId);
     }
 
-    @Override
     @Transactional
-    public ServiceAdminReservationPenaltyDto.Penalty releasePenalty(Long penaltyId, Long requesterId) {
+    public SchoolAdminReservationPenaltyDto.Penalty releasePenalty(Long penaltyId, Long requesterId) {
         Long scopeUnivId = resolveScopeUnivId(requesterId);
-        ServiceAdminReservationPenaltyDto.Penalty penalty =
-                serviceAdminReservationPenaltyMapper.selectPenaltyById(penaltyId);
+        SchoolAdminReservationPenaltyDto.Penalty penalty =
+                schoolAdminReservationPenaltyMapper.selectPenaltyById(penaltyId);
         if (penalty == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "패널티를 찾을 수 없습니다.");
         }
@@ -89,16 +84,13 @@ public class ServiceAdminReservationPenaltyServiceImpl implements ServiceAdminRe
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 패널티입니다.");
         }
 
-        int updated = serviceAdminReservationPenaltyMapper.releasePenalty(penaltyId);
+        int updated = schoolAdminReservationPenaltyMapper.releasePenalty(penaltyId);
         if (updated != 1) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "패널티를 면제하지 못했습니다.");
         }
-        return serviceAdminReservationPenaltyMapper.selectPenaltyById(penaltyId);
+        return schoolAdminReservationPenaltyMapper.selectPenaltyById(penaltyId);
     }
 
-    /**
-     * SUA는 전체 학교, ADM은 본인 소속 학교(univId)로만 범위가 제한된다.
-     */
     private Long resolveScopeUnivId(Long requesterId) {
         MemberDto requester = memberMapper.findByMemberId(requesterId);
         if (requester == null) {

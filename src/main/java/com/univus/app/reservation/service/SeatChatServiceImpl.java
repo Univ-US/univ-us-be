@@ -8,10 +8,16 @@ import org.redisson.api.RedissonClient;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import com.univus.app.reservation.dto.SeatChatDto;
+import com.univus.app.common.AfterCommitExecutor;
+import com.univus.app.exception.ConflictException;
+import com.univus.app.reservation.dto.ActiveSeatReservationDto;
+import com.univus.app.reservation.dto.SeatChatContextDto;
+import com.univus.app.reservation.dto.SeatChatMessageDto;
+import com.univus.app.reservation.dto.SeatChatMessageRequestDto;
+import com.univus.app.reservation.dto.SeatChatNotificationDto;
+import com.univus.app.reservation.dto.SeatChatRoomDto;
+import com.univus.app.reservation.dto.SeatChatRoomRequestDto;
 import com.univus.app.reservation.mapper.SeatChatMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -20,41 +26,39 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SeatChatServiceImpl implements SeatChatService {
 
-    private static final String DEFAULT_ROOM_STATUS = "ACTIVE";
-    private static final String SEAT_CHAT_USER_QUEUE_PREFIX = "/queue/seat-chats/";
-    private static final int MAX_MESSAGE_LENGTH = 2000;
-
     private final SeatChatMapper seatChatMapper;
     private final SimpMessagingTemplate messagingTemplate;
     private final RedissonClient redissonClient;
+    private final SeatChatPolicy seatChatPolicy;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     @Transactional(readOnly = true)
     @Override
-    public SeatChatDto.SeatChatContextDto getSeatChatContext(Long memberId) {
-        validateMember(memberId);
+    public SeatChatContextDto getSeatChatContext(Long memberId) {
+        seatChatPolicy.requireMember(memberId);
 
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 seatChatMapper.selectCurrentActiveSeatReservationForMember(memberId);
         if (activeReservation == null) {
-            return SeatChatDto.SeatChatContextDto.builder()
+            return SeatChatContextDto.builder()
                     .activeReservation(null)
                     .rooms(List.of())
                     .totalUnreadCount(0)
                     .build();
         }
 
-        List<SeatChatDto.SeatChatRoomDto> rooms =
+        List<SeatChatRoomDto> rooms =
                 seatChatMapper.selectSeatChatRoomsForReservation(
                         activeReservation.getReservationId());
         int totalUnreadCount = 0;
-        for (SeatChatDto.SeatChatRoomDto room : rooms) {
+        for (SeatChatRoomDto room : rooms) {
             Integer unreadCount = room.getUnreadCount();
             if (unreadCount != null && unreadCount > 0) {
                 totalUnreadCount += unreadCount;
             }
         }
 
-        return SeatChatDto.SeatChatContextDto.builder()
+        return SeatChatContextDto.builder()
                 .activeReservation(activeReservation)
                 .rooms(rooms)
                 .totalUnreadCount(totalUnreadCount)
@@ -63,27 +67,25 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional
     @Override
-    public SeatChatDto.SeatChatRoomDto createOrGetSeatChatRoom(
+    public SeatChatRoomDto createOrGetSeatChatRoom(
             Long memberId,
-            SeatChatDto.SeatChatRoomRequestDto request) {
-        validateMember(memberId);
-        validateRoomRequest(request);
+            SeatChatRoomRequestDto request) {
+        seatChatPolicy.requireMember(memberId);
+        seatChatPolicy.validateRoomRequest(request);
 
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
-        SeatChatDto.ActiveSeatReservationDto targetReservation =
-                seatChatMapper.selectCurrentActiveSeatReservationById(
-                        request.getTargetReservationId());
+        ActiveSeatReservationDto targetReservation =
+                seatChatPolicy.requireTargetReservation(
+                        seatChatMapper.selectCurrentActiveSeatReservationById(
+                                request.getTargetReservationId()),
+                        "현재 이용 중인 좌석에만 메시지를 보낼 수 있습니다.");
+        seatChatPolicy.requireDifferentSeat(
+                memberId,
+                activeReservation,
+                targetReservation);
 
-        if (targetReservation == null) {
-            throw new IllegalStateException("현재 이용 중인 좌석에만 메시지를 보낼 수 있습니다.");
-        }
-        if (activeReservation.getReservationId().equals(targetReservation.getReservationId())
-                || memberId.equals(targetReservation.getMemberId())) {
-            throw new IllegalArgumentException("본인 좌석에는 메시지를 보낼 수 없습니다.");
-        }
-
-        SeatChatDto.SeatChatRoomDto existingRoom =
+        SeatChatRoomDto existingRoom =
                 seatChatMapper.selectSeatChatRoomByPair(
                         activeReservation.getReservationId(),
                         targetReservation.getReservationId());
@@ -107,10 +109,8 @@ public class SeatChatServiceImpl implements SeatChatService {
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
-            if (!lock.tryLock(5, TimeUnit.SECONDS)) {
-                throw new IllegalStateException(
-                        "채팅방 생성 처리 중입니다. 잠시 후 다시 시도해주세요.");
-            }
+            boolean locked = lock.tryLock(5, TimeUnit.SECONDS);
+            seatChatPolicy.requireLockAcquired(locked);
 
             existingRoom = seatChatMapper.selectSeatChatRoomByPair(
                     activeReservation.getReservationId(),
@@ -121,13 +121,14 @@ public class SeatChatServiceImpl implements SeatChatService {
                     activeReservation.getReservationId());
             }
 
-            SeatChatDto.SeatChatRoomDto room =
-                    SeatChatDto.SeatChatRoomDto.builder()
+            SeatChatRoomDto room =
+                    SeatChatRoomDto.builder()
                             .myReservationId(
                                     activeReservation.getReservationId())
                             .targetReservationId(
                                     targetReservation.getReservationId())
-                            .status(DEFAULT_ROOM_STATUS)
+                            .status(ReservationConstants
+                                    .CHAT_ROOM_STATUS_ACTIVE)
                             .build();
             seatChatMapper.insertSeatChatRoom(room);
 
@@ -136,7 +137,7 @@ public class SeatChatServiceImpl implements SeatChatService {
                     activeReservation.getReservationId());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException(
+            throw new ConflictException(
                     "채팅방 생성 중 오류가 발생했습니다.",
                     exception);
         } finally {
@@ -148,10 +149,10 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<SeatChatDto.SeatChatMessageDto> getSeatChatMessages(
+    public List<SeatChatMessageDto> getSeatChatMessages(
             Long memberId,
             Long roomId) {
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
         getRequiredParticipantRoom(roomId, activeReservation.getReservationId());
 
@@ -161,7 +162,7 @@ public class SeatChatServiceImpl implements SeatChatService {
     @Transactional
     @Override
     public void markSeatChatMessagesRead(Long memberId, Long roomId) {
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
         getRequiredParticipantRoom(roomId, activeReservation.getReservationId());
         seatChatMapper.markIncomingMessagesRead(
@@ -171,15 +172,15 @@ public class SeatChatServiceImpl implements SeatChatService {
 
     @Transactional
     @Override
-    public SeatChatDto.SeatChatMessageDto sendSeatChatMessage(
+    public SeatChatMessageDto sendSeatChatMessage(
             Long memberId,
             Long roomId,
-            SeatChatDto.SeatChatMessageRequestDto request) {
-        validateMessageRequest(request);
+            SeatChatMessageRequestDto request) {
+        seatChatPolicy.validateMessageRequest(request);
 
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
+        ActiveSeatReservationDto activeReservation =
                 getRequiredActiveReservation(memberId);
-        SeatChatDto.SeatChatRoomDto room = getRequiredParticipantRoom(
+        SeatChatRoomDto room = getRequiredParticipantRoom(
                 roomId,
                 activeReservation.getReservationId());
 
@@ -188,15 +189,14 @@ public class SeatChatServiceImpl implements SeatChatService {
                 .equals(activeReservation.getReservationId())) {
             targetReservationId = room.getTargetReservationId();
         }
-        SeatChatDto.ActiveSeatReservationDto targetReservation =
-                seatChatMapper.selectCurrentActiveSeatReservationById(
-                        targetReservationId);
-        if (targetReservation == null) {
-            throw new IllegalStateException("상대방이 이미 퇴실하여 메시지를 보낼 수 없습니다.");
-        }
+        ActiveSeatReservationDto targetReservation =
+                seatChatPolicy.requireTargetReservation(
+                        seatChatMapper.selectCurrentActiveSeatReservationById(
+                                targetReservationId),
+                        "상대방이 이미 퇴실하여 메시지를 보낼 수 없습니다.");
 
-        SeatChatDto.SeatChatMessageDto message =
-                SeatChatDto.SeatChatMessageDto.builder()
+        SeatChatMessageDto message =
+                SeatChatMessageDto.builder()
                         .roomId(roomId)
                         .senderReservationId(
                                 activeReservation.getReservationId())
@@ -206,16 +206,16 @@ public class SeatChatServiceImpl implements SeatChatService {
                         .build();
 
         seatChatMapper.insertSeatChatMessage(message);
-        SeatChatDto.SeatChatMessageDto savedMessage =
+        SeatChatMessageDto savedMessage =
                 seatChatMapper.selectSeatChatMessage(message.getMessageId());
-        SeatChatDto.SeatChatMessageDto response;
+        SeatChatMessageDto response;
         if (savedMessage == null) {
             response = message;
         } else {
             response = savedMessage;
         }
-        SeatChatDto.SeatChatNotificationDto notification =
-                SeatChatDto.SeatChatNotificationDto.builder()
+        SeatChatNotificationDto notification =
+                SeatChatNotificationDto.builder()
                         .roomId(roomId)
                         .messageId(response.getMessageId())
                         .senderReservationId(activeReservation.getReservationId())
@@ -225,14 +225,14 @@ public class SeatChatServiceImpl implements SeatChatService {
                         .createdAt(response.getCreatedAt())
                         .build();
 
-        runAfterCommit(() -> {
+        afterCommitExecutor.run(() -> {
             messagingTemplate.convertAndSendToUser(
                     memberId.toString(),
-                    SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
+                    ReservationConstants.SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
                     response);
             messagingTemplate.convertAndSendToUser(
                     targetReservation.getMemberId().toString(),
-                    SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
+                    ReservationConstants.SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
                     response);
             messagingTemplate.convertAndSendToUser(
                     targetReservation.getMemberId().toString(),
@@ -243,70 +243,22 @@ public class SeatChatServiceImpl implements SeatChatService {
         return response;
     }
 
-    private SeatChatDto.ActiveSeatReservationDto getRequiredActiveReservation(
+    private ActiveSeatReservationDto getRequiredActiveReservation(
             Long memberId) {
-        validateMember(memberId);
-
-        SeatChatDto.ActiveSeatReservationDto activeReservation =
-                seatChatMapper.selectCurrentActiveSeatReservationForMember(memberId);
-        if (activeReservation == null) {
-            throw new IllegalStateException("현재 이용 중인 좌석 예약이 있어야 채팅할 수 있습니다.");
-        }
-        return activeReservation;
+        seatChatPolicy.requireMember(memberId);
+        return seatChatPolicy.requireActiveReservation(
+                seatChatMapper.selectCurrentActiveSeatReservationForMember(
+                        memberId));
     }
 
-    private SeatChatDto.SeatChatRoomDto getRequiredParticipantRoom(
+    private SeatChatRoomDto getRequiredParticipantRoom(
             Long roomId,
             Long reservationId) {
-        if (roomId == null) {
-            throw new IllegalArgumentException("채팅방 ID는 필수입니다.");
-        }
-
-        SeatChatDto.SeatChatRoomDto room =
-                seatChatMapper.selectSeatChatRoomForParticipant(roomId, reservationId);
-        if (room == null) {
-            throw new IllegalArgumentException("참여 중인 좌석 채팅방을 찾을 수 없습니다.");
-        }
-        return room;
+        return seatChatPolicy.requireParticipantRoom(
+                roomId,
+                seatChatMapper.selectSeatChatRoomForParticipant(
+                        roomId,
+                        reservationId));
     }
 
-    private void validateMember(Long memberId) {
-        if (memberId == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
-        }
-    }
-
-    private void validateRoomRequest(SeatChatDto.SeatChatRoomRequestDto request) {
-        if (request == null || request.getTargetReservationId() == null) {
-            throw new IllegalArgumentException("상대 좌석 예약 ID는 필수입니다.");
-        }
-    }
-
-    private void validateMessageRequest(SeatChatDto.SeatChatMessageRequestDto request) {
-        if (request == null || request.getMessageText() == null
-                || request.getMessageText().trim().isEmpty()) {
-            throw new IllegalArgumentException("메시지를 입력해주세요.");
-        }
-        if (request.getMessageText().trim().length() > MAX_MESSAGE_LENGTH) {
-            throw new IllegalArgumentException("메시지는 2000자 이내로 입력해주세요.");
-        }
-    }
-
-    private void runAfterCommit(Runnable action) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()
-                || !TransactionSynchronizationManager.isSynchronizationActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronization synchronization =
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        action.run();
-                    }
-                };
-        TransactionSynchronizationManager.registerSynchronization(
-                synchronization);
-    }
 }

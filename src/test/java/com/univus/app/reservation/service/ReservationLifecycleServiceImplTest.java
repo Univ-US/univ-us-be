@@ -15,7 +15,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
-import com.univus.app.reservation.dto.ReservationDto;
+import com.univus.app.common.AfterCommitExecutor;
+import com.univus.app.reservation.dto.ReadingSeatReservationDto;
+import com.univus.app.reservation.dto.RoomReservationDto;
+import com.univus.app.reservation.dto.RoomReservationRealtimeEventDto;
 import com.univus.app.reservation.mapper.ReservationMapper;
 
 class ReservationLifecycleServiceImplTest {
@@ -23,7 +26,9 @@ class ReservationLifecycleServiceImplTest {
     private final ReservationMapper reservationMapper = mock(ReservationMapper.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
     private final ReservationRealtimePublisher realtimePublisher =
-            new ReservationRealtimePublisherImpl(messagingTemplate);
+            new ReservationRealtimePublisherImpl(
+                    messagingTemplate,
+                    new AfterCommitExecutor());
     private final ReservationLifecycleService reservationLifecycleService =
             new ReservationLifecycleServiceImpl(
                     reservationMapper,
@@ -34,8 +39,8 @@ class ReservationLifecycleServiceImplTest {
     void processRoomCompletionAndNoShow() {
         LocalDateTime startTime = LocalDateTime.of(2026, 6, 18, 10, 0);
         LocalDateTime endTime = startTime.plusHours(2);
-        ReservationDto.RoomReservationDto expiredReservation =
-                ReservationDto.RoomReservationDto.builder()
+        RoomReservationDto expiredReservation =
+                RoomReservationDto.builder()
                         .reservationId(101L)
                         .memberId(11L)
                         .roomId(21L)
@@ -43,8 +48,8 @@ class ReservationLifecycleServiceImplTest {
                         .endTime(endTime)
                         .status("USING")
                         .build();
-        ReservationDto.RoomReservationDto noShowReservation =
-                ReservationDto.RoomReservationDto.builder()
+        RoomReservationDto noShowReservation =
+                RoomReservationDto.builder()
                         .reservationId(102L)
                         .memberId(12L)
                         .roomId(22L)
@@ -53,12 +58,16 @@ class ReservationLifecycleServiceImplTest {
                         .status("RESERVED")
                         .build();
 
-        when(reservationMapper.selectExpiredReadingSeatReservations()).thenReturn(List.of());
-        when(reservationMapper.selectNoShowReadingSeatReservations()).thenReturn(List.of());
-        when(reservationMapper.selectExpiredRoomReservations())
+        when(reservationMapper.selectExpiredReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectNoShowReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectExpiredRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE))
                 .thenReturn(List.of(expiredReservation));
         when(reservationMapper.completeExpiredRoomReservation(101L)).thenReturn(1);
-        when(reservationMapper.selectNoShowRoomReservations())
+        when(reservationMapper.selectNoShowRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE))
                 .thenReturn(List.of(noShowReservation));
         when(reservationMapper.cancelNoShowRoomReservation(102L)).thenReturn(1);
 
@@ -73,30 +82,30 @@ class ReservationLifecycleServiceImplTest {
         verify(messagingTemplate).convertAndSend(
                 eq("/sub/reservations/rooms"),
                 (Object) argThat(event ->
-                        event instanceof ReservationDto.RoomReservationRealtimeEventDto dto
+                        event instanceof RoomReservationRealtimeEventDto dto
                                 && "COMPLETED".equals(dto.getAction())
                                 && Long.valueOf(21L).equals(dto.getRoomId())));
         verify(messagingTemplate).convertAndSend(
                 eq("/sub/reservations/rooms"),
                 (Object) argThat(event ->
-                        event instanceof ReservationDto.RoomReservationRealtimeEventDto dto
+                        event instanceof RoomReservationRealtimeEventDto dto
                                 && "CANCELLED".equals(dto.getAction())
                                 && Long.valueOf(22L).equals(dto.getRoomId())));
         verify(messagingTemplate).convertAndSendToUser(
                 eq("11"),
                 eq("/queue/reservations/rooms"),
-                any(ReservationDto.RoomReservationRealtimeEventDto.class));
+                any(RoomReservationRealtimeEventDto.class));
         verify(messagingTemplate).convertAndSendToUser(
                 eq("12"),
                 eq("/queue/reservations/rooms"),
-                any(ReservationDto.RoomReservationRealtimeEventDto.class));
+                any(RoomReservationRealtimeEventDto.class));
     }
 
     @Test
     @DisplayName("좌석 노쇼 상태 변경이 선점되지 않으면 패널티를 중복 생성하지 않는다")
     void skipSeatNoShowPenaltyWhenConditionalUpdateMisses() {
-        ReservationDto.ReadingSeatReservationDto noShowReservation =
-                ReservationDto.ReadingSeatReservationDto.builder()
+        ReadingSeatReservationDto noShowReservation =
+                ReadingSeatReservationDto.builder()
                         .reservationId(201L)
                         .memberId(31L)
                         .seatId(41L)
@@ -104,12 +113,16 @@ class ReservationLifecycleServiceImplTest {
                         .status("RESERVED")
                         .build();
 
-        when(reservationMapper.selectExpiredReadingSeatReservations()).thenReturn(List.of());
-        when(reservationMapper.selectNoShowReadingSeatReservations())
+        when(reservationMapper.selectExpiredReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectNoShowReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE))
                 .thenReturn(List.of(noShowReservation));
         when(reservationMapper.cancelNoShowReadingSeatReservation(201L)).thenReturn(0);
-        when(reservationMapper.selectExpiredRoomReservations()).thenReturn(List.of());
-        when(reservationMapper.selectNoShowRoomReservations()).thenReturn(List.of());
+        when(reservationMapper.selectExpiredRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectNoShowRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
 
         reservationLifecycleService.processExpiredAndNoShowReservations();
 
