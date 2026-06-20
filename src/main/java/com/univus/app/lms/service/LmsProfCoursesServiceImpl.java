@@ -45,6 +45,7 @@ public class LmsProfCoursesServiceImpl implements LmsProfCoursesService {
                     .lecId(r.getLecId())
                     .courseName(r.getCourseName())
                     .lecSection(r.getLecSection() == null ? 0 : r.getLecSection())
+                    .lecValStatus(r.getLecValStatus())
                     .studentCount(r.getStudentCount())
                     .schedule(r.getSchedule() == null ? "" : r.getSchedule())
                     .attendanceRate(r.getAttendanceRate() == null ? 0 : r.getAttendanceRate())

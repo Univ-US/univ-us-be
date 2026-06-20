@@ -21,6 +21,8 @@
                l.LEC_SECTION AS lecSection,
                NVL(l.LEC_CREDIT, 0) AS lecCredit,
                pm.MEMBER_NAME AS professor,
+               e.LEC_STD_ENR_STATUS AS lecStdEnrStatus,
+               l.LEC_VAL_STATUS AS lecValStatus,
                t.LEC_TIM_DAY_CODE AS lecTimDayCode,
                TO_CHAR(t.LEC_TIM_STR_TIME, 'HH24:MI') AS lecTimStrTime,
                TO_CHAR(t.LEC_TIM_END_TIME, 'HH24:MI') AS lecTimEndTime
