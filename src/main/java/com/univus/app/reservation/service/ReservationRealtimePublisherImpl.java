@@ -2,9 +2,8 @@ package com.univus.app.reservation.service;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import com.univus.app.common.AfterCommitExecutor;
 import com.univus.app.reservation.dto.ReadingSeatRealtimeEventDto;
 import com.univus.app.reservation.dto.ReadingSeatReservationDto;
 import com.univus.app.reservation.dto.RoomReservationDto;
@@ -17,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 public class ReservationRealtimePublisherImpl implements ReservationRealtimePublisher {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     @Override
     public void publishSeatAfterCommit(
@@ -25,7 +25,7 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
         if (reservation == null) {
             return;
         }
-        afterCommit(() -> publishSeat(action, reservation));
+        afterCommitExecutor.run(() -> publishSeat(action, reservation));
     }
 
     @Override
@@ -35,7 +35,7 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
         if (reservation == null) {
             return;
         }
-        afterCommit(() -> publishRoom(action, reservation));
+        afterCommitExecutor.run(() -> publishRoom(action, reservation));
     }
 
     private void publishSeat(
@@ -77,21 +77,5 @@ public class ReservationRealtimePublisherImpl implements ReservationRealtimePubl
                 reservation.getMemberId().toString(),
                 ReservationConstants.USER_ROOM_REALTIME_QUEUE,
                 event);
-    }
-
-    private void afterCommit(Runnable action) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()
-                || !TransactionSynchronizationManager.isSynchronizationActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        action.run();
-                    }
-                });
     }
 }

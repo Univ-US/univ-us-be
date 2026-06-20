@@ -15,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import com.univus.app.common.AfterCommitExecutor;
 import com.univus.app.reservation.dto.ReadingSeatReservationDto;
 import com.univus.app.reservation.dto.RoomReservationDto;
 import com.univus.app.reservation.dto.RoomReservationRealtimeEventDto;
@@ -25,7 +26,9 @@ class ReservationLifecycleServiceImplTest {
     private final ReservationMapper reservationMapper = mock(ReservationMapper.class);
     private final SimpMessagingTemplate messagingTemplate = mock(SimpMessagingTemplate.class);
     private final ReservationRealtimePublisher realtimePublisher =
-            new ReservationRealtimePublisherImpl(messagingTemplate);
+            new ReservationRealtimePublisherImpl(
+                    messagingTemplate,
+                    new AfterCommitExecutor());
     private final ReservationLifecycleService reservationLifecycleService =
             new ReservationLifecycleServiceImpl(
                     reservationMapper,
