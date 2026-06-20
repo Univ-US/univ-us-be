@@ -241,7 +241,13 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
         String status = late ? "EXTENDED" : "OPEN";
         return LmsStuAssignmentsDto.SubmittableAssignmentResDto.builder()
                 .id(row.getAssignmentId())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .lecId(row.getLecId())
+                .lecSection(row.getLecSection())
                 .lecAsnTitle(row.getLecAsnTitle())
+                .lecAsnContent(row.getLecAsnContent())
+                .lecAsnRegDate(row.getLecAsnRegDate())
                 .courseName(row.getCourseName())
                 .dueLabel(row.getDueLabel())
                 .status(status)
@@ -252,6 +258,7 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .guide(LmsStuAssignmentsDto.SubmitGuideResDto.builder()
                         .courseName(row.getCourseName())
                         .professor(row.getProfessor())
+                        .professorLmsPrfId(row.getProfessorLmsPrfId())
                         .lines(buildGuideLines(row.getLecAsnContent()))
                         .build())
                 .build();

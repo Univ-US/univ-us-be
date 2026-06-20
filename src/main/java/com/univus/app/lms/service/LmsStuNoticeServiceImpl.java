@@ -106,6 +106,7 @@ public class LmsStuNoticeServiceImpl implements LmsStuNoticeService {
                 .lecAnnTitle(row.getLecAnnTitle())
                 .author(formatAuthor(row.getAuthor()))
                 .authorImageUrl(row.getAuthorImageUrl())
+                .professorLmsPrfId(row.getProfessorLmsPrfId())
                 .lecAnnRegDate(row.getLecAnnRegDate())
                 .listDate(row.getListDate())
                 .featured(false)

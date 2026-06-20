@@ -28,6 +28,7 @@
                    ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC
                    FETCH FIRST 1 ROWS ONLY
                ) AS authorImageUrl,
+               l.LMS_PRF_ID AS professorLmsPrfId,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAnnRegDate,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'MM.DD') AS listDate
         FROM LECTURE_STUDENT_ENROLLMENT e

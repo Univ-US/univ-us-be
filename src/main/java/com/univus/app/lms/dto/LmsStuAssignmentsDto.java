@@ -50,11 +50,17 @@ public final class LmsStuAssignmentsDto {
     @AllArgsConstructor
     @Builder
     public static class SubmittableRow {
+        private Integer semYear;          // SEMESTERS.SEM_YEAR (조인)
+        private String semTerm;           // SEMESTERS.SEM_TERM (조인)
         private Long assignmentId;        // LEC_ASN_ID (PK)
+        private Long lecId;               // LECTURE.LEC_ID (조인)
         private String courseName;        // LEC_COD_NAME (조인)
+        private Integer lecSection;       // LECTURE.LEC_SECTION (분반)
         private String professor;         // MEMBER_NAME (조인)
+        private Long professorLmsPrfId;   // LECTURE.LMS_PRF_ID (아바타 색 시드 — 같은 교수=같은 색)
         private String lecAsnTitle;       // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
         private String lecAsnContent;     // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT
+        private String lecAsnRegDate;     // LEC_ASN_REG_DATE TO_CHAR (작성자 행 등록일시)
         private String dueLabel;          // LEC_ASN_DUE_DATE TO_CHAR (파생 포맷)
         private String dueIso;            // LEC_ASN_DUE_DATE TO_CHAR ISO (파생 포맷)
         private String lecAsnValStatus;   // LECTURE_ASSIGNMENT.LEC_ASN_VAL_STATUS
@@ -176,7 +182,13 @@ public final class LmsStuAssignmentsDto {
     @Builder
     public static class SubmittableAssignmentResDto {
         private Long id;
+        private Integer semYear;          // SEMESTERS.SEM_YEAR (년도 필터)
+        private String semTerm;           // SEMESTERS.SEM_TERM (학기 필터)
+        private Long lecId;               // LECTURE.LEC_ID (강의 드롭다운 키)
+        private Integer lecSection;       // LECTURE.LEC_SECTION (분반)
         private String lecAsnTitle;
+        private String lecAsnContent;     // 과제 설명(설명 영역 — 설명만 표기)
+        private String lecAsnRegDate;     // 과제 등록일시(작성자 행 — 교수명 옆)
         private String courseName;
         private String dueLabel;          // 파생 포맷
         private String status;            // 파생(OPEN/EXTENDED)
@@ -195,6 +207,7 @@ public final class LmsStuAssignmentsDto {
     public static class SubmitGuideResDto {
         private String courseName;
         private String professor;
+        private Long professorLmsPrfId;   // 아바타 색 시드(lmsAvatar — 같은 교수=같은 색)
         private List<String> lines;
     }
 
