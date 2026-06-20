@@ -3,7 +3,7 @@ package com.univus.app.lms.code;
 import com.univus.app.commoncode.code.CommonCode;
 
 /* 과제 제출 상태 코드 — LECTURE_ASSIGNMENT_SUBMISSION.LEC_ASN_SBM_STATUS (공통코드 그룹 LEC_ASN_SBM_STATUS)
- * 라벨/순서는 DB COMMON_CODE(2026-06-13)와 동기화. MyBatis XML 은 enum 을 못 쓰므로 SQL 리터럴('NSB' 등)은 유지. */
+ * 라벨/순서는 DB COMMON_CODE와 동기화. MyBatis XML 은 enum 을 못 쓰므로 SQL 리터럴('NSB' 등)은 유지. */
 public enum LecAsnSbmStatusCode implements CommonCode {
     NOT_SUBMITTED("NSB", "미제출", 1),
     SUBMITTED("SBM", "제출", 2),

@@ -8,6 +8,8 @@ public interface LmsProfChatService {
 
     List<LmsProfChatDto.ChatRoomResDto> getChatRooms(Long memberId);
 
+    List<LmsProfChatDto.ChatRoomResDto> getStartableRooms(Long memberId);
+
     LmsProfChatDto.ChatThreadResDto getChatThread(Long memberId, Long roomId);
 
     LmsProfChatDto.ChatMessageResDto sendMessage(

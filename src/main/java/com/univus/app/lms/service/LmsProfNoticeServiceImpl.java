@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  * PLM-007 교수 공지사항 관리 ServiceImpl (PLM-005 강의 업로드 미러).
  * - 첨부 다중: 작성=여러 파일 / 수정=기존 유지 + 추가(files) + 개별 제거(removeAttachmentIds, ATT_VAL_STATUS='DEL' 소프트 무효화).
  * - 매퍼는 매핑 row 반환 → service가 ResDto 변환(첨부 조립). 검증 실패 = ResponseStatusException(400/403).
- * - 파일 저장 = StorageService(로컬 디스크) 재사용. ⚠️ 공지 첨부는 합계 100MB 제한(강의자료 5GB와 별도, FE와 동일).
+ * - 파일 저장 = StorageService(로컬 디스크) 재사용. 공지 첨부는 합계 100MB 제한(강의자료 5GB와 별도, FE와 동일).
  * - PLM-005와 차이: 목록 페이지네이션·메타 없음(선택 강의 공지 전체 최신순), 제목 200자, 작성자=담당교수.
  */
 @Slf4j
@@ -44,7 +44,7 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
     private static final String ANNOUNCEMENT_URL_PREFIX = "/uploads/lms/professor/announcement/";
 
     // 공지 첨부 허용 확장자 — FE(lmsProfessorNoticeApi.ts NOTICE_ALLOWED_EXTS)와 동일(문서·이미지·압축, 영상/음성 제외).
-    // ⚠️ 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
+    // 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
     private static final Set<String> ALLOWED_EXTS = Set.of(
             "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "hwp", "hwpx", "txt", // 문서
             "png", "jpg", "jpeg", "gif",                                              // 이미지

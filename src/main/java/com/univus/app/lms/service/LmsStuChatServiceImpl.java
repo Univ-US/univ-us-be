@@ -40,6 +40,14 @@ public class LmsStuChatServiceImpl implements LmsStuChatService {
 
     @Override
     @Transactional
+    public List<LmsStuChatDto.ChatRoomResDto> getStartableRooms(Long memberId) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        lmsStuChatMapper.insertMissingRooms(lmsPrfId);
+        return lmsStuChatMapper.selectStartableRooms(lmsPrfId);
+    }
+
+    @Override
+    @Transactional
     public LmsStuChatDto.ChatThreadResDto getChatThread(Long memberId, Long roomId) {
         Long lmsPrfId = requireStudentLmsPrfId(memberId);
         requireStudentRoom(roomId, lmsPrfId);

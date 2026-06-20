@@ -28,6 +28,7 @@
                    ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC
                    FETCH FIRST 1 ROWS ONLY
                ) AS authorImageUrl,
+               l.LMS_PRF_ID AS professorLmsPrfId,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAnnRegDate,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'MM.DD') AS listDate
         FROM LECTURE_STUDENT_ENROLLMENT e
@@ -39,6 +40,7 @@
         JOIN MEMBER mb ON mb.MEMBER_ID = pr.MEMBER_ID
         WHERE e.LMS_PRF_ID = #{lmsPrfId}
           AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY s.SEM_YEAR DESC,
                  s.SEM_ID DESC,
                  a.LEC_ANN_REG_DATE DESC,

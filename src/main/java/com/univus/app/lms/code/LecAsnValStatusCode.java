@@ -3,7 +3,7 @@ package com.univus.app.lms.code;
 import com.univus.app.commoncode.code.CommonCode;
 
 /* 과제 유효 상태 코드 — LECTURE_ASSIGNMENT.LEC_ASN_VAL_STATUS (공통코드 그룹 LEC_ASN_VAL_STATUS)
- * 라벨/순서는 DB COMMON_CODE(2026-06-13)와 동기화. 등록 시 'AVL' 고정. */
+ * 라벨/순서는 DB COMMON_CODE와 동기화. 등록 시 'AVL' 고정. */
 public enum LecAsnValStatusCode implements CommonCode {
     AVAILABLE("AVL", "제출가능", 1),
     MODIFIABLE("MOD", "수정가능", 2),

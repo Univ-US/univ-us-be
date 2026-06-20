@@ -46,7 +46,7 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
     private static final String ASSIGNMENT_URL_PREFIX = "/uploads/lms/professor/assignment/";
 
     // 업로드 제약 — FE(lmsProfessorAssignmentsApi.ts ASSIGNMENT_ALLOWED_EXTS)와 동일 목록(PLM-005와 동일).
-    // ⚠️ 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
+    // 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
     private static final Set<String> ALLOWED_EXTS = Set.of(
             "mp4", "avi", "mov", "wmv",
             "mp3", "m4a", "wav",
@@ -219,7 +219,7 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
                 .build();
     }
 
-    /* 미채점 = max(0, 총원 − 채점완료) = 채점 안 된 수강생 수 (2026-06-16 정의 통일 — PLM-004와 동일).
+    /* 미채점 = max(0, 총원 − 채점완료) = 채점 안 된 수강생 수 (PLM-004와 동일).
        신규 과제는 제출 0이어도 총원 전체가 미채점으로 표시(제출 0·채점 0 → "채점완료" 오표시 해소). */
     private LmsProfAssignmentDto.AssignmentResDto toAssignmentResDto(LmsProfAssignmentDto.AssignmentRow row) {
         int ungraded = Math.max(0, row.getTotalStudents() - row.getGradedCount());

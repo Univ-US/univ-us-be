@@ -37,6 +37,8 @@ public final class LmsStuChatDto {
         private String lastMessage;      // 최근 메시지 미리보기 (서브쿼리 파생 → 의미명)
         private String lastAt;           // 최근 메시지 시각 (서브쿼리 파생 → 의미명)
         private Integer unread;          // 안읽음 카운트 (집계 파생 → 의미명)
+        private Integer semYear;         // SEMESTERS.SEM_YEAR — '채팅 만들기'(startable) 년도/학기 필터용. 일반 목록은 미채움(null)
+        private String semTerm;          // SEMESTERS.SEM_TERM — 학기 코드(공통코드 SEM_TERM). startable만 채움
     }
 
     @Getter

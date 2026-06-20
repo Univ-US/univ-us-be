@@ -5,8 +5,8 @@ SLM-010 학생 캘린더 SQL (학생 전용 — 수강 강의 LECTURE_STUDENT_EN
 · 강의 일정: LECTURE_TIME(주간 요일 LEC_TIM_DAY_CODE MON~SUN + 시작/종료시각) → service가 from~to로 날짜 전개
 · 과제 마감: LECTURE_ASSIGNMENT(과제명 LEC_ASN_TITLE + 마감 LEC_ASN_DUE_DATE, 범위 내)
 · 폐강(CNCL) 강의 제외 / 학기 경계 SEMESTERS.SEM_STR_DATE~SEM_END_DATE
-· ⚠️ 시각은 TIMESTAMP라 날짜부 무의미 → TO_CHAR 'HH24:MI'로 시각만 추출
-· 교수 캘린더(LmsProfCalendarMapper)와 동일 SQL이되 '내 강의' 술어만 수강 EXISTS로 다름 (소유경계 분리로 자족 복제)
+· 시각은 TIMESTAMP라 날짜부 무의미 → TO_CHAR 'HH24:MI'로 시각만 추출
+· 교수 캘린더(LmsProfCalendarMapper)와 동일 SQL이되 '내 강의' 술어만 수강 EXISTS로 다름
 -->
 <mapper namespace="com.univus.app.lms.mapper.LmsStuCalendarMapper">
 

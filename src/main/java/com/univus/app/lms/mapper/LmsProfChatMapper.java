@@ -16,6 +16,9 @@ public interface LmsProfChatMapper {
     List<LmsProfChatDto.ChatRoomResDto> selectChatRooms(
             @Param("professorLmsPrfId") Long professorLmsPrfId);
 
+    List<LmsProfChatDto.ChatRoomResDto> selectStartableRooms(
+            @Param("professorLmsPrfId") Long professorLmsPrfId);
+
     LmsProfChatDto.ChatRoomResDto selectChatRoomForProfessor(
             @Param("roomId") Long roomId,
             @Param("professorLmsPrfId") Long professorLmsPrfId);

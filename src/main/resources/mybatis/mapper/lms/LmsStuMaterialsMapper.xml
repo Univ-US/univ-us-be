@@ -26,6 +26,7 @@
         LEFT JOIN LECTURE_UPLOADING u ON u.LEC_ID = l.LEC_ID
         WHERE e.LMS_PRF_ID = #{lmsPrfId}
           AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY s.SEM_YEAR DESC,
                  CASE s.SEM_TERM
                      WHEN 'WNT' THEN 4

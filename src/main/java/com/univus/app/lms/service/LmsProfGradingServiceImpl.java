@@ -32,7 +32,7 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
 
-    // TODO maxScore: LECTURE_ASSIGNMENT에 만점 컬럼이 없어 100 고정(잠정). 추후 재검토(컬럼 추가 vs 고정).
+    // TODO maxScore: LECTURE_ASSIGNMENT에 만점 컬럼이 없어 100 고정. 추후 재검토(컬럼 추가 vs 고정).
     private static final int DEFAULT_MAX_SCORE = 100;
 
     private static final String UPLOAD_WEB_PREFIX = "/uploads"; // ORG_URL 웹 접두어 (프로필 이미지와 동일 관례)
@@ -83,7 +83,7 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
                     .lecAsnDueDate(row.getLecAsnDueDate())
                     .submittedCount(row.getSubmittedCount())
                     .gradedCount(row.getGradedCount())
-                    .ungradedCount(Math.max(0, row.getTotalStudents() - row.getGradedCount())) // 미채점=총원−채점(2026-06-16 통일)
+                    .ungradedCount(Math.max(0, row.getTotalStudents() - row.getGradedCount())) // 미채점=총원−채점
                     .maxScore(DEFAULT_MAX_SCORE)
                     .build());
         }
@@ -126,7 +126,7 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
                 gradedCount++;
             }
         }
-        // 미채점 = 채점 안 된 수강생 수(총원 − 채점완료). rows = 수강생 전체(미제출 포함, selectAssignmentSubmissions) → rows.size() = 총원 (2026-06-16 정의 통일)
+        // 미채점 = 채점 안 된 수강생 수(총원 − 채점완료). rows = 수강생 전체(미제출 포함, selectAssignmentSubmissions) → rows.size() = 총원
         int ungradedCount = Math.max(0, rows.size() - gradedCount);
 
         return LmsProfGradingDto.DetailResDto.builder()

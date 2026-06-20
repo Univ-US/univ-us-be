@@ -14,10 +14,10 @@ import java.util.List;
  * <p>매핑 row(StudentRow/SessionRow) = MyBatis resultType, 내부 전용.
  * 응답(LectureResDto/StudentResDto/SessionResDto/SummaryResDto/LectureAttendanceResDto) = JSON 프로퍼티명 = FE 계약(불변).
  * 요청(UpdateReqDto/SessionUpdateDto) = PUT body.
- * <p>⚠️ 출결 상태(ATTD_STS)는 DB상 5종(PRS/LAT/ABS/ELV/EXC)이나 ELV·EXC는 VAL_STATUS=DEL(미사용).
+ * <p>출결 상태(ATTD_STS)는 DB상 5종(PRS/LAT/ABS/ELV/EXC)이나 ELV·EXC는 VAL_STATUS=DEL(미사용).
  * 이 화면은 출석/지각/결석 3종(PRS/LAT/ABS)만 다룬다.
  * <p>회차(수업일) = STUDENT_ENROLLMENT_ATTENDANCE 1행, 날짜 = STD_ENR_ATD_REG_DATE(전용 수업일 컬럼 없음).
- * <p>※ 명명 규칙: DTO 변수명 = DB 컬럼명 카멜(자기/앵커 테이블), 조인/파생/집계는 의미 별칭 — 커뮤니티 PostDto 컨벤션.
+ * <p>명명 규칙: DTO 변수명 = DB 컬럼명 카멜(자기/앵커 테이블), 조인/파생/집계는 의미 별칭 — 커뮤니티 PostDto 컨벤션.
  *    자기 컬럼(STUDENT_ENROLLMENT_ATTENDANCE) status→stdEnrAtdStsCode·날짜→stdEnrAtdRegDate, 학기 조인 year→semYear·termCode→semTerm.
  *    PK/ID(sessionId·enrollmentId·memberId)·조인 의미명(studentName·studentNo·lecName)·집계(present·attendanceRate 등)는 의미명 유지,
  *    매퍼 @Param·XML #{status}(updateSessionStatus)는 내부 쓰기 플러밍이라 유지.

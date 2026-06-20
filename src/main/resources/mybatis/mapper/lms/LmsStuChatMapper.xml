@@ -90,7 +90,41 @@
         WHERE cr.LMS_PRF_ID = #{lmsPrfId}
           AND cr.CHT_ROM_VAL_STATUS = 'ACT'
           AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND EXISTS (
+              SELECT 1
+              FROM CHAT_ROOM_MESSAGES m
+              WHERE m.CHT_ROM_ID = cr.CHT_ROM_ID
+                AND m.CHT_ROM_MSG_STATUS != 'DEL'
+          )
         ORDER BY lastAt DESC, cr.CHT_ROM_ID DESC
+    </select>
+
+    <!-- '채팅 만들기' 후보 = 수강 중(비DRP)이나 아직 메시지 없는 방 (selectChatRooms의 여집합). 년도/학기(SEMESTERS) 포함 -->
+    <select id="selectStartableRooms"
+            resultType="com.univus.app.lms.dto.LmsStuChatDto$ChatRoomResDto">
+        SELECT
+            <include refid="roomColumns"/>,
+            s.SEM_YEAR AS semYear,
+            s.SEM_TERM AS semTerm
+        FROM CHAT_ROOM cr
+        JOIN LECTURE l ON l.LEC_ID = cr.LEC_ID
+        JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
+        JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = cr.LEC_ID
+            AND e.LMS_PRF_ID = cr.LMS_PRF_ID
+        WHERE cr.LMS_PRF_ID = #{lmsPrfId}
+          AND cr.CHT_ROM_VAL_STATUS = 'ACT'
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM CHAT_ROOM_MESSAGES m
+              WHERE m.CHT_ROM_ID = cr.CHT_ROM_ID
+                AND m.CHT_ROM_MSG_STATUS != 'DEL'
+          )
+        ORDER BY s.SEM_YEAR DESC, cr.CHT_ROM_ID DESC
     </select>
 
     <select id="selectChatRoomForStudent"

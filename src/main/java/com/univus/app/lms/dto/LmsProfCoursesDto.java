@@ -15,9 +15,9 @@ import java.util.List;
  *   <li>{@code ResDto / OverviewResDto / SemesterResDto / CourseResDto} = JSON 응답 (FE 계약 필드명)</li>
  * </ul>
  * 응답 구조: {@code { overview, semesters:[{ ..., courses:[...] }] }}
- * <p>KPI(overview)는 "진행중 학기 1개" 기준(년도·학기 필터와 무관 고정). 집계 계약(2026-06-17 확정):
+ * <p>KPI(overview)는 "진행중 학기 1개" 기준(년도·학기 필터와 무관 고정). 집계 계약:
  * 총 수강생 = 연인원(강의별 수강생 COUNT 단순 합, 중복 허용) · 평균 출석률 = 강의별 단순평균.
- * <p>※ courseType(이수구분)은 DB에 컬럼이 없어 미포함(2026-06-17 화면에서 제거 결정).
+ * <p>courseType(이수구분)은 DB에 컬럼이 없어 미포함(화면에서 제거).
  */
 public final class LmsProfCoursesDto {
 

@@ -37,6 +37,7 @@ public final class LmsStuNoticeDto {
         private String lecAnnContent; // LECTURE_ANNOUNCEMENT.LEC_ANN_CONTENT (자기 컬럼, Tiptap HTML CLOB)
         private String author;        // 작성 교수 MEMBER_NAME (조인 → 의미별칭)
         private String authorImageUrl;// LMS_PROFILE_IMAGE.LMS_PRF_IMG_ORG_URL (서브쿼리 → 의미별칭)
+        private Long professorLmsPrfId;// LECTURE.LMS_PRF_ID 작성 교수 (FE lmsAvatar 색 시드 → 의미명)
         private String lecAnnRegDate; // LECTURE_ANNOUNCEMENT.LEC_ANN_REG_DATE "YYYY-MM-DD HH:mm" (자기 컬럼, alias는 예약어 'date' 회피)
         private String listDate;      // 목록 축약 "MM.DD" (LEC_ANN_REG_DATE 파생 → 의미명)
     }
@@ -92,6 +93,7 @@ public final class LmsStuNoticeDto {
         private String lecAnnTitle;   // LEC_ANN_TITLE
         private String author;        // 작성 교수 MEMBER_NAME (조인)
         private String authorImageUrl;
+        private Long professorLmsPrfId; // 작성 교수 LMS_PRF_ID (FE lmsAvatar 색 시드)
         private String lecAnnRegDate; // 등록일시 "YYYY-MM-DD HH:mm" (LEC_ANN_REG_DATE)
         private String listDate;      // 좌측 목록 축약 날짜 "MM.DD" (REG_DATE 파생)
         private Boolean featured;     // 파생(현재 항상 false) — 데드필드 유지
