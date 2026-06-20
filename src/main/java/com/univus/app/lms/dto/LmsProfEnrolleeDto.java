@@ -9,9 +9,9 @@ import lombok.Setter;
 import java.util.List;
 
 /**
- * PLM-003 / PLM-003-01 수강생 현황 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * PLM-003 / PLM-003-01 수강생 현황 DTO 묶음 (3분류 네스티드).
  * <p>다중 엔드포인트 컨테이너: 매핑 row(Row/ReportRow/AssignmentScoreRow) + 응답(ListResDto/RowResDto/
- * SummaryResDto/ReportResDto/AssignmentScoreResDto) + 페이지메타(PageInfo, 구 LmsPageInfoDto 흡수).
+ * SummaryResDto/ReportResDto/AssignmentScoreResDto) + 페이지메타(PageInfo).
  * service가 매핑 row → ResDto 변환(출석률·총 과제 수·제출/채점 여부 계산 보강).
  * <p>강의 헤더 {@link LmsProfLectureDto}·학기 {@link LmsProfSemesterDto}는 여러 기능이 공유하므로 top-level 유지.
  */
@@ -161,7 +161,7 @@ public final class LmsProfEnrolleeDto {
         private boolean scored;               // 채점 여부 (asnSbmEvlScore != null) — service
     }
 
-    /** 페이지네이션 메타 (검색·제출필터 적용 후 전체 기준, 구 LmsPageInfoDto 흡수) */
+    /** 페이지네이션 메타 (검색·제출필터 적용 후 전체 기준) */
     @Getter
     @Setter
     @NoArgsConstructor

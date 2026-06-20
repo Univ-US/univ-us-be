@@ -9,8 +9,8 @@ import lombok.Setter;
 import java.util.List;
 
 /**
- * SLM-009 학생 공지사항 열람 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
- * <p>본체=LECTURE_ANNOUNCEMENT, 첨부=LECTURE_ANNOUNCEMENT_ATTACHMENT. PLM-007 교수 공지 BE 미러(읽기 전용).
+ * SLM-009 학생 공지사항 열람 DTO 묶음 (3분류 네스티드).
+ * <p>본체=LECTURE_ANNOUNCEMENT, 첨부=LECTURE_ANNOUNCEMENT_ATTACHMENT. 읽기 전용.
  * <p>※ 명명 규칙: DTO 변수명 = DB 컬럼명 카멜(자기/앵커 LECTURE_ANNOUNCEMENT·SEMESTERS), 조인/파생은 의미 별칭 — PLM-007 정본 일관.
  *    응답 JSON = 컬럼 카멜(lecAnnTitle·lecAnnContent·lecAnnRegDate·semYear·semTerm).
  *    PK noticeId·조인 의미명(courseName·courseFullName·author·authorImageUrl)·파일 메타(fileName·fileSize)·파생(semesterLabel·listDate·featured·downloadUrl)은 의미명 유지.

@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 /**
- * PLM-005 / PLM-005-01 교수 강의 자료 업로드 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * PLM-005 / PLM-005-01 교수 강의 자료 업로드 DTO 묶음 (3분류 네스티드).
  * <p>매핑 row(LectureRow/MaterialRow/AttachmentRow/SemesterOptionRow/AttachmentDiskRow) + InsertParam(매퍼 쓰기 파라미터)
  * + 응답(LectureResDto/MaterialResDto/AttachmentResDto/SemesterOptionResDto/MetaResDto) + 요청(CreateReqDto/UpdateReqDto).
  * service가 매핑 row → ResDto 변환(첨부 조립 등). MyBatis resultType은 {@code ...LmsProfUploadDto$Inner} 형태.

@@ -9,8 +9,8 @@ import lombok.Setter;
 import java.util.List;
 
 /**
- * SLM-008 학생 강의 채팅 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
- * <p>본체=CHAT_ROOM·CHAT_ROOM_MESSAGES·ROOM_MESSAGES_READ. 교수 채팅(LmsProfChat)과 같은 테이블·동일 정렬(둘 다 DB 컬럼에 직접 도큐트린 적용).
+ * SLM-008 학생 강의 채팅 DTO 묶음 (3분류 네스티드).
+ * <p>본체=CHAT_ROOM·CHAT_ROOM_MESSAGES·ROOM_MESSAGES_READ.
  * <p>※ 명명 규칙: DTO 변수명 = DB 컬럼명 카멜(자기/앵커 CHAT_ROOM_MESSAGES), 조인/파생/PK·ID는 의미 별칭 — 커뮤니티 PostDto 컨벤션.
  *    응답·WS payload JSON = 자기 컬럼 카멜(chtRomMsgContent·chtRomMsgDate). PK messageId·FK roomId·발신 senderLmsPrfId,
  *    조인 의미명(professorName·courseName), 파생(lastMessage·lastAt·unread·sender·read·dateLabel)은 의미명 유지.

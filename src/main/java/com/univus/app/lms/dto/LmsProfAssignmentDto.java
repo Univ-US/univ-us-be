@@ -13,11 +13,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 /**
- * PLM-006 교수 과제 관리 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * PLM-006 교수 과제 관리 DTO 묶음 (3분류 네스티드).
  * <p>매핑 row(LectureRow/AssignmentRow/AttachmentRow/AttachmentDiskRow) + InsertParam(매퍼 쓰기 파라미터)
  * + 응답(LectureResDto/AssignmentResDto/AttachmentResDto) + 요청(CreateReqDto/UpdateReqDto).
  * <p>과제(LECTURE_ASSIGNMENT) CRUD + 첨부(LECTURE_ASSIGNMENT_ATTACHMENT, 다중) +
- * 과목별 제출/채점/수강생 집계(PLM-004 채점 현황과 동일 산식 재사용). 만점은 100 고정,
+ * 과목별 제출/채점/수강생 집계. 만점은 100 고정,
  * 상태는 LEC_ASN_VAL_STATUS 공통코드. service가 매핑 row → ResDto 변환(ungradedCount 계산·첨부 조립).
  * MyBatis resultType은 {@code ...LmsProfAssignmentDto$Inner} 형태로 참조.
  * <p>※ 명명 규칙: BE 정본 + DTO 변수명 = DB 컬럼명 카멜(자기/앵커 LECTURE_ASSIGNMENT 테이블), 조인/파생 컬럼은 의미 별칭 — 커뮤니티 PostDto 컨벤션.
@@ -187,7 +187,7 @@ public final class LmsProfAssignmentDto {
     }
 
     /** 수정 요청 — 과목(lecId) 변경 불가(FE 수정 모달 disabled).
-     *  첨부(다중): files = 추가 / removeAttachmentIds = 제거 (PLM-005 정책 동일) */
+     *  첨부(다중): files = 추가 / removeAttachmentIds = 제거 */
     @Getter
     @Setter
     @NoArgsConstructor

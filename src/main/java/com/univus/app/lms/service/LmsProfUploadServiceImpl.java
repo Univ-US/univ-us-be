@@ -40,11 +40,11 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
 
-    // 저장 하위 폴더 / 웹 접근 경로 (프로필 이미지와 동일 관례 — 단 material은 permitAll 아님·인증 보호)
+    // 저장 하위 폴더 / 웹 접근 경로 (material은 permitAll 아님·인증 보호)
     private static final String MATERIAL_SUBDIR = "lms" + File.separator + "professor" + File.separator + "material";
     private static final String MATERIAL_URL_PREFIX = "/uploads/lms/professor/material/";
 
-    // 업로드 제약 — FE(lmsProfessorUploadApi.ts UPLOAD_ALLOWED_EXTS)와 동일 목록.
+    // 업로드 제약 (허용 확장자 목록).
     // 확장자는 공통코드 비관리(종류 많고 변화 잦음) → 코드 상수 화이트리스트.
     // 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
     private static final Set<String> ALLOWED_EXTS = Set.of(
@@ -267,7 +267,7 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
                 uploadId, orgFileName, trnFileName, orgUrl, file.getSize(), extType);
     }
 
-    /* 교수 LMS 프로필 확인 — 없으면 403 (PLM-003/004와 동일 패턴) */
+    /* 교수 LMS 프로필 확인 — 없으면 403 */
     private Long requireProfessorLmsPrfId(Long memberId) {
         Long lmsPrfId = lmsProfUploadMapper.findLmsPrfIdByMemberId(memberId);
         if (lmsPrfId == null) {
@@ -317,7 +317,7 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
         return result;
     }
 
-    /* 파일 검증 — FE와 동일 기준: 단일 파일(확장자 화이트리스트/파일명 255자/5GB) + 요청 합계 5GB */
+    /* 파일 검증 — 단일 파일(확장자 화이트리스트/파일명 255자/5GB) + 요청 합계 5GB */
     private void validateFiles(List<MultipartFile> files) {
         long total = 0;
         for (MultipartFile file : files) {

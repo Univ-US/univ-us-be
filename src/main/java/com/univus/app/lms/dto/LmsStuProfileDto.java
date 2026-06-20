@@ -9,14 +9,14 @@ import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * SLM-001 학생 프로필 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * SLM-001 학생 프로필 DTO 묶음 (3분류 네스티드).
  * <ul>
  *   <li>바깥 = 매핑(정본) DTO: MyBatis resultType (자기 테이블=컬럼 카멜, 조인=의미별칭).</li>
  *   <li>{@code ReqDto} = 요청(PUT multipart): FE form key = 필드명(LMS_PROFILE 자기컬럼=컬럼 카멜).</li>
  *   <li>{@code ResDto} = 응답(GET/PUT): JSON 프로퍼티명 = DB 컬럼 카멜(조인=의미별칭). role은 라벨 변환 후.</li>
  * </ul>
  * service가 매핑 DTO → ResDto 변환(role 코드→한글 라벨).
- * ※ 명명 규칙: BE 정본 + DTO 변수명 = DB 컬럼명 카멜(조인 컬럼은 의미 별칭) — 커뮤니티 PostDto 컨벤션. PLM-001 교수 프로필과 동일 정본.
+ * ※ 명명 규칙: BE 정본 + DTO 변수명 = DB 컬럼명 카멜(조인 컬럼은 의미 별칭) — 커뮤니티 PostDto 컨벤션.
  */
 @Getter
 @Setter

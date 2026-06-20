@@ -6,7 +6,7 @@
   · 강의명/학수번호 : LECTURE_CODE(LEC_COD_NAME / LEC_CODE) JOIN
   · schedule        : LECTURE_TIME LISTAGG(요일 한글 + 시작시각), 시간표 없으면 NULL → service가 "" 처리
   · studentCount    : LECTURE_STUDENT_ENROLLMENT COUNT (LEC_STD_ENR_STATUS != 'DRP', PLM-003·004·008 공통)
-  · attendanceRate  : 강의 수강생별 출석률(PRS/전체)의 단순평균 (PLM-003 buildSummary와 동일 의미)
+  · attendanceRate  : 강의 수강생별 출석률(PRS/전체)의 단순평균
   · ungradedCount   : Σ GREATEST(총원 - 채점완료, 0)  (PLM-004 미채점 정의 통일)
   · inProgressFlag  : TRUNC(SYSDATE) BETWEEN TRUNC(SEM_STR_DATE) AND TRUNC(SEM_END_DATE) (클라 시계 비신뢰)
   · 미래 학기 제외  : 아직 시작 안 한 학기(SEM_STR_DATE > SYSDATE)는 숨김 ('예정'을 '마감'으로 오표시 방지)

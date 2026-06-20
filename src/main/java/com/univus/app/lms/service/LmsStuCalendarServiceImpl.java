@@ -23,7 +23,6 @@ import java.util.regex.Pattern;
  * SLM-010 학생 캘린더 ServiceImpl (학생 전용). 수강 강의의 주간 강의 시간표를 from~to(학기 경계 적용)로
  * 날짜 전개 + 과제 마감을 합쳐 반환. 표시 규칙(FE 확정): 강의=과목명+분반+시작~종료 / 과제=과제명+마감시각(분반·종료시각 null).
  * 검증 실패는 ResponseStatusException(400/403) — 전역 핸들러가 상태 그대로 매핑(ORA/NPE 500 회피).
- * (교수 캘린더 LmsProfCalendarServiceImpl와 날짜 전개 로직 동일 — '내 강의' 술어만 수강 EXISTS로 다름, 소유경계 분리로 자족 복제.)
  */
 @Slf4j
 @Service
@@ -108,7 +107,7 @@ public class LmsStuCalendarServiceImpl implements LmsStuCalendarService {
         }
     }
 
-    /* 학생 LMS 프로필 확인 — 없으면 403 (PLM-003/004/005/006과 동일 패턴) */
+    /* 학생 LMS 프로필 확인 — 없으면 403 */
     private Long requireStudentLmsPrfId(Long memberId) {
         Long lmsPrfId = lmsStuCalendarMapper.findLmsPrfIdByMemberId(memberId);
         if (lmsPrfId == null) {

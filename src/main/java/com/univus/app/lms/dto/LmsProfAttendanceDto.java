@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.util.List;
 
 /**
- * PLM-008 교수 "출결 관리" DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * PLM-008 교수 "출결 관리" DTO 묶음 (3분류 네스티드).
  * <p>강의별 학생 출석·지각·결석 조회 및 회차별 상태 수정.
  * <p>매핑 row(StudentRow/SessionRow) = MyBatis resultType, 내부 전용.
  * 응답(LectureResDto/StudentResDto/SessionResDto/SummaryResDto/LectureAttendanceResDto) = JSON 프로퍼티명 = FE 계약(불변).

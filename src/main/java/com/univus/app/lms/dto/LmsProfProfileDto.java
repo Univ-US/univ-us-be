@@ -10,7 +10,7 @@ import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * PLM-001 교수 프로필 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * PLM-001 교수 프로필 DTO 묶음 (3분류 네스티드).
  * <ul>
  *   <li>바깥 = 매핑(정본) DTO: MyBatis resultType (자기 테이블=컬럼 카멜, 조인=의미별칭).</li>
  *   <li>{@code ReqDto} = 요청(PUT multipart): FE form key = 필드명(LMS_PROFILE 자기컬럼=컬럼 카멜).</li>

@@ -7,11 +7,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * PLM-010 교수 캘린더 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12). 교수 전용(담당 강의).
+ * PLM-010 교수 캘린더 DTO 묶음 (3분류 네스티드). 교수 전용(담당 강의).
  * <p>매핑 row(LectureTimeRow=주간 시간표 / AssignmentDueRow=과제 마감) + 응답(EventResDto = FE CalendarEvent 계약).
  * service가 주간 시간표 row를 from~to 범위로 날짜 전개(학기 경계 clamp, DAY_CODE→요일)하고 과제 마감을 합쳐 EventResDto[]로 변환.
  * <p>표시 규칙(FE 확정): 강의=과목명+분반+시작~종료 / 과제=과제명+마감시각(분반·종료시각 없음/null).
- * <p>학생 캘린더(SLM-010) BE는 동일 JSON 계약(CalendarEvent)이되 '내 강의=수강' 술어만 다름, 별도 LmsStu* 구현.
  * MyBatis resultType은 {@code ...LmsProfCalendarDto$Inner} 형태로 참조.
  */
 public final class LmsProfCalendarDto {
