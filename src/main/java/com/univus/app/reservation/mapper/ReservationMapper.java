@@ -65,6 +65,13 @@ public interface ReservationMapper {
     List<ReadingSeatReservationDto> selectMyReadingSeatReservations(
             @Param("memberId") Long memberId);
 
+    List<ReadingSeatReservationDto> selectMyReadingSeatReservationHistory(
+            @Param("memberId") Long memberId,
+            @Param("offset") int offset,
+            @Param("size") int size);
+
+    int countMyReadingSeatReservations(@Param("memberId") Long memberId);
+
     int cancelReadingSeatReservation(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
@@ -89,6 +96,13 @@ public interface ReservationMapper {
     List<RoomReservationDto> selectMyRoomReservations(
             @Param("memberId") Long memberId);
 
+    List<RoomReservationDto> selectMyRoomReservationHistory(
+            @Param("memberId") Long memberId,
+            @Param("offset") int offset,
+            @Param("size") int size);
+
+    int countMyRoomReservations(@Param("memberId") Long memberId);
+
     RoomReservationDto selectRoomReservationForMember(
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
@@ -99,9 +113,11 @@ public interface ReservationMapper {
 
     int cancelAllPendingRoomReservations(@Param("memberId") Long memberId);
 
-    List<RoomReservationDto> selectExpiredRoomReservations();
+    List<RoomReservationDto> selectExpiredRoomReservations(
+            @Param("batchSize") int batchSize);
 
-    List<RoomReservationDto> selectNoShowRoomReservations();
+    List<RoomReservationDto> selectNoShowRoomReservations(
+            @Param("batchSize") int batchSize);
 
     int completeExpiredRoomReservation(@Param("reservationId") Long reservationId);
 
@@ -111,9 +127,11 @@ public interface ReservationMapper {
             @Param("reservationId") Long reservationId,
             @Param("memberId") Long memberId);
 
-    List<ReadingSeatReservationDto> selectExpiredReadingSeatReservations();
+    List<ReadingSeatReservationDto> selectExpiredReadingSeatReservations(
+            @Param("batchSize") int batchSize);
 
-    List<ReadingSeatReservationDto> selectNoShowReadingSeatReservations();
+    List<ReadingSeatReservationDto> selectNoShowReadingSeatReservations(
+            @Param("batchSize") int batchSize);
 
     int completeExpiredReadingSeatReservation(
             @Param("reservationId") Long reservationId);

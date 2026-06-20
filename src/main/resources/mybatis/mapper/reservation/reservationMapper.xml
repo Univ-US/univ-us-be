@@ -328,6 +328,41 @@
         ORDER BY R.START_TIME DESC
     </select>
 
+    <select id="selectMyReadingSeatReservationHistory"
+            resultMap="ReadingSeatReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.SEAT_ID,
+            S.READING_ROOM_ID,
+            RR.ROOM_NAME,
+            S.SEAT_NUMBER,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT
+        FROM READING_SEAT_RESERVATIONS R
+        JOIN READING_ROOM_SEATS S
+          ON S.SEAT_ID = R.SEAT_ID
+        JOIN READING_ROOMS RR
+          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+        WHERE R.MEMBER_ID = #{memberId}
+        ORDER BY
+            CASE
+                WHEN UPPER(TRIM(R.STATUS)) IN ('USING', 'RESERVED') THEN 0
+                ELSE 1
+            END,
+            R.START_TIME DESC,
+            R.RESERVATION_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMyReadingSeatReservations" resultType="int">
+        SELECT COUNT(*)
+        FROM READING_SEAT_RESERVATIONS
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
     <update id="cancelReadingSeatReservation">
         UPDATE READING_SEAT_RESERVATIONS
         SET STATUS = 'CANCELLED'
@@ -451,6 +486,50 @@
             R.START_TIME DESC
     </select>
 
+    <select id="selectMyRoomReservationHistory"
+            resultMap="RoomReservationResultMap">
+        SELECT
+            R.RESERVATION_ID,
+            R.MEMBER_ID,
+            R.ROOM_ID,
+            MR.ROOM_NAME,
+            'MEETING_ROOM' AS ROOM_TYPE,
+            MR.CAPACITY,
+            R.PURPOSE,
+            R.START_TIME,
+            R.END_TIME,
+            R.STATUS,
+            R.CREATED_AT,
+            CASE
+                WHEN R.STATUS != 'RESERVED' THEN NULL
+                WHEN CAST(SYSTIMESTAMP AS TIMESTAMP) <![CDATA[ < ]]> R.START_TIME THEN 'BEFORE'
+                WHEN CAST(SYSTIMESTAMP AS TIMESTAMP) <![CDATA[ < ]]>
+                        R.START_TIME + INTERVAL '20' MINUTE
+                     AND CAST(SYSTIMESTAMP AS TIMESTAMP) <![CDATA[ < ]]> R.END_TIME
+                    THEN 'AVAILABLE'
+                ELSE 'EXPIRED'
+            END AS CHECK_IN_STATE,
+            R.START_TIME + INTERVAL '20' MINUTE AS CHECK_IN_DEADLINE
+        FROM MEETING_ROOM_RESERVATIONS R
+        JOIN MEETING_ROOMS MR
+          ON MR.ROOM_ID = R.ROOM_ID
+        WHERE R.MEMBER_ID = #{memberId}
+        ORDER BY
+            CASE
+                WHEN UPPER(TRIM(R.STATUS)) IN ('USING', 'RESERVED') THEN 0
+                ELSE 1
+            END,
+            R.START_TIME DESC,
+            R.RESERVATION_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <select id="countMyRoomReservations" resultType="int">
+        SELECT COUNT(*)
+        FROM MEETING_ROOM_RESERVATIONS
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
     <select id="selectRoomReservationForMember" resultMap="RoomReservationResultMap">
         SELECT
             R.RESERVATION_ID,
@@ -508,48 +587,58 @@
     </update>
 
     <select id="selectExpiredRoomReservations" resultMap="RoomReservationResultMap">
-        SELECT
-            R.RESERVATION_ID,
-            R.MEMBER_ID,
-            R.ROOM_ID,
-            MR.ROOM_NAME,
-            'MEETING_ROOM' AS ROOM_TYPE,
-            MR.CAPACITY,
-            R.PURPOSE,
-            R.START_TIME,
-            R.END_TIME,
-            R.STATUS,
-            R.CREATED_AT,
-            NULL AS CHECK_IN_STATE,
-            R.START_TIME + INTERVAL '20' MINUTE AS CHECK_IN_DEADLINE
-        FROM MEETING_ROOM_RESERVATIONS R
-        JOIN MEETING_ROOMS MR
-          ON MR.ROOM_ID = R.ROOM_ID
-        WHERE R.STATUS = 'USING'
-          AND R.END_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+        SELECT *
+        FROM (
+            SELECT
+                R.RESERVATION_ID,
+                R.MEMBER_ID,
+                R.ROOM_ID,
+                MR.ROOM_NAME,
+                'MEETING_ROOM' AS ROOM_TYPE,
+                MR.CAPACITY,
+                R.PURPOSE,
+                R.START_TIME,
+                R.END_TIME,
+                R.STATUS,
+                R.CREATED_AT,
+                NULL AS CHECK_IN_STATE,
+                R.START_TIME + INTERVAL '20' MINUTE AS CHECK_IN_DEADLINE
+            FROM MEETING_ROOM_RESERVATIONS R
+            JOIN MEETING_ROOMS MR
+              ON MR.ROOM_ID = R.ROOM_ID
+            WHERE R.STATUS = 'USING'
+              AND R.END_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+            ORDER BY R.END_TIME, R.RESERVATION_ID
+        )
+        WHERE ROWNUM <![CDATA[ <= ]]> #{batchSize}
     </select>
 
     <select id="selectNoShowRoomReservations" resultMap="RoomReservationResultMap">
-        SELECT
-            R.RESERVATION_ID,
-            R.MEMBER_ID,
-            R.ROOM_ID,
-            MR.ROOM_NAME,
-            'MEETING_ROOM' AS ROOM_TYPE,
-            MR.CAPACITY,
-            R.PURPOSE,
-            R.START_TIME,
-            R.END_TIME,
-            R.STATUS,
-            R.CREATED_AT,
-            'EXPIRED' AS CHECK_IN_STATE,
-            R.START_TIME + INTERVAL '20' MINUTE AS CHECK_IN_DEADLINE
-        FROM MEETING_ROOM_RESERVATIONS R
-        JOIN MEETING_ROOMS MR
-          ON MR.ROOM_ID = R.ROOM_ID
-        WHERE R.STATUS = 'RESERVED'
-          AND R.START_TIME + INTERVAL '20' MINUTE
-                <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+        SELECT *
+        FROM (
+            SELECT
+                R.RESERVATION_ID,
+                R.MEMBER_ID,
+                R.ROOM_ID,
+                MR.ROOM_NAME,
+                'MEETING_ROOM' AS ROOM_TYPE,
+                MR.CAPACITY,
+                R.PURPOSE,
+                R.START_TIME,
+                R.END_TIME,
+                R.STATUS,
+                R.CREATED_AT,
+                'EXPIRED' AS CHECK_IN_STATE,
+                R.START_TIME + INTERVAL '20' MINUTE AS CHECK_IN_DEADLINE
+            FROM MEETING_ROOM_RESERVATIONS R
+            JOIN MEETING_ROOMS MR
+              ON MR.ROOM_ID = R.ROOM_ID
+            WHERE R.STATUS = 'RESERVED'
+              AND R.START_TIME + INTERVAL '20' MINUTE
+                    <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+            ORDER BY R.START_TIME, R.RESERVATION_ID
+        )
+        WHERE ROWNUM <![CDATA[ <= ]]> #{batchSize}
     </select>
 
     <update id="completeExpiredRoomReservation">
@@ -582,48 +671,59 @@
     </update>
 
     <select id="selectExpiredReadingSeatReservations" resultMap="ReadingSeatReservationResultMap">
-        SELECT
-            R.RESERVATION_ID,
-            R.MEMBER_ID,
-            R.SEAT_ID,
-            S.READING_ROOM_ID,
-            RR.ROOM_NAME,
-            S.SEAT_NUMBER,
-            R.START_TIME,
-            R.END_TIME,
-            R.STATUS,
-            R.CREATED_AT
-        FROM READING_SEAT_RESERVATIONS R
-        JOIN READING_ROOM_SEATS S
-          ON S.SEAT_ID = R.SEAT_ID
-        JOIN READING_ROOMS RR
-          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
-        WHERE R.STATUS = 'USING'
-          AND R.END_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+        SELECT *
+        FROM (
+            SELECT
+                R.RESERVATION_ID,
+                R.MEMBER_ID,
+                R.SEAT_ID,
+                S.READING_ROOM_ID,
+                RR.ROOM_NAME,
+                S.SEAT_NUMBER,
+                R.START_TIME,
+                R.END_TIME,
+                R.STATUS,
+                R.CREATED_AT
+            FROM READING_SEAT_RESERVATIONS R
+            JOIN READING_ROOM_SEATS S
+              ON S.SEAT_ID = R.SEAT_ID
+            JOIN READING_ROOMS RR
+              ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+            WHERE R.STATUS = 'USING'
+              AND R.END_TIME <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+            ORDER BY R.END_TIME, R.RESERVATION_ID
+        )
+        WHERE ROWNUM <![CDATA[ <= ]]> #{batchSize}
     </select>
 
     <select id="selectNoShowReadingSeatReservations" resultMap="ReadingSeatReservationResultMap">
-        SELECT
-            R.RESERVATION_ID,
-            R.MEMBER_ID,
-            R.SEAT_ID,
-            S.READING_ROOM_ID,
-            RR.ROOM_NAME,
-            S.SEAT_NUMBER,
-            R.START_TIME,
-            R.END_TIME,
-            R.STATUS,
-            R.CREATED_AT
-        FROM READING_SEAT_RESERVATIONS R
-        JOIN READING_ROOM_SEATS S
-          ON S.SEAT_ID = R.SEAT_ID
-        JOIN READING_ROOMS RR
-          ON RR.READING_ROOM_ID = S.READING_ROOM_ID
-        WHERE R.STATUS = 'RESERVED'
-          AND LEAST(
-                GREATEST(NVL(R.CREATED_AT, R.START_TIME), R.START_TIME) + INTERVAL '20' MINUTE,
-                R.END_TIME
-              ) <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+        SELECT *
+        FROM (
+            SELECT
+                R.RESERVATION_ID,
+                R.MEMBER_ID,
+                R.SEAT_ID,
+                S.READING_ROOM_ID,
+                RR.ROOM_NAME,
+                S.SEAT_NUMBER,
+                R.START_TIME,
+                R.END_TIME,
+                R.STATUS,
+                R.CREATED_AT
+            FROM READING_SEAT_RESERVATIONS R
+            JOIN READING_ROOM_SEATS S
+              ON S.SEAT_ID = R.SEAT_ID
+            JOIN READING_ROOMS RR
+              ON RR.READING_ROOM_ID = S.READING_ROOM_ID
+            WHERE R.STATUS = 'RESERVED'
+              AND LEAST(
+                    GREATEST(NVL(R.CREATED_AT, R.START_TIME), R.START_TIME)
+                            + INTERVAL '20' MINUTE,
+                    R.END_TIME
+                  ) <![CDATA[ <= ]]> CAST(SYSTIMESTAMP AS TIMESTAMP)
+            ORDER BY R.START_TIME, R.RESERVATION_ID
+        )
+        WHERE ROWNUM <![CDATA[ <= ]]> #{batchSize}
     </select>
 
     <update id="completeExpiredReadingSeatReservation">

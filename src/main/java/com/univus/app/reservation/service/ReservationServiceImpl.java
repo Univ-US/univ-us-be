@@ -156,6 +156,27 @@ public class ReservationServiceImpl
     }
 
     @Override
+    public PaginateUtilRestApiRes<ReadingSeatReservationDto>
+            getMyReadingSeatReservationHistory(
+                    Long memberId,
+                    Integer page,
+                    Integer size) {
+        reservationPolicy.requireMember(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<ReadingSeatReservationDto> reservations =
+                reservationMapper.selectMyReadingSeatReservationHistory(
+                        memberId,
+                        PaginateUtilRestApi.offset(safePage, safeSize),
+                        safeSize);
+        return PaginateUtilRestApi.of(
+                reservations,
+                reservationMapper.countMyReadingSeatReservations(memberId),
+                safePage,
+                safeSize);
+    }
+
+    @Override
     public void cancelReadingSeatReservation(
             Long memberId,
             Long reservationId) {
@@ -248,6 +269,27 @@ public class ReservationServiceImpl
             Long memberId) {
         reservationPolicy.requireMember(memberId);
         return reservationMapper.selectMyRoomReservations(memberId);
+    }
+
+    @Override
+    public PaginateUtilRestApiRes<RoomReservationDto>
+            getMyRoomReservationHistory(
+                    Long memberId,
+                    Integer page,
+                    Integer size) {
+        reservationPolicy.requireMember(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        List<RoomReservationDto> reservations =
+                reservationMapper.selectMyRoomReservationHistory(
+                        memberId,
+                        PaginateUtilRestApi.offset(safePage, safeSize),
+                        safeSize);
+        return PaginateUtilRestApi.of(
+                reservations,
+                reservationMapper.countMyRoomReservations(memberId),
+                safePage,
+                safeSize);
     }
 
     @Override

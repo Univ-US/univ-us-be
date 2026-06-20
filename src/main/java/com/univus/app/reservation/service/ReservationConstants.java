@@ -55,6 +55,9 @@ public final class ReservationConstants {
     public static final String ROOM_LOCK_KEY_PREFIX =
             "reservation:meeting-room:";
     public static final long LOCK_WAIT_SECONDS = 5L;
+    public static final String SCHEDULER_LOCK_KEY =
+            "reservation:scheduler:lifecycle";
+    public static final int SCHEDULER_BATCH_SIZE = 100;
 
     // WebSocket 경로
     public static final String SEAT_REALTIME_TOPIC =
