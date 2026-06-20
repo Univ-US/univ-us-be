@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import com.univus.app.common.AfterCommitExecutor;
 import com.univus.app.reservation.dto.ReadingSeatRealtimeEventDto;
 import com.univus.app.reservation.dto.ReadingSeatReservationDto;
 
@@ -19,7 +20,9 @@ class ReservationRealtimePublisherTest {
     private final SimpMessagingTemplate messagingTemplate =
             mock(SimpMessagingTemplate.class);
     private final ReservationRealtimePublisher publisher =
-            new ReservationRealtimePublisherImpl(messagingTemplate);
+            new ReservationRealtimePublisherImpl(
+                    messagingTemplate,
+                    new AfterCommitExecutor());
 
     @Test
     @DisplayName("좌석 이벤트는 공개 현황 토픽과 예약자 개인 큐에 함께 발행한다")

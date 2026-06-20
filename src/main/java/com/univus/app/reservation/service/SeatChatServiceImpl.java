@@ -8,9 +8,9 @@ import org.redisson.api.RedissonClient;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import com.univus.app.common.AfterCommitExecutor;
+import com.univus.app.exception.ConflictException;
 import com.univus.app.reservation.dto.ActiveSeatReservationDto;
 import com.univus.app.reservation.dto.SeatChatContextDto;
 import com.univus.app.reservation.dto.SeatChatMessageDto;
@@ -19,7 +19,6 @@ import com.univus.app.reservation.dto.SeatChatNotificationDto;
 import com.univus.app.reservation.dto.SeatChatRoomDto;
 import com.univus.app.reservation.dto.SeatChatRoomRequestDto;
 import com.univus.app.reservation.mapper.SeatChatMapper;
-import com.univus.app.exception.ConflictException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,6 +30,7 @@ public class SeatChatServiceImpl implements SeatChatService {
     private final SimpMessagingTemplate messagingTemplate;
     private final RedissonClient redissonClient;
     private final SeatChatPolicy seatChatPolicy;
+    private final AfterCommitExecutor afterCommitExecutor;
 
     @Transactional(readOnly = true)
     @Override
@@ -225,7 +225,7 @@ public class SeatChatServiceImpl implements SeatChatService {
                         .createdAt(response.getCreatedAt())
                         .build();
 
-        runAfterCommit(() -> {
+        afterCommitExecutor.run(() -> {
             messagingTemplate.convertAndSendToUser(
                     memberId.toString(),
                     ReservationConstants.SEAT_CHAT_USER_QUEUE_PREFIX + roomId,
@@ -261,21 +261,4 @@ public class SeatChatServiceImpl implements SeatChatService {
                         reservationId));
     }
 
-    private void runAfterCommit(Runnable action) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()
-                || !TransactionSynchronizationManager.isSynchronizationActive()) {
-            action.run();
-            return;
-        }
-
-        TransactionSynchronization synchronization =
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        action.run();
-                    }
-                };
-        TransactionSynchronizationManager.registerSynchronization(
-                synchronization);
-    }
 }

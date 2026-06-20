@@ -63,18 +63,11 @@ public class SpaceReservationController {
     }
 
     @PostMapping("/penalties/pledge")
-    public ResponseEntity<?> pledgeReservationPenalty(
+    public ResponseEntity<ReservationPenaltyStatusDto> pledgeReservationPenalty(
             @AuthenticationPrincipal Long memberId,
             @RequestBody ReservationPenaltyPledgeRequestDto request) {
-        try {
-            return ResponseEntity.ok(reservationService.pledgeReservationPenalty(memberId, request));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        return ResponseEntity.ok(
+                reservationService.pledgeReservationPenalty(memberId, request));
     }
 
     @GetMapping("/rooms/availability")
@@ -93,45 +86,34 @@ public class SpaceReservationController {
     }
 
     @PostMapping("/rooms")
-    public ResponseEntity<?> reserveRoom(
+    public ResponseEntity<RoomReservationDto> reserveRoom(
             @AuthenticationPrincipal Long memberId,
             @RequestBody RoomReservationRequestDto request) {
-        try {
-            RoomReservationDto reservation = reservationService.reserveRoom(memberId, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        RoomReservationDto reservation =
+                reservationService.reserveRoom(memberId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
     }
 
     @DeleteMapping("/rooms/{reservationId}")
-    public ResponseEntity<?> cancelRoomReservation(
+    public ResponseEntity<Map<String, Object>> cancelRoomReservation(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("reservationId") Long reservationId) {
-        try {
-            reservationService.cancelRoomReservation(memberId, reservationId);
-            return ResponseEntity.ok(Map.of("success", true, "message", "공간 예약이 취소되었습니다."));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        reservationService.cancelRoomReservation(memberId, reservationId);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "공간 예약이 취소되었습니다."));
     }
 
     @PostMapping("/rooms/{reservationId}/checkin")
-    public ResponseEntity<?> checkInRoom(
+    public ResponseEntity<Map<String, Object>> checkInRoom(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("reservationId") Long reservationId) {
-        try {
-            reservationService.checkInRoom(memberId, reservationId);
-            return ResponseEntity.ok(Map.of("success", true, "message", "정상적으로 입실 처리되었습니다."));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        reservationService.checkInRoom(memberId, reservationId);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "정상적으로 입실 처리되었습니다."));
     }
 
     @GetMapping("/seats/availability")
@@ -161,20 +143,12 @@ public class SpaceReservationController {
     }
 
     @PostMapping("/seats")
-    public ResponseEntity<?> reserveReadingSeat(
+    public ResponseEntity<ReadingSeatReservationDto> reserveReadingSeat(
             @AuthenticationPrincipal Long memberId,
             @RequestBody ReadingSeatReservationRequestDto request) {
-        try {
-            ReadingSeatReservationDto reservation =
-                    reservationService.reserveReadingSeat(memberId, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        ReadingSeatReservationDto reservation =
+                reservationService.reserveReadingSeat(memberId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(reservation);
     }
 
     @GetMapping("/seats/me")
@@ -184,45 +158,39 @@ public class SpaceReservationController {
     }
 
     @DeleteMapping("/seats/{reservationId}")
-    public ResponseEntity<?> cancelReadingSeatReservation(
+    public ResponseEntity<Map<String, Object>> cancelReadingSeatReservation(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("reservationId") Long reservationId) {
-        try {
-            reservationService.cancelReadingSeatReservation(memberId, reservationId);
-            return ResponseEntity.ok(Map.of("success", true, "message", "예약이 취소되었습니다."));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        reservationService.cancelReadingSeatReservation(memberId, reservationId);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "예약이 취소되었습니다."));
     }
 
     @PostMapping("/seats/{reservationId}/checkin")
-    public ResponseEntity<?> checkInReadingSeat(
+    public ResponseEntity<Map<String, Object>> checkInReadingSeat(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("reservationId") Long reservationId) {
-        try {
-            reservationService.checkInReadingSeat(memberId, reservationId);
-            return ResponseEntity.ok(Map.of("success", true, "message", "정상적으로 입실 처리되었습니다."));
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        reservationService.checkInReadingSeat(memberId, reservationId);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "정상적으로 입실 처리되었습니다."));
     }
 
     @PostMapping("/seats/{reservationId}/extend")
-    public ResponseEntity<?> extendReadingSeatReservation(
+    public ResponseEntity<Map<String, Object>> extendReadingSeatReservation(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("reservationId") Long reservationId) {
-        try {
-            ReadingSeatReservationDto updatedReservation = 
-                    reservationService.extendReadingSeatReservation(memberId, reservationId);
-            return ResponseEntity.ok(Map.of(
-                    "success", true, 
-                    "message", "이용 시간이 2시간 연장되었습니다.",
-                    "data", updatedReservation));
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        ReadingSeatReservationDto updatedReservation =
+                reservationService.extendReadingSeatReservation(
+                        memberId,
+                        reservationId);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "이용 시간이 2시간 연장되었습니다.",
+                        "data", updatedReservation));
     }
 }

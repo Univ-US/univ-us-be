@@ -1,7 +1,6 @@
 package com.univus.app.reservation.controller;
 
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,69 +36,38 @@ public class SeatChatController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createOrGetSeatChatRoom(
+    public ResponseEntity<SeatChatRoomDto> createOrGetSeatChatRoom(
             @AuthenticationPrincipal Long memberId,
             @RequestBody SeatChatRoomRequestDto request) {
-        try {
-            SeatChatRoomDto room = seatChatService.createOrGetSeatChatRoom(memberId, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(room);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        SeatChatRoomDto room =
+                seatChatService.createOrGetSeatChatRoom(memberId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(room);
     }
 
     @GetMapping("/{roomId}/messages")
-    public ResponseEntity<?> getSeatChatMessages(
+    public ResponseEntity<List<SeatChatMessageDto>> getSeatChatMessages(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("roomId") Long roomId) {
-        try {
-            List<SeatChatMessageDto> messages =
-                    seatChatService.getSeatChatMessages(memberId, roomId);
-            return ResponseEntity.ok(messages);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        List<SeatChatMessageDto> messages =
+                seatChatService.getSeatChatMessages(memberId, roomId);
+        return ResponseEntity.ok(messages);
     }
 
     @PatchMapping("/{roomId}/read")
-    public ResponseEntity<?> markSeatChatMessagesRead(
+    public ResponseEntity<Void> markSeatChatMessagesRead(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("roomId") Long roomId) {
-        try {
-            seatChatService.markSeatChatMessagesRead(memberId, roomId);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        seatChatService.markSeatChatMessagesRead(memberId, roomId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{roomId}/messages")
-    public ResponseEntity<?> sendSeatChatMessage(
+    public ResponseEntity<SeatChatMessageDto> sendSeatChatMessage(
             @AuthenticationPrincipal Long memberId,
             @PathVariable("roomId") Long roomId,
             @RequestBody SeatChatMessageRequestDto request) {
-        try {
-            SeatChatMessageDto message =
-                    seatChatService.sendSeatChatMessage(memberId, roomId, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(message);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        } catch (IllegalStateException ex) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("success", false, "message", ex.getMessage()));
-        }
+        SeatChatMessageDto message =
+                seatChatService.sendSeatChatMessage(memberId, roomId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(message);
     }
 }

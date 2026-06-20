@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.redisson.api.RedissonClient;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import com.univus.app.common.AfterCommitExecutor;
 import com.univus.app.reservation.dto.ActiveSeatReservationDto;
 import com.univus.app.reservation.dto.SeatChatMessageDto;
 import com.univus.app.reservation.dto.SeatChatMessageRequestDto;
@@ -31,7 +32,8 @@ class SeatChatServiceImplTest {
                     seatChatMapper,
                     messagingTemplate,
                     redissonClient,
-                    seatChatPolicy);
+                    seatChatPolicy,
+                    new AfterCommitExecutor());
 
     @Test
     @DisplayName("좌석 채팅 메시지는 두 참여자의 개인 큐로만 발행한다")

@@ -159,14 +159,10 @@ public class ReservationServiceImpl
     public void cancelReadingSeatReservation(
             Long memberId,
             Long reservationId) {
-        reservationPolicy.requireMember(memberId);
-        reservationPolicy.requireReservationId(reservationId);
-
         ReadingSeatReservationDto reservation =
-                reservationPolicy.requireSeatReservation(
-                        reservationMapper.selectReadingSeatReservationForMember(
-                                reservationId,
-                                memberId),
+                getRequiredSeatReservation(
+                        memberId,
+                        reservationId,
                         "취소할 수 있는 예약을 찾을 수 없습니다.");
         reservationPolicy.requireCancelableStatus(reservation.getStatus());
 
@@ -182,14 +178,10 @@ public class ReservationServiceImpl
     public void checkInReadingSeat(
             Long memberId,
             Long reservationId) {
-        reservationPolicy.requireMember(memberId);
-        reservationPolicy.requireReservationId(reservationId);
-
         ReadingSeatReservationDto reservation =
-                reservationPolicy.requireSeatReservation(
-                        reservationMapper.selectReadingSeatReservationForMember(
-                                reservationId,
-                                memberId),
+                getRequiredSeatReservation(
+                        memberId,
+                        reservationId,
                         "입실할 수 있는 예약을 찾을 수 없습니다.");
         reservationPolicy.validateSeatCheckIn(reservation);
 
@@ -205,14 +197,10 @@ public class ReservationServiceImpl
     public ReadingSeatReservationDto extendReadingSeatReservation(
             Long memberId,
             Long reservationId) {
-        reservationPolicy.requireMember(memberId);
-        reservationPolicy.requireReservationId(reservationId);
-
         ReadingSeatReservationDto reservation =
-                reservationPolicy.requireSeatReservation(
-                        reservationMapper.selectReadingSeatReservationForMember(
-                                reservationId,
-                                memberId),
+                getRequiredSeatReservation(
+                        memberId,
+                        reservationId,
                         "연장할 수 있는 예약을 찾을 수 없습니다.");
 
         return lockExecutor.withSeatLocks(
@@ -266,14 +254,10 @@ public class ReservationServiceImpl
     public void cancelRoomReservation(
             Long memberId,
             Long reservationId) {
-        reservationPolicy.requireMember(memberId);
-        reservationPolicy.requireReservationId(reservationId);
-
         RoomReservationDto reservation =
-                reservationPolicy.requireRoomReservation(
-                        reservationMapper.selectRoomReservationForMember(
-                                reservationId,
-                                memberId),
+                getRequiredRoomReservation(
+                        memberId,
+                        reservationId,
                         "취소할 수 있는 공간 예약을 찾을 수 없습니다.");
         reservationPolicy.validateRoomCancellation(reservation);
 
@@ -288,14 +272,10 @@ public class ReservationServiceImpl
     public void checkInRoom(
             Long memberId,
             Long reservationId) {
-        reservationPolicy.requireMember(memberId);
-        reservationPolicy.requireReservationId(reservationId);
-
         RoomReservationDto reservation =
-                reservationPolicy.requireRoomReservation(
-                        reservationMapper.selectRoomReservationForMember(
-                                reservationId,
-                                memberId),
+                getRequiredRoomReservation(
+                        memberId,
+                        reservationId,
                         "입실할 수 있는 공간 예약을 찾을 수 없습니다.");
         reservationPolicy.validateRoomCheckIn(reservation);
 
@@ -323,6 +303,38 @@ public class ReservationServiceImpl
         return lockExecutor.withRoomLock(
                 request.getRoomId(),
                 () -> reservationCommandService.reserveRoom(memberId, request));
+    }
+
+    private ReadingSeatReservationDto getRequiredSeatReservation(
+            Long memberId,
+            Long reservationId,
+            String notFoundMessage) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationId(reservationId);
+
+        ReadingSeatReservationDto reservation =
+                reservationMapper.selectReadingSeatReservationForMember(
+                        reservationId,
+                        memberId);
+        return reservationPolicy.requireSeatReservation(
+                reservation,
+                notFoundMessage);
+    }
+
+    private RoomReservationDto getRequiredRoomReservation(
+            Long memberId,
+            Long reservationId,
+            String notFoundMessage) {
+        reservationPolicy.requireMember(memberId);
+        reservationPolicy.requireReservationId(reservationId);
+
+        RoomReservationDto reservation =
+                reservationMapper.selectRoomReservationForMember(
+                        reservationId,
+                        memberId);
+        return reservationPolicy.requireRoomReservation(
+                reservation,
+                notFoundMessage);
     }
 
     private ReservationDateOptionDto createDateOption(
