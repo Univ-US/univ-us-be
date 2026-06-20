@@ -12,6 +12,7 @@
   · 미래 학기 제외  : 아직 시작 안 한 학기(SEM_STR_DATE > SYSDATE)는 숨김 ('예정'을 '마감'으로 오표시 방지)
   · 정렬            : 진행중 학기 최상단 → 시작일 최신순(과거) → 같은 학기 내 LEC_ID  (SEM_ID 비시간순 함정 회피)
   · 강의 상태       : 무관 전체(폐강 포함, PLM-003 드롭다운 정책과 일관)
+  · lecValStatus    : l.LEC_VAL_STATUS (강의 유효상태 공통코드) — LECTURE 이미 FROM에 있어 추가 조인 0, 화면 '강의 상태' 컬럼
 -->
 <mapper namespace="com.univus.app.lms.mapper.LmsProfCoursesMapper">
 
@@ -29,6 +30,7 @@
                  THEN 1 ELSE 0 END AS inProgressFlag,
             lc.LEC_COD_NAME AS courseName,
             l.LEC_SECTION   AS lecSection,
+            l.LEC_VAL_STATUS AS lecValStatus,
             (SELECT LISTAGG(
                         CASE t.LEC_TIM_DAY_CODE
                             WHEN 'MON' THEN '월' WHEN 'TUE' THEN '화' WHEN 'WED' THEN '수'

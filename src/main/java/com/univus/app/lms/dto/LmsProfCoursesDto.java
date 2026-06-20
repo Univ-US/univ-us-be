@@ -40,6 +40,7 @@ public final class LmsProfCoursesDto {
         private int inProgressFlag;     // 1=진행중 학기(SYSDATE ∈ [STR,END]) / 0=아님
         private String courseName;      // LECTURE_CODE.LEC_COD_NAME
         private Integer lecSection;     // LECTURE.LEC_SECTION (분반)
+        private String lecValStatus;    // LECTURE.LEC_VAL_STATUS (강의 유효상태 공통코드: OPEN/PROG/CLSD/CNCL)
         private String schedule;        // LECTURE_TIME LISTAGG ("월 10:00 · 수 10:00"), 시간표 없으면 null
         private int studentCount;       // 수강생 수 (LEC_STD_ENR_STATUS != 'DRP')
         private Integer attendanceRate; // 강의 평균 출석률(학생별 출석률의 평균), 출석기록 없으면 null
@@ -97,6 +98,7 @@ public final class LmsProfCoursesDto {
         private Long lecId;
         private String courseName;
         private int lecSection;            // 분반 (LECTURE.LEC_SECTION)
+        private String lecValStatus;       // 강의 유효상태 (LEC_VAL_STATUS 공통코드: OPEN/PROG/CLSD/CNCL) — 라벨/색은 FE
         private int studentCount;
         private String schedule;        // 시간표 없으면 "" (FE는 schedule || "-")
         private int attendanceRate;     // %
