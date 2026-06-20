@@ -1,5 +1,7 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.common.StorageService;
 import com.univus.app.lms.dto.LmsStuMaterialsDto;
 import com.univus.app.lms.mapper.LmsStuMaterialsMapper;
@@ -13,24 +15,22 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * SLM-006 학생 강의 자료 ServiceImpl.
+ * 화면 = 수강 과목 1개 선택 → 그 과목 자료를 서버 페이지네이션(클라 slice 없음, 교수 PLM-005 미러).
+ * 소유권: 본인 수강(DRP 제외) 강의의 자료만 — 매퍼 ENROLLMENT INNER JOIN으로 IDOR 차단.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LmsStuMaterialsServiceImpl implements LmsStuMaterialsService {
 
-    private static final Map<String, String> TERM_LABELS = Map.of(
-            "SM1", "1학기",
-            "SMR", "여름 계절",
-            "SM2", "2학기",
-            "WNT", "겨울 계절");
-
+    // 첨부 저장 하위 폴더 (교수 업로드와 동일 디렉토리 — 학생은 다운로드만)
     private static final String MATERIAL_SUBDIR = "lms" + File.separator + "professor" + File.separator + "material";
 
     private final LmsStuMaterialsMapper lmsStuMaterialsMapper;
@@ -41,31 +41,28 @@ public class LmsStuMaterialsServiceImpl implements LmsStuMaterialsService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<LmsStuMaterialsDto.SemesterMaterialsResDto> getMaterials(Long memberId) {
+    public List<LmsStuMaterialsDto.LectureResDto> getLectures(Long memberId) {
         Long lmsPrfId = requireStudentLmsPrfId(memberId);
-        List<LmsStuMaterialsDto.MaterialFlatRow> rows = lmsStuMaterialsMapper.selectMaterialRows(lmsPrfId);
-
-        Map<String, SemesterAccumulator> semesters = new LinkedHashMap<>();
-        Map<Long, LmsStuMaterialsDto.MaterialResDto> materialIndex = new LinkedHashMap<>();
-
-        for (LmsStuMaterialsDto.MaterialFlatRow row : rows) {
-            String key = row.getSemYear() + ":" + row.getSemTerm();
-            SemesterAccumulator semester = semesters.computeIfAbsent(
-                    key,
-                    ignored -> new SemesterAccumulator(row.getSemYear(), row.getSemTerm()));
-            CourseAccumulator course = semester.course(row);
-            if (row.getUploadId() != null) {
-                LmsStuMaterialsDto.MaterialResDto material = toMaterialResDto(row);
-                course.add(material);
-                materialIndex.put(material.getUploadId(), material);
-            }
-        }
-
-        attachMaterialAttachments(materialIndex);
-
-        return semesters.values().stream()
-                .map(SemesterAccumulator::toResponse)
+        return lmsStuMaterialsMapper.selectEnrolledLectures(lmsPrfId).stream()
+                .map(this::toLectureResDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginateUtilRestApiRes<LmsStuMaterialsDto.MaterialResDto> getMaterials(
+            Long memberId, Long lecId, int page, int size) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        long total = lmsStuMaterialsMapper.countMaterials(lmsPrfId, lecId);
+        List<LmsStuMaterialsDto.MaterialResDto> materials = lmsStuMaterialsMapper.selectMaterialsPaged(
+                        lmsPrfId, lecId, PaginateUtilRestApi.offset(safePage, safeSize), safeSize).stream()
+                .map(this::toMaterialResDto)
+                .collect(Collectors.toList());
+        attachMaterialAttachments(materials);
+        log.info("학생 강의자료 조회 lmsPrfId={} lecId={} page={} size={} total={}", lmsPrfId, lecId, safePage, safeSize, total);
+        return PaginateUtilRestApi.of(materials, total, safePage, safeSize);
     }
 
     @Override
@@ -83,23 +80,35 @@ public class LmsStuMaterialsServiceImpl implements LmsStuMaterialsService {
         return storageService.downloadFile(directoryPath, file.getTrnFileName(), file.getFileName());
     }
 
-    private void attachMaterialAttachments(Map<Long, LmsStuMaterialsDto.MaterialResDto> materialIndex) {
-        if (materialIndex.isEmpty()) {
+    /* 현재 페이지 자료들의 유효(ACT) 첨부를 조회해 각 MaterialResDto에 그룹핑 (빈 목록이면 첨부 조회 생략 — IN() 방지) */
+    private void attachMaterialAttachments(List<LmsStuMaterialsDto.MaterialResDto> materials) {
+        if (materials.isEmpty()) {
             return;
         }
-
+        List<Long> uploadIds = materials.stream()
+                .map(LmsStuMaterialsDto.MaterialResDto::getUploadId)
+                .collect(Collectors.toList());
         Map<Long, List<LmsStuMaterialsDto.AttachmentResDto>> grouped =
-                lmsStuMaterialsMapper.selectActiveAttachmentsByUploadIds(new ArrayList<>(materialIndex.keySet())).stream()
+                lmsStuMaterialsMapper.selectActiveAttachmentsByUploadIds(uploadIds).stream()
                         .collect(Collectors.groupingBy(
                                 LmsStuMaterialsDto.AttachmentRow::getUploadId,
                                 Collectors.mapping(this::toAttachmentResDto, Collectors.toList())));
-
-        for (Map.Entry<Long, LmsStuMaterialsDto.MaterialResDto> entry : materialIndex.entrySet()) {
-            entry.getValue().setAttachments(grouped.getOrDefault(entry.getKey(), Collections.emptyList()));
+        for (LmsStuMaterialsDto.MaterialResDto material : materials) {
+            material.setAttachments(grouped.getOrDefault(material.getUploadId(), Collections.emptyList()));
         }
     }
 
-    private LmsStuMaterialsDto.MaterialResDto toMaterialResDto(LmsStuMaterialsDto.MaterialFlatRow row) {
+    private LmsStuMaterialsDto.LectureResDto toLectureResDto(LmsStuMaterialsDto.LectureRow row) {
+        return LmsStuMaterialsDto.LectureResDto.builder()
+                .lecId(row.getLecId())
+                .courseName(row.getCourseName())
+                .lecSection(row.getLecSection())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .build();
+    }
+
+    private LmsStuMaterialsDto.MaterialResDto toMaterialResDto(LmsStuMaterialsDto.MaterialRow row) {
         return LmsStuMaterialsDto.MaterialResDto.builder()
                 .uploadId(row.getUploadId())
                 .lecUplTitle(row.getLecUplTitle())
@@ -126,61 +135,5 @@ public class LmsStuMaterialsServiceImpl implements LmsStuMaterialsService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "학생 LMS 프로필이 없습니다.");
         }
         return lmsPrfId;
-    }
-
-    private static String semesterLabel(Integer year, String termCode) {
-        return year + "년 " + TERM_LABELS.getOrDefault(termCode, termCode);
-    }
-
-    private static class SemesterAccumulator {
-        private final Integer year;
-        private final String termCode;
-        private final Map<Long, CourseAccumulator> courses = new LinkedHashMap<>();
-
-        private SemesterAccumulator(Integer year, String termCode) {
-            this.year = year;
-            this.termCode = termCode;
-        }
-
-        private CourseAccumulator course(LmsStuMaterialsDto.MaterialFlatRow row) {
-            return courses.computeIfAbsent(row.getLecId(), ignored -> new CourseAccumulator(row));
-        }
-
-        private LmsStuMaterialsDto.SemesterMaterialsResDto toResponse() {
-            return LmsStuMaterialsDto.SemesterMaterialsResDto.builder()
-                    .semYear(year)
-                    .semTerm(termCode)
-                    .semesterLabel(semesterLabel(year, termCode))
-                    .courses(courses.values().stream()
-                            .map(CourseAccumulator::toResponse)
-                            .collect(Collectors.toList()))
-                    .build();
-        }
-    }
-
-    private static class CourseAccumulator {
-        private final Long lecId;
-        private final String courseName;
-        private final Integer lecSection;
-        private final List<LmsStuMaterialsDto.MaterialResDto> materials = new ArrayList<>();
-
-        private CourseAccumulator(LmsStuMaterialsDto.MaterialFlatRow row) {
-            this.lecId = row.getLecId();
-            this.courseName = row.getCourseName();
-            this.lecSection = row.getLecSection();
-        }
-
-        private void add(LmsStuMaterialsDto.MaterialResDto material) {
-            materials.add(material);
-        }
-
-        private LmsStuMaterialsDto.CourseMaterialsResDto toResponse() {
-            return LmsStuMaterialsDto.CourseMaterialsResDto.builder()
-                    .lecId(lecId)
-                    .courseName(courseName)
-                    .lecSection(lecSection)
-                    .materials(materials)
-                    .build();
-        }
     }
 }
