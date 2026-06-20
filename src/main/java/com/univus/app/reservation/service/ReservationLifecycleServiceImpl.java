@@ -29,7 +29,8 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
 
     private void completeExpiredSeatReservations() {
         for (ReadingSeatReservationDto reservation
-                : reservationMapper.selectExpiredReadingSeatReservations()) {
+                : reservationMapper.selectExpiredReadingSeatReservations(
+                        ReservationConstants.SCHEDULER_BATCH_SIZE)) {
             int updated =
                     reservationMapper.completeExpiredReadingSeatReservation(
                             reservation.getReservationId());
@@ -46,7 +47,8 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
 
     private void cancelNoShowSeatReservations() {
         for (ReadingSeatReservationDto reservation
-                : reservationMapper.selectNoShowReadingSeatReservations()) {
+                : reservationMapper.selectNoShowReadingSeatReservations(
+                        ReservationConstants.SCHEDULER_BATCH_SIZE)) {
             int updated =
                     reservationMapper.cancelNoShowReadingSeatReservation(
                             reservation.getReservationId());
@@ -66,7 +68,8 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
 
     private void completeExpiredRoomReservations() {
         for (RoomReservationDto reservation
-                : reservationMapper.selectExpiredRoomReservations()) {
+                : reservationMapper.selectExpiredRoomReservations(
+                        ReservationConstants.SCHEDULER_BATCH_SIZE)) {
             int updated =
                     reservationMapper.completeExpiredRoomReservation(
                             reservation.getReservationId());
@@ -83,7 +86,8 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
 
     private void cancelNoShowRoomReservations() {
         for (RoomReservationDto reservation
-                : reservationMapper.selectNoShowRoomReservations()) {
+                : reservationMapper.selectNoShowRoomReservations(
+                        ReservationConstants.SCHEDULER_BATCH_SIZE)) {
             int updated =
                     reservationMapper.cancelNoShowRoomReservation(
                             reservation.getReservationId());

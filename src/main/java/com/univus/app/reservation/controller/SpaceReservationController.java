@@ -85,6 +85,19 @@ public class SpaceReservationController {
         return ResponseEntity.ok(reservationService.getMyRoomReservations(memberId));
     }
 
+    @GetMapping("/rooms/me/history")
+    public ResponseEntity<PaginateUtilRestApiRes<RoomReservationDto>>
+            getMyRoomReservationHistory(
+                    @AuthenticationPrincipal Long memberId,
+                    @RequestParam(value = "page", defaultValue = "0") Integer page,
+                    @RequestParam(value = "size", defaultValue = "9") Integer size) {
+        return ResponseEntity.ok(
+                reservationService.getMyRoomReservationHistory(
+                        memberId,
+                        page,
+                        size));
+    }
+
     @PostMapping("/rooms")
     public ResponseEntity<RoomReservationDto> reserveRoom(
             @AuthenticationPrincipal Long memberId,
@@ -155,6 +168,19 @@ public class SpaceReservationController {
     public ResponseEntity<List<ReadingSeatReservationDto>> getMyReadingSeatReservations(
             @AuthenticationPrincipal Long memberId) {
         return ResponseEntity.ok(reservationService.getMyReadingSeatReservations(memberId));
+    }
+
+    @GetMapping("/seats/me/history")
+    public ResponseEntity<PaginateUtilRestApiRes<ReadingSeatReservationDto>>
+            getMyReadingSeatReservationHistory(
+                    @AuthenticationPrincipal Long memberId,
+                    @RequestParam(value = "page", defaultValue = "0") Integer page,
+                    @RequestParam(value = "size", defaultValue = "9") Integer size) {
+        return ResponseEntity.ok(
+                reservationService.getMyReadingSeatReservationHistory(
+                        memberId,
+                        page,
+                        size));
     }
 
     @DeleteMapping("/seats/{reservationId}")

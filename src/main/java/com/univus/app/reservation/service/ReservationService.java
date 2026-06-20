@@ -49,6 +49,12 @@ public interface ReservationService {
 
     List<ReadingSeatReservationDto> getMyReadingSeatReservations(Long memberId);
 
+    PaginateUtilRestApiRes<ReadingSeatReservationDto>
+            getMyReadingSeatReservationHistory(
+                    Long memberId,
+                    Integer page,
+                    Integer size);
+
     void cancelReadingSeatReservation(Long memberId, Long reservationId);
 
     void checkInReadingSeat(Long memberId, Long reservationId);
@@ -58,6 +64,11 @@ public interface ReservationService {
     List<RoomAvailabilityDto> getRoomAvailability(Long memberId, LocalDate date);
 
     List<RoomReservationDto> getMyRoomReservations(Long memberId);
+
+    PaginateUtilRestApiRes<RoomReservationDto> getMyRoomReservationHistory(
+            Long memberId,
+            Integer page,
+            Integer size);
 
     RoomReservationDto reserveRoom(
             Long memberId,

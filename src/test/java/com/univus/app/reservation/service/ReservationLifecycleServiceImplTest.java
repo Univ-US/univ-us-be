@@ -58,12 +58,16 @@ class ReservationLifecycleServiceImplTest {
                         .status("RESERVED")
                         .build();
 
-        when(reservationMapper.selectExpiredReadingSeatReservations()).thenReturn(List.of());
-        when(reservationMapper.selectNoShowReadingSeatReservations()).thenReturn(List.of());
-        when(reservationMapper.selectExpiredRoomReservations())
+        when(reservationMapper.selectExpiredReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectNoShowReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectExpiredRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE))
                 .thenReturn(List.of(expiredReservation));
         when(reservationMapper.completeExpiredRoomReservation(101L)).thenReturn(1);
-        when(reservationMapper.selectNoShowRoomReservations())
+        when(reservationMapper.selectNoShowRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE))
                 .thenReturn(List.of(noShowReservation));
         when(reservationMapper.cancelNoShowRoomReservation(102L)).thenReturn(1);
 
@@ -109,12 +113,16 @@ class ReservationLifecycleServiceImplTest {
                         .status("RESERVED")
                         .build();
 
-        when(reservationMapper.selectExpiredReadingSeatReservations()).thenReturn(List.of());
-        when(reservationMapper.selectNoShowReadingSeatReservations())
+        when(reservationMapper.selectExpiredReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectNoShowReadingSeatReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE))
                 .thenReturn(List.of(noShowReservation));
         when(reservationMapper.cancelNoShowReadingSeatReservation(201L)).thenReturn(0);
-        when(reservationMapper.selectExpiredRoomReservations()).thenReturn(List.of());
-        when(reservationMapper.selectNoShowRoomReservations()).thenReturn(List.of());
+        when(reservationMapper.selectExpiredRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
+        when(reservationMapper.selectNoShowRoomReservations(
+                ReservationConstants.SCHEDULER_BATCH_SIZE)).thenReturn(List.of());
 
         reservationLifecycleService.processExpiredAndNoShowReservations();
 
