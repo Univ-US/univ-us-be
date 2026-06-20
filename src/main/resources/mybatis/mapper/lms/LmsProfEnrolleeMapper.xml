@@ -2,12 +2,12 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!--
-  PLM-003 / PLM-003-01 교수 수강생 현황 (2026-06 더미데이터 스키마 반영)
+  PLM-003 / PLM-003-01 교수 수강생 현황
   · 강의명: LECTURE 에는 이름이 없고 LECTURE_CODE(LEC_CODE_ID FK)의 LEC_COD_NAME 사용 → JOIN
-  · 강의 유효상태(LEC_VAL_STATUS): CNCL(폐강)/CLSD(종료)/PROG(진행중)/OPEN(수강신청중) → 드롭다운은 상태 무관 반환(폐강 포함)하되 ⭐아직 시작 안 한 미래 학기 강의는 제외(PLM-002 강의 내역과 동일 — 수강신청중=미시작=출석/과제 0이라 빈 통계 방지, 2026-06-19)
+  · 강의 유효상태(LEC_VAL_STATUS): CNCL(폐강)/CLSD(종료)/PROG(진행중)/OPEN(수강신청중) → 드롭다운은 상태 무관 반환(폐강 포함)하되 아직 시작 안 한 미래 학기 강의는 제외(PLM-002 강의 내역과 동일 — 수강신청중=미시작=출석/과제 0이라 빈 통계 방지)
   · 과제 유효상태(LEC_ASN_VAL_STATUS): CLS/AVL 등(AsnSbmAvailCode) → 전체 과제 카운트(필터 없음)
   · 출석(STD_ENR_ATD_STS_CODE): PRS/LAT/ABS · 제출(LEC_ASN_SBM_STATUS): NSB/SBM/GRD · 수강(LEC_STD_ENR_STATUS): ENR/CMP/DRP
-  ⚠️ ASSIGNMENT_SUBMISSION_EVALUATION (채점 점수) 컬럼 미확인 → 가정: FK=LEC_ASN_SBM_ID, 점수=ASN_SBM_EVL_SCORE
+  ASSIGNMENT_SUBMISSION_EVALUATION (채점 점수) 컬럼 미확인 → 가정: FK=LEC_ASN_SBM_ID, 점수=ASN_SBM_EVL_SCORE
      실제 컬럼명이 다르면 averageScore 서브쿼리 2곳 + selectAssignmentScores 의 ev.* 만 교정.
 -->
 <mapper namespace="com.univus.app.lms.mapper.LmsProfEnrolleeMapper">

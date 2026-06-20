@@ -2,12 +2,12 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!--
-  PLM-004 / PLM-004-01 교수 채점 현황 (UnivUs-ERD-2 스키마 기준, 2026-06-10)
+  PLM-004 / PLM-004-01 교수 채점 현황 (UnivUs-ERD-2 스키마 기준)
   · 과제 LECTURE_ASSIGNMENT: LEC_ASN_DUE_DATE(마감), LEC_ASN_TITLE
   · 제출 LECTURE_ASSIGNMENT_SUBMISSION: LEC_ASN_SBM_REG_DATE(제출일시), LEC_ASN_SBM_STATUS(NSB 등)
   · 평가 ASSIGNMENT_SUBMISSION_EVALUATION: ASN_SBM_EVL_SCORE NUMBER(5,2) null=미채점, ASN_SBM_EVL_FEEDBACK VARCHAR2(200), LEC_ASN_SBM_ID UNIQUE
   · 첨부 ASSIGNMENT_SUBMISSION_ATTACHMENT: 1:N (제출별 최신 1건만 노출). 무효 첨부 제외 필터는 ATT_VAL_STATUS 정본코드 미확인이라 보류(TODO)
-  · 만점(maxScore): 스키마에 컬럼 없음 → service가 100 고정(잠정, 추후 재검토)
+  · 만점(maxScore): 스키마에 컬럼 없음 → service가 100 고정
 -->
 <mapper namespace="com.univus.app.lms.mapper.LmsProfGradingMapper">
 
@@ -53,7 +53,7 @@
         <if test="termCode != null">AND s.SEM_TERM = #{termCode}</if>
     </sql>
 
-    <!-- 미채점(채점 안 된 수강생>0)/채점완료(전원 채점됨) 분리 필터 — 미채점=총원−채점완료 (2026-06-16 정의 통일) -->
+    <!-- 미채점(채점 안 된 수강생>0)/채점완료(전원 채점됨) 분리 필터 — 미채점=총원−채점완료 -->
     <sql id="gradingSplitFilter">
         <choose>
             <when test="ungradedOnly">AND (base.totalStudents - base.gradedCount) &gt; 0</when>
@@ -203,7 +203,7 @@
     </select>
 
     <!-- 점수·피드백 upsert (제출당 평가 1건, LEC_ASN_SBM_ID UNIQUE).
-         ⚠️ PK(ASN_SBM_EVL_ID)는 IDENTITY가 아니라 시퀀스 채번(ERD 표기와 다른 실제 서버 DB) → SEQ_ASSIGNMENT_SUBMISSION_EVALUATION.NEXTVAL -->
+         PK(ASN_SBM_EVL_ID)는 IDENTITY가 아니라 시퀀스 채번(ERD 표기와 다른 실제 서버 DB) → SEQ_ASSIGNMENT_SUBMISSION_EVALUATION.NEXTVAL -->
     <update id="upsertEvaluation">
         MERGE INTO ASSIGNMENT_SUBMISSION_EVALUATION ev
         USING (SELECT #{submissionId} AS sbmId FROM dual) src

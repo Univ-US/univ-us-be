@@ -9,8 +9,8 @@
   · attendanceRate  : 강의 수강생별 출석률(PRS/전체)의 단순평균 (PLM-003 buildSummary와 동일 의미)
   · ungradedCount   : Σ GREATEST(총원 - 채점완료, 0)  (PLM-004 미채점 정의 통일)
   · inProgressFlag  : TRUNC(SYSDATE) BETWEEN TRUNC(SEM_STR_DATE) AND TRUNC(SEM_END_DATE) (클라 시계 비신뢰)
-  · 미래 학기 제외  : 아직 시작 안 한 학기(SEM_STR_DATE > SYSDATE)는 숨김 (2026-06-17 결정 — '예정'을 '마감'으로 오표시 방지)
-  · 정렬            : 진행중 학기 최상단 → 시작일 최신순(과거) → 같은 학기 내 LEC_ID  (⚠️ SEM_ID 비시간순 함정 회피)
+  · 미래 학기 제외  : 아직 시작 안 한 학기(SEM_STR_DATE > SYSDATE)는 숨김 ('예정'을 '마감'으로 오표시 방지)
+  · 정렬            : 진행중 학기 최상단 → 시작일 최신순(과거) → 같은 학기 내 LEC_ID  (SEM_ID 비시간순 함정 회피)
   · 강의 상태       : 무관 전체(폐강 포함, PLM-003 드롭다운 정책과 일관)
 -->
 <mapper namespace="com.univus.app.lms.mapper.LmsProfCoursesMapper">

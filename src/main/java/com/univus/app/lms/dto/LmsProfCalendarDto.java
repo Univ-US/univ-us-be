@@ -11,7 +11,7 @@ import lombok.Setter;
  * <p>매핑 row(LectureTimeRow=주간 시간표 / AssignmentDueRow=과제 마감) + 응답(EventResDto = FE CalendarEvent 계약).
  * service가 주간 시간표 row를 from~to 범위로 날짜 전개(학기 경계 clamp, DAY_CODE→요일)하고 과제 마감을 합쳐 EventResDto[]로 변환.
  * <p>표시 규칙(FE 확정): 강의=과목명+분반+시작~종료 / 과제=과제명+마감시각(분반·종료시각 없음/null).
- * <p>⚠️ 학생 캘린더(SLM-010) BE는 팀원 인수인계 — 동일 JSON 계약(CalendarEvent)이되 '내 강의=수강' 술어만 다름, 별도 LmsStu* 구현.
+ * <p>학생 캘린더(SLM-010) BE는 동일 JSON 계약(CalendarEvent)이되 '내 강의=수강' 술어만 다름, 별도 LmsStu* 구현.
  * MyBatis resultType은 {@code ...LmsProfCalendarDto$Inner} 형태로 참조.
  */
 public final class LmsProfCalendarDto {

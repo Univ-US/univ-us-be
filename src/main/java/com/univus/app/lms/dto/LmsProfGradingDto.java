@@ -19,7 +19,7 @@ import java.util.List;
  * + 응답(OverviewResDto/AssignmentResDto/CourseCountResDto/UngradedCountResDto/DetailResDto/SubmissionResDto/SubmissionFileResDto)
  * + 요청(SaveReqDto). service가 매핑 row → ResDto 변환(미채점수·만점·채점여부·파일 보강).
  * <p>MyBatis resultType은 {@code com.univus.app.lms.dto.LmsProfGradingDto$Inner} 형태로 참조.
- * <p>※ 명명 규칙: BE 정본 + DTO 변수명 = DB 컬럼명 카멜(자기 테이블), 조인/집계/파생 컬럼은 의미 별칭 — 커뮤니티 PostDto 컨벤션.
+ * <p>명명 규칙: BE 정본 + DTO 변수명 = DB 컬럼명 카멜(자기 테이블), 조인/집계/파생 컬럼은 의미 별칭 — 커뮤니티 PostDto 컨벤션.
  *    PK/ID는 의미명 유지(assignmentId·submissionId). 쿼리 파라미터 year/termCode는 별개 계약이라 유지.
  */
 public final class LmsProfGradingDto {
@@ -111,7 +111,7 @@ public final class LmsProfGradingDto {
     @AllArgsConstructor
     @Builder
     public static class OverviewResDto {
-        private int totalUngraded;              // 미채점 수강생 수 합(총원−채점, 선택 필터 범위) — 2026-06-16 정의 통일
+        private int totalUngraded;              // 미채점 수강생 수 합(총원−채점, 선택 필터 범위)
         private List<CourseCountResDto> byCourse; // 과목별 미채점 수강생 수 (배너용)
     }
 

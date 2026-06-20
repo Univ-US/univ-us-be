@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 /**
  * PLM-005 / PLM-005-01 교수 강의 자료 업로드 ServiceImpl.
- * - 첨부는 다중(2026-06-11 정책): 등록=여러 파일 / 수정=기존 유지 + 추가(files) + 개별 제거(removeAttachmentIds).
+ * - 첨부는 다중: 등록=여러 파일 / 수정=기존 유지 + 추가(files) + 개별 제거(removeAttachmentIds).
  *   "교체" 개념 없음 — 제거는 ATT_VAL_STATUS='DEL' 소프트 무효화(디스크 파일 보존).
  * - 매퍼는 매핑 row 반환 → service가 ResDto로 변환(첨부 조립 등). 검증 실패는 ResponseStatusException(400/403).
  * - 파일 저장은 StorageService(로컬 디스크) 재사용. S3 전환 시 저장/삭제 호출부와 URL prefix만 교체하면 되도록 격리.
@@ -45,8 +45,8 @@ public class LmsProfUploadServiceImpl implements LmsProfUploadService {
     private static final String MATERIAL_URL_PREFIX = "/uploads/lms/professor/material/";
 
     // 업로드 제약 — FE(lmsProfessorUploadApi.ts UPLOAD_ALLOWED_EXTS)와 동일 목록.
-    // 확장자는 공통코드 비관리(종류 많고 변화 잦음, 2026-06-11 정책) → 코드 상수 화이트리스트.
-    // ⚠️ 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
+    // 확장자는 공통코드 비관리(종류 많고 변화 잦음) → 코드 상수 화이트리스트.
+    // 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
     private static final Set<String> ALLOWED_EXTS = Set.of(
             "mp4", "avi", "mov", "wmv",                                            // 영상
             "mp3", "m4a", "wav",                                                   // 음성

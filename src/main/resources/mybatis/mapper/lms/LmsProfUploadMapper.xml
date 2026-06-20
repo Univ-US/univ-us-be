@@ -4,9 +4,9 @@
 PLM-005 / PLM-005-01 교수 강의 자료 업로드 SQL
 · 본체: LECTURE_UPLOADING (LEC_UPL_ID PK / LEC_ID FK / LEC_UPL_REG_DATE [DEFAULT SYSTIMESTAMP]
         / LEC_UPL_TITLE VARCHAR2(500 CHAR) / LEC_UPL_CONTENT CLOB NULL — 에디터 HTML)
-· 첨부: LECTURE_UPLOADING_ATTACHMENT — 1:N **다중 첨부**(2026-06-11 정책: 교체 아님, 추가/개별 제거).
+· 첨부: LECTURE_UPLOADING_ATTACHMENT — 1:N 다중 첨부(교체 아님, 추가/개별 제거).
         유효 첨부 = ATT_VAL_STATUS='ACT', 제거 = 'DEL' 소프트 무효화 (공통코드 ATT_VAL_STATUS)
-· ⚠️ PK는 IDENTITY가 아니라 시퀀스 채번(ERD 표기와 다른 실제 서버 DB)
+· PK는 IDENTITY가 아니라 시퀀스 채번(ERD 표기와 다른 실제 서버 DB)
     → SEQ_LECTURE_UPLOADING / SEQ_LECTURE_UPLOADING_ATTACHMENT .NEXTVAL
 · 소유권: LECTURE.LMS_PRF_ID = 교수 LMS_PRF_ID 기준 (강의명은 LECTURE_CODE.LEC_COD_NAME 조인)
 -->
@@ -17,7 +17,7 @@ PLM-005 / PLM-005-01 교수 강의 자료 업로드 SQL
         SELECT LMS_PRF_ID FROM LMS_PROFILE WHERE MEMBER_ID = #{memberId}
     </select>
 
-    <!-- 등록 폼 과목(강의) 드롭다운 — 담당 강의(폐강 포함, ⭐미시작 학기 제외=PLM-002/003/008 동일), 상태 라벨은 FE 공통코드 매핑 -->
+    <!-- 등록 폼 과목(강의) 드롭다운 — 담당 강의(폐강 포함, 미시작 학기 제외=PLM-002/003/008 동일), 상태 라벨은 FE 공통코드 매핑 -->
     <select id="selectLecturesByProfessor" resultType="com.univus.app.lms.dto.LmsProfUploadDto$LectureRow">
         SELECT l.LEC_ID         AS lecId,
                lc.LEC_COD_NAME  AS courseName,
@@ -29,7 +29,7 @@ PLM-005 / PLM-005-01 교수 강의 자료 업로드 SQL
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
         JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
         WHERE l.LMS_PRF_ID = #{professorLmsPrfId}
-          <!-- PLM-002/003/008 동일: 아직 시작 안 한 미래 학기 강의 제외 (2026-06-19) -->
+          <!-- PLM-002/003/008 동일: 아직 시작 안 한 미래 학기 강의 제외 -->
           AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
         ORDER BY s.SEM_ID DESC, lc.LEC_COD_NAME, l.LEC_ID
     </select>
@@ -52,7 +52,7 @@ PLM-005 / PLM-005-01 교수 강의 자료 업로드 SQL
     </select>
 
     <!-- 자료 본체 공용 SELECT (첨부는 별도 쿼리로 조회 후 서비스에서 그룹핑)
-         year·termCode = 강의 학기(SEMESTERS 조인) — FE 목록 년도/학기 필터용 (2026-06-11 추가) -->
+         year·termCode = 강의 학기(SEMESTERS 조인) — FE 목록 년도/학기 필터용 -->
     <sql id="selectMaterialColumns">
         SELECT u.LEC_UPL_ID      AS uploadId,
                u.LEC_ID          AS lecId,

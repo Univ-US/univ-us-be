@@ -3,7 +3,7 @@ package com.univus.app.lms.code;
 import com.univus.app.commoncode.code.CommonCode;
 
 /* 출결 상태 코드 — 공통코드 그룹 ATTD_STS(출석상태) / 매핑 컬럼 STUDENT_ENROLLMENT_ATTENDANCE.STD_ENR_ATD_STS_CODE
- * ⚠️ 그룹명(ATTD_STS) ≠ 컬럼명(STD_ENR_ATD_STS_CODE). 라벨/순서는 DB COMMON_CODE(2026-06-13)와 동기화. */
+ * 그룹명(ATTD_STS) ≠ 컬럼명(STD_ENR_ATD_STS_CODE). 라벨/순서는 DB COMMON_CODE와 동기화. */
 public enum AttdStsCode implements CommonCode {
     PRESENT("PRS", "출석", 1),
     LATE("LAT", "지각", 2),
