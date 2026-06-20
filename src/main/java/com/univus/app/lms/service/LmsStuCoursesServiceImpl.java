@@ -120,6 +120,8 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
         private final Integer lecSection;
         private final Integer credit;
         private final String professor;
+        private final String lecStdEnrStatus;
+        private final String lecValStatus;
         private final List<String> schedules = new ArrayList<>();
 
         private CourseAccumulator(LmsStuCoursesDto.CourseFlatRow row) {
@@ -128,6 +130,8 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
             this.lecSection = row.getLecSection();
             this.credit = row.getLecCredit() == null ? 0 : row.getLecCredit();
             this.professor = row.getProfessor();
+            this.lecStdEnrStatus = row.getLecStdEnrStatus();
+            this.lecValStatus = row.getLecValStatus();
         }
 
         private void addSchedule(LmsStuCoursesDto.CourseFlatRow row) {
@@ -148,6 +152,8 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
                     .lecSection(lecSection)
                     .lecCredit(credit)
                     .professor(professor)
+                    .lecStdEnrStatus(lecStdEnrStatus)
+                    .lecValStatus(lecValStatus)
                     .schedule(schedules.isEmpty() ? "-" : String.join(" · ", schedules))
                     .build();
         }

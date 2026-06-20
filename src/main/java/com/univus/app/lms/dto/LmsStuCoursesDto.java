@@ -38,6 +38,8 @@ public final class LmsStuCoursesDto {
         private Integer lecSection;     // LECTURE.LEC_SECTION (분반)
         private Integer lecCredit;      // LECTURE.LEC_CREDIT (학점)
         private String professor;       // MEMBER.MEMBER_NAME (조인)
+        private String lecStdEnrStatus; // LECTURE_STUDENT_ENROLLMENT.LEC_STD_ENR_STATUS (수강 상태: ENR/CMP/DRP/FAL)
+        private String lecValStatus;    // LECTURE.LEC_VAL_STATUS (강의 상태: OPEN/PROG/CLSD/CNCL)
         private String lecTimDayCode;   // LECTURE_TIME.LEC_TIM_DAY_CODE
         private String lecTimStrTime;   // LECTURE_TIME.LEC_TIM_STR_TIME (HH:MI)
         private String lecTimEndTime;   // LECTURE_TIME.LEC_TIM_END_TIME (HH:MI)
@@ -56,6 +58,8 @@ public final class LmsStuCoursesDto {
         private Integer lecSection;     // LECTURE.LEC_SECTION (분반)
         private Integer lecCredit;      // LECTURE.LEC_CREDIT (학점)
         private String professor;       // MEMBER.MEMBER_NAME (조인)
+        private String lecStdEnrStatus; // 수강 상태 (ENR/CMP/DRP/FAL) — FE 공통코드 ENR_STS 라벨
+        private String lecValStatus;    // 강의 상태 (OPEN/PROG/CLSD/CNCL) — FE 공통코드 LEC_VAL_STATUS 라벨
         private String schedule;        // 요일+시간 조합("월 10:00~12:00 · ..."), 없으면 "-"
     }
 
