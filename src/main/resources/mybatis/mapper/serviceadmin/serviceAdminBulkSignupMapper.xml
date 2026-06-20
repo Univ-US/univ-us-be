@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.univus.app.serviceadmin.mapper.ServiceAdminBulkSignupMapper">
+
+    <select id="selectActiveCapacity"
+            resultType="com.univus.app.serviceadmin.dto.ServiceAdminBulkSignupDto$Capacity">
+        WITH ACTIVE_SUBSCRIPTION AS (
+            SELECT
+                S.UNIV_ID,
+                S.PLAN_ID,
+                ROW_NUMBER() OVER (
+                    PARTITION BY S.UNIV_ID
+                    ORDER BY S.STARTED_AT DESC, S.SUBSCRIPTION_ID DESC
+                ) AS RN
+            FROM SUBSCRIPTIONS S
+            WHERE S.STATUS = 'ACTIVE'
+              AND S.ENDED_AT IS NULL
+        )
+        SELECT
+            U.UNIV_ID AS univId,
+            U.UNIV_NAME AS univName,
+            P.PLAN_NAME AS planName,
+            P.MAX_MEMBER_COUNT AS maxMemberCount,
+            COUNT(M.MEMBER_ID) AS currentMemberCount
+        FROM UNIVERSITY U
+        JOIN ACTIVE_SUBSCRIPTION S
+          ON S.UNIV_ID = U.UNIV_ID
+         AND S.RN = 1
+        JOIN SUBSCRIPTION_PLANS P
+          ON P.PLAN_ID = S.PLAN_ID
+        LEFT JOIN MEMBER M
+          ON M.UNIV_ID = U.UNIV_ID
+         AND M.STATUS IN ('ACTIVE', 'SUSPENDED')
+        WHERE U.UNIV_ID = #{univId}
+        GROUP BY U.UNIV_ID, U.UNIV_NAME, P.PLAN_NAME, P.MAX_MEMBER_COUNT
+    </select>
+
+    <select id="selectDepartmentIdsByUniversity" resultType="long">
+        SELECT DEPT_ID
+        FROM DEPARTMENT
+        WHERE UNIV_ID = #{univId}
+    </select>
+
+    <select id="selectExistingLoginIds" resultType="string">
+        SELECT LOGIN_ID
+        FROM MEMBER
+        WHERE LOGIN_ID IN
+        <foreach collection="loginIds" item="loginId" open="(" separator="," close=")">
+            #{loginId}
+        </foreach>
+    </select>
+</mapper>
