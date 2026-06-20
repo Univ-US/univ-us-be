@@ -22,10 +22,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * PLM-007 교수 공지사항 관리 ServiceImpl (PLM-005 강의 업로드 미러).
+ * PLM-007 교수 공지사항 관리 ServiceImpl.
  * - 첨부 다중: 작성=여러 파일 / 수정=기존 유지 + 추가(files) + 개별 제거(removeAttachmentIds, ATT_VAL_STATUS='DEL' 소프트 무효화).
  * - 매퍼는 매핑 row 반환 → service가 ResDto 변환(첨부 조립). 검증 실패 = ResponseStatusException(400/403).
- * - 파일 저장 = StorageService(로컬 디스크) 재사용. 공지 첨부는 합계 100MB 제한(강의자료 5GB와 별도, FE와 동일).
+ * - 파일 저장 = StorageService(로컬 디스크) 재사용. 공지 첨부는 합계 100MB 제한.
  * - PLM-005와 차이: 목록 페이지네이션·메타 없음(선택 강의 공지 전체 최신순), 제목 200자, 작성자=담당교수.
  */
 @Slf4j
@@ -39,11 +39,11 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
 
-    // 저장 하위 폴더 / 웹 접근 경로 (강의자료와 동일 관례 — 인증 보호, permitAll 아님)
+    // 저장 하위 폴더 / 웹 접근 경로 (인증 보호, permitAll 아님)
     private static final String ANNOUNCEMENT_SUBDIR = "lms" + File.separator + "professor" + File.separator + "announcement";
     private static final String ANNOUNCEMENT_URL_PREFIX = "/uploads/lms/professor/announcement/";
 
-    // 공지 첨부 허용 확장자 — FE(lmsProfessorNoticeApi.ts NOTICE_ALLOWED_EXTS)와 동일(문서·이미지·압축, 영상/음성 제외).
+    // 공지 첨부 허용 확장자 (문서·이미지·압축, 영상/음성 제외).
     // 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
     private static final Set<String> ALLOWED_EXTS = Set.of(
             "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "hwp", "hwpx", "txt", // 문서
@@ -250,7 +250,7 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
                 noticeId, orgFileName, trnFileName, orgUrl, file.getSize(), extType);
     }
 
-    /* 교수 LMS 프로필 확인 — 없으면 403 (PLM-003/004/005와 동일 패턴) */
+    /* 교수 LMS 프로필 확인 — 없으면 403 */
     private Long requireProfessorLmsPrfId(Long memberId) {
         Long lmsPrfId = lmsProfNoticeMapper.findLmsPrfIdByMemberId(memberId);
         if (lmsPrfId == null) {
@@ -300,7 +300,7 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
         return result;
     }
 
-    /* 파일 검증 — 단일 파일(확장자 화이트리스트/파일명 255자) + 요청 합계 100MB (FE와 동일 기준) */
+    /* 파일 검증 — 단일 파일(확장자 화이트리스트/파일명 255자) + 요청 합계 100MB */
     private void validateFiles(List<MultipartFile> files) {
         long total = 0;
         for (MultipartFile file : files) {

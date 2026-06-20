@@ -6,7 +6,6 @@ PLM-010 교수 캘린더 SQL (교수 전용 — 담당 강의 LECTURE.LMS_PRF_ID
 · 과제 마감: LECTURE_ASSIGNMENT(과제명 LEC_ASN_TITLE + 마감 LEC_ASN_DUE_DATE, 범위 내)
 · 폐강(CNCL) 강의 제외 / 학기 경계 SEMESTERS.SEM_STR_DATE~SEM_END_DATE
 · 시각은 TIMESTAMP라 날짜부 무의미 → TO_CHAR 'HH24:MI'로 시각만 추출
-· (학생 캘린더 SLM-010 BE는 동일 SQL이되 '내 강의' 술어를 수강 EXISTS로 바꿔 별도 매퍼 구현)
 -->
 <mapper namespace="com.univus.app.lms.mapper.LmsProfCalendarMapper">
 

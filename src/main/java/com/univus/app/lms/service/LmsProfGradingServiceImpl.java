@@ -35,7 +35,7 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
     // TODO maxScore: LECTURE_ASSIGNMENT에 만점 컬럼이 없어 100 고정. 추후 재검토(컬럼 추가 vs 고정).
     private static final int DEFAULT_MAX_SCORE = 100;
 
-    private static final String UPLOAD_WEB_PREFIX = "/uploads"; // ORG_URL 웹 접두어 (프로필 이미지와 동일 관례)
+    private static final String UPLOAD_WEB_PREFIX = "/uploads"; // ORG_URL 웹 접두어
     private static final String FILE_DOWNLOAD_PATH = "/api/lms/professor/grading/submissions/%d/file";
 
     /* PLM-004 채점 개요 — 배너 카운트(미채점 합 + 과목별). 년도/학기 null이면 전체 범위 */
@@ -237,7 +237,7 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
                 .build();
     }
 
-    /* ORG_URL("/uploads/.../trn.ext") → 물리 디렉토리(uploadRoot + 하위경로). 프로필 이미지와 동일 저장 관례 가정 */
+    /* ORG_URL("/uploads/.../trn.ext") → 물리 디렉토리(uploadRoot + 하위경로). */
     private String resolveDirectory(String orgUrl) {
         if (orgUrl == null || orgUrl.isBlank()) {
             return uploadRoot;

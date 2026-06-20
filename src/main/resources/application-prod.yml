@@ -1,13 +1,8 @@
 # =====================================================================
-# 해당 파일 gitignore에 추가하면 안 됩니다!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # application-prod.yml — 운영(prod) 프로파일 설정 (커밋용 · 비밀 없음)
-#
-# [무엇] SPRING_PROFILES_ACTIVE=prod 일 때 로드되는 Spring 설정.
-# [왜]   로컬용 application.yml 은 .gitignore 라 빌드 JAR 에 안 들어감
-#        → 운영 컨테이너가 읽을 설정이 사라짐. 그래서 "비밀 뺀 운영 설정"을
-#        커밋해 JAR 에 포함시킨다.
-# [구조] 비밀/환경별 값은 ${ENV:기본값} placeholder → 운영에선 K8s
-#        ConfigMap/Secret 의 env 가 채움. (로컬 application.yml 은 그대로 둠)
+# SPRING_PROFILES_ACTIVE=prod 일 때 로드. 비밀/환경별 값은 ${ENV:기본값}
+# placeholder → 운영에선 K8s ConfigMap/Secret 의 env 가 채움.
+# ⚠️ gitignore 금지: application.yml 이 gitignore 라 이 파일이 JAR 에 포함되는 운영 설정 정본.
 # =====================================================================
 server:
   port: 9090
@@ -17,21 +12,20 @@ server:
     relaxed-query-chars: "[,]"
 
 spring:
-  datasource:                                  # ⚠️ application.yml과 동일 hikari 중첩 구조로 정합(2026-06-17). PR #158 PgVectorDataSourceConfig가 ${spring.datasource.hikari.username/password}를 직접 읽음(기본값 없음) → 평면이면 prod CrashLoop. ENV 변수명은 기존(SPRING_DATASOURCE_USERNAME/PASSWORD) 유지 → K8s 재주입 불필요
+  datasource:                                  # Oracle DataSource (HikariCP)
     url: ${SPRING_DATASOURCE_URL:jdbc:oracle:thin:@localhost:1521/XEPDB1}
     hikari:
       username: ${SPRING_DATASOURCE_USERNAME:univus}
-      password: ${SPRING_DATASOURCE_PASSWORD:changeme}   # 진짜 비번은 K8s Secret(env SPRING_DATASOURCE_PASSWORD)
+      password: ${SPRING_DATASOURCE_PASSWORD:changeme}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}                       # 진짜 비번은 default에 두지 않음
+      password: ${REDIS_PASSWORD:}
   mvc:
     view: { prefix: /WEB-INF/views/, suffix: .jsp }
   servlet:
-    # PLM-005 강의자료 업로드 — 단일 파일·요청 합계 각 5GB (로컬 application.yml과 동일값.
-    # S3 전환 전 임시로 서버 경유 업로드라 한도 큼. Traefik/K8s 바디 한도는 별도 확인 필요)
+    # 업로드 용량 한도 (단일 파일·요청 합계)
     multipart: { max-file-size: 5GB, max-request-size: 5GB }
   security:
     oauth2:
@@ -65,14 +59,23 @@ mybatis:
 file:
   upload-root: ${FILE_UPLOAD_ROOT:/data/uploads}
 
-# AI RAG(PR #158) — PgVectorDataSourceConfig·EmbeddingService가 아래 값을 '기본값 없이' 읽음 → prod 필수(없으면 CrashLoop).
-# ⚠️ url은 파드 내부경로로 주입(application.yml의 happyjob.iptime.org는 팀원 로컬용 외부경로 — 파드는 Oracle처럼 VM 내부경로).
-# 값은 K8s ConfigMap(url·username·ollama)/Secret(PGVECTOR_PASSWORD) 주입. block 스타일 필수(인라인 {} 금지 — snakeyaml flow-map 충돌).
+# 영속 로그 — 콘솔(stdout) 유지 + 롤링 파일을 PVC(/data/logs)에 기록 (prod 프로파일만).
+logging:
+  file:
+    name: ${LOG_PATH:/data/logs}/univ-us-be.log
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${LOG_PATH:/data/logs}/univ-us-be.%d{yyyy-MM-dd}.%i.log.gz
+      max-file-size: 50MB
+      max-history: 30
+      total-size-cap: 2GB
+
+# AI RAG 벡터 검색 (pgvector + Ollama 임베딩). 값은 K8s ConfigMap/Secret 주입.
 pgvector:
   datasource:
     url: ${PGVECTOR_URL:}
     username: ${PGVECTOR_USERNAME:}
-    password: ${PGVECTOR_PASSWORD:}          # 비번은 default 비움 → K8s Secret
+    password: ${PGVECTOR_PASSWORD:}
 ollama:
   base-url: ${OLLAMA_BASE_URL:}
   embed-model: ${OLLAMA_EMBED_MODEL:nomic-embed-text}
@@ -88,7 +91,7 @@ univus:
     kma-base-url: ${KMA_BASE_URL:}
     kma-mid-base-url: ${KMA_MID_BASE_URL:}
     groq-api-key: ${GROQ_API_KEY:}
-    openweather-api-key: ${OPENWEATHER_API_KEY:}   # OpenWeather. 코드 머지 시 K8s Secret에 OPENWEATHER_API_KEY 주입(현재 미주입=빈값, 안 깨짐)
+    openweather-api-key: ${OPENWEATHER_API_KEY:}
 
 portone:
   trade:
@@ -96,14 +99,9 @@ portone:
     kg-inicis-channel-key: ${PORTONE_TRADE_KG_INICIS_CHANNEL_KEY:}
     kakao-pay-channel-key: ${PORTONE_TRADE_KAKAO_PAY_CHANNEL_KEY:}
     api-secret: ${PORTONE_TRADE_API_SECRET:}
-  # v2(PortOne) 구독결제 — PortOnePaymentClient가 ${portone.subscription.api-secret}를 '기본값 없이' 읽음.
-  # ⚠️ 이 키가 없으면 prod에서 'Could not resolve placeholder' → 컨텍스트 로드 실패 → CrashLoop.
-  #    실제 시크릿은 K8s Secret(univ-us-be-secret)의 PORTONE_SUBSCRIPTION_API_SECRET가 주입.
-  #    ${}는 반드시 block 스타일(인라인 {} 금지 — snakeyaml flow-map 충돌, PR#43 CrashLoop 이력).
+  # v2 구독 결제 (PortOne)
   subscription:
     api-secret: ${PORTONE_SUBSCRIPTION_API_SECRET:}
-    # 구독 빌링 키 3종 — SubscriptionServiceImpl·SubscriptionBillingServiceImpl이 @Value '빈 기본값'으로 읽음
-    # (미주입이어도 부팅은 OK, 구독 결제만 실패). 실제 값은 K8s ConfigMap(univ-us-be-config)이 주입.
     store-id: ${PORTONE_SUBSCRIPTION_STORE_ID:}
     card-billing-channel-key: ${PORTONE_SUBSCRIPTION_CARD_BILLING_CHANNEL_KEY:}
     kakao-billing-channel-key: ${PORTONE_SUBSCRIPTION_KAKAO_BILLING_CHANNEL_KEY:}

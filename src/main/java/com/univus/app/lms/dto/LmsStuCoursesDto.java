@@ -14,7 +14,7 @@ import java.util.List;
  *   <li>{@code CourseFlatRow} = MyBatis 매핑 row (강의 1건 + 학기 + 시간표 flat, 미직렬화)</li>
  *   <li>{@code CourseRow / SemesterCoursesResDto} = JSON 응답 (FE 계약 필드명)</li>
  * </ul>
- * 변수명 = DB 컬럼 카멜(자기/앵커) · 조인 = 의미별칭(courseName·professor) — PLM-002 정본 미러.
+ * 변수명 = DB 컬럼 카멜(자기/앵커) · 조인 = 의미별칭(courseName·professor).
  */
 public final class LmsStuCoursesDto {
 

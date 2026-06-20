@@ -31,7 +31,7 @@ import java.util.Map;
  * 이로써 @Valid 실패·깨진 JSON·이미지 검증·파일 부재가 500이 아니라 400/404/415로 응답된다.
  * (정상 흐름의 {@code ResponseStatusException} 403/404/400 등은 스프링이 그대로 처리하므로 여기서 다루지 않음.)
  *
- * <p>응답 형식은 레포의 커스텀 401과 동일한 {@code {success:false, message:...}} 스키마를 따른다.
+ * <p>응답 형식은 {@code {success:false, message:...}} 스키마를 따른다.
  */
 @Slf4j
 @Order(Ordered.HIGHEST_PRECEDENCE) // 전역 advice보다 먼저 순회 → LMS 예외는 우리 핸들러가 우선(전역 catch-all raw 누수 차단). LMS 스코프라 팀원 도메인 무영향.

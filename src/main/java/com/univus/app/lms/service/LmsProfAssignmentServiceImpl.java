@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * - 구조는 PLM-005(강의 자료 업로드)와 동형: 첨부 다중(등록=files / 수정=files 추가 + removeAttachmentIds 제거),
  *   소유권 검증, StorageService(로컬 디스크) 재사용. 차이 = 마감일(dueDate) + 제출/채점/수강생 집계.
  * - 검증 실패는 ResponseStatusException(400/403)으로 던짐(전역 핸들러가 상태코드 그대로 JSON 매핑 — 500 회피).
- * - 집계: 매퍼가 submitted/graded/total을 채우고, ungraded = max(0, submitted - graded)를 여기서 계산(PLM-004 동일 산식).
+ * - 집계: 매퍼가 submitted/graded/total을 채우고, ungraded = max(0, submitted - graded)를 여기서 계산.
  */
 @Slf4j
 @Service
@@ -41,11 +41,11 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
 
-    // 저장 하위 폴더 / 웹 접근 경로 (PLM-005 material과 동일 관례 — 인증 보호, permitAll 아님)
+    // 저장 하위 폴더 / 웹 접근 경로 (인증 보호, permitAll 아님)
     private static final String ASSIGNMENT_SUBDIR = "lms" + File.separator + "professor" + File.separator + "assignment";
     private static final String ASSIGNMENT_URL_PREFIX = "/uploads/lms/professor/assignment/";
 
-    // 업로드 제약 — FE(lmsProfessorAssignmentsApi.ts ASSIGNMENT_ALLOWED_EXTS)와 동일 목록(PLM-005와 동일).
+    // 업로드 제약 (허용 확장자 목록).
     // 목록 변경 시 FE·BE 동시 수정 필요(자동 동기화 없음).
     private static final Set<String> ALLOWED_EXTS = Set.of(
             "mp4", "avi", "mov", "wmv",
@@ -219,7 +219,7 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
                 .build();
     }
 
-    /* 미채점 = max(0, 총원 − 채점완료) = 채점 안 된 수강생 수 (PLM-004와 동일).
+    /* 미채점 = max(0, 총원 − 채점완료) = 채점 안 된 수강생 수.
        신규 과제는 제출 0이어도 총원 전체가 미채점으로 표시(제출 0·채점 0 → "채점완료" 오표시 해소). */
     private LmsProfAssignmentDto.AssignmentResDto toAssignmentResDto(LmsProfAssignmentDto.AssignmentRow row) {
         int ungraded = Math.max(0, row.getTotalStudents() - row.getGradedCount());
@@ -261,7 +261,7 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
                 assignmentId, orgFileName, trnFileName, orgUrl, file.getSize(), extType);
     }
 
-    /* 교수 LMS 프로필 확인 — 없으면 403 (PLM-003/004/005와 동일) */
+    /* 교수 LMS 프로필 확인 — 없으면 403 */
     private Long requireProfessorLmsPrfId(Long memberId) {
         Long lmsPrfId = lmsProfAssignmentMapper.findLmsPrfIdByMemberId(memberId);
         if (lmsPrfId == null) {
@@ -320,7 +320,7 @@ public class LmsProfAssignmentServiceImpl implements LmsProfAssignmentService {
         return result;
     }
 
-    /* 파일 검증 — FE와 동일: 단일(확장자 화이트리스트/파일명 255자/5GB) + 요청 합계 5GB */
+    /* 파일 검증 — 단일(확장자 화이트리스트/파일명 255자/5GB) + 요청 합계 5GB */
     private void validateFiles(List<MultipartFile> files) {
         long total = 0;
         for (MultipartFile file : files) {

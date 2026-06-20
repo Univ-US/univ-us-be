@@ -65,3 +65,8 @@ config:
 persistence:
   claimName: univ-us-be-uploads   # 미리 만들어 둔 PVC 이름(StorageClass: local-path)
   mountPath: /data/uploads        # 컨테이너 안에서 PVC 가 마운트되는 경로(= 앱의 FILE_UPLOAD_ROOT)
+  # 영속 로그(파일 appender) — uploads 와 동일 local-path PVC 패턴(차트 밖 수동 선생성).
+  # 앱은 application-prod.yml 의 logging.file.name=${LOG_PATH:/data/logs}/univ-us-be.log 로 이 경로에 기록.
+  logs:
+    claimName: univ-us-be-logs    # 미리 만들어 둔 로그 PVC 이름(StorageClass: local-path, ns univus)
+    mountPath: /data/logs         # 컨테이너 안에서 로그 PVC 가 마운트되는 경로(= LOG_PATH)

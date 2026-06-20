@@ -153,7 +153,7 @@ public class LmsProfAttendanceServiceImpl implements LmsProfAttendanceService {
 
     /**
      * 통계 카드 — 학생별 출석률·지각률을 평균(반올림), 결석률은 잔여(100−출석−지각)로 보정해 셋 합 100%.
-     * (per-student round 후 평균 = PLM-003 buildSummary 동일 규칙 + 출결 3지표 합100 보정)
+     * (per-student round 후 평균 + 출결 3지표 합100 보정)
      */
     private LmsProfAttendanceDto.SummaryResDto summarize(List<LmsProfAttendanceDto.StudentResDto> students) {
         int totalStudents = students.size();

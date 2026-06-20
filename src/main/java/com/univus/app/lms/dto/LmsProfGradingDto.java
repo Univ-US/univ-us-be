@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 /**
- * PLM-004 / PLM-004-01 교수 채점 현황 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * PLM-004 / PLM-004-01 교수 채점 현황 DTO 묶음 (3분류 네스티드).
  * <p>다중 엔드포인트 컨테이너: 매핑 row(AssignmentRow/CourseCountRow/DetailRow/SubmissionRow/FileRow)
  * + 응답(OverviewResDto/AssignmentResDto/CourseCountResDto/UngradedCountResDto/DetailResDto/SubmissionResDto/SubmissionFileResDto)
  * + 요청(SaveReqDto). service가 매핑 row → ResDto 변환(미채점수·만점·채점여부·파일 보강).

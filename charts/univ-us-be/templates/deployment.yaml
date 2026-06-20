@@ -28,6 +28,9 @@ spec:
         - name: uploads
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.claimName }}
+        - name: logs
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.logs.claimName }}
       containers:
         - name: be
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -42,6 +45,8 @@ spec:
           volumeMounts:
             - name: uploads
               mountPath: {{ .Values.persistence.mountPath }}
+            - name: logs
+              mountPath: {{ .Values.persistence.logs.mountPath }}
           readinessProbe:                       # 포트 열림 = 컨텍스트 로드 완료 = 트래픽 받을 준비
             tcpSocket:
               port: {{ .Values.containerPort }}

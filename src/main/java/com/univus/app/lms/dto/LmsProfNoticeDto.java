@@ -13,10 +13,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 /**
- * PLM-007 교수 공지사항 관리 DTO 묶음 (3분류 네스티드 — CLAUDE-BE §9 #12).
+ * PLM-007 교수 공지사항 관리 DTO 묶음 (3분류 네스티드).
  * <p>매핑 row(LectureRow/NoticeRow/AttachmentRow/AttachmentDiskRow/InsertParam)
  * + 응답(LectureResDto/NoticeResDto/AttachmentResDto) + 요청(CreateReqDto/UpdateReqDto).
- * 본체=LECTURE_ANNOUNCEMENT, 첨부=LECTURE_ANNOUNCEMENT_ATTACHMENT. PLM-005 업로드 BE 미러
+ * 본체=LECTURE_ANNOUNCEMENT, 첨부=LECTURE_ANNOUNCEMENT_ATTACHMENT.
  * (단 목록 페이지네이션·메타 없음 — 선택 강의의 공지 전체를 최신순으로 반환). MyBatis resultType = {@code ...LmsProfNoticeDto$Inner}.
  * <p>※ 명명 규칙: DTO 변수명 = DB 컬럼명 카멜(자기/앵커 LECTURE_ANNOUNCEMENT 테이블), 조인/파생 컬럼은 의미 별칭 — 커뮤니티 PostDto 컨벤션.
  *    응답 JSON·요청 form key = 컬럼 카멜(lecAnnTitle·lecAnnContent·lecAnnRegDate·semYear·semTerm).
