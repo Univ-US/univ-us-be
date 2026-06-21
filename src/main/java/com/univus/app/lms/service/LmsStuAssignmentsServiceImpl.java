@@ -93,6 +93,48 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<LmsStuAssignmentsDto.AssignmentSemesterSummaryResDto> getAssignmentSemesterSummaries(
+            Long memberId, String status) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        return lmsStuAssignmentsMapper.selectAssignmentSemesterSummaries(lmsPrfId, normalizeStatus(status)).stream()
+                .map(row -> LmsStuAssignmentsDto.AssignmentSemesterSummaryResDto.builder()
+                        .semId(row.getSemId())
+                        .semYear(row.getSemYear())
+                        .semTerm(row.getSemTerm())
+                        .semesterLabel(semesterLabel(row.getSemYear(), row.getSemTerm()))
+                        .assignmentCount(row.getAssignmentCount())
+                        .build())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginateUtilRestApiRes<LmsStuAssignmentsDto.StudentAssignmentResDto> getSemesterAssignmentsPaged(
+            Long memberId, Long semId, String status, int page, int size) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        String safeStatus = normalizeStatus(status);
+        long total = lmsStuAssignmentsMapper.countSemesterAssignments(lmsPrfId, semId, safeStatus);
+        List<LmsStuAssignmentsDto.StudentAssignmentResDto> content =
+                lmsStuAssignmentsMapper.selectSemesterAssignmentsPaged(
+                                lmsPrfId, semId, safeStatus,
+                                PaginateUtilRestApi.offset(safePage, safeSize), safeSize).stream()
+                        .map(this::toAssignmentResponse)
+                        .toList();
+        return PaginateUtilRestApi.of(content, total, safePage, safeSize);
+    }
+
+    /* 상태 필터 정규화 — 빈 문자열/all → null(전체), 그 외 코드(NSB/SBM/GRD)는 그대로 */
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank() || "all".equalsIgnoreCase(status)) {
+            return null;
+        }
+        return status;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public LmsStuAssignmentsDto.SubmittableSummaryResDto getSubmittableSummary(Long memberId) {
         Long lmsPrfId = requireStudentLmsPrfId(memberId);
         long total = lmsStuAssignmentsMapper.countSubmittable(lmsPrfId, null, null);

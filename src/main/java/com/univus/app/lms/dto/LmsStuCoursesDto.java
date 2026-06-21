@@ -77,4 +77,37 @@ public final class LmsStuCoursesDto {
         private int totalCredits;
         private List<CourseRow> courses;
     }
+
+    /* ===== 학기 요약 (GET /courses/semesters — 카드 헤더, 과목은 학기별 페이지 조회) ===== */
+
+    /** 학기 요약 매핑 row (GROUP BY 집계) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SemesterSummaryRow {
+        private Long semId;             // SEMESTERS.SEM_ID (학기별 과목 페이지 키)
+        private Integer semYear;
+        private String semTerm;
+        private Integer inProgressFlag; // 1=진행중
+        private int courseCount;        // 그 학기 과목 수
+        private int totalCredits;       // 그 학기 총 학점
+    }
+
+    /** 학기 요약 응답 — courses 없이 헤더만(과목은 GET /courses/semesters/{semId} 페이지 조회) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SemesterSummaryResDto {
+        private Long semId;
+        private Integer semYear;
+        private String semTerm;
+        private String semesterLabel;
+        private boolean inProgress;
+        private int courseCount;
+        private int totalCredits;
+    }
 }

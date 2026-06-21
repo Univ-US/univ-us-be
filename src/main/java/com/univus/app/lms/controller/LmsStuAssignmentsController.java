@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/lms/student/assignments")
 @RequiredArgsConstructor
@@ -29,6 +31,31 @@ public class LmsStuAssignmentsController {
             Authentication authentication) {
         Long memberId = Long.valueOf(authentication.getPrincipal().toString());
         return ResponseEntity.ok(lmsStuAssignmentsService.getAssignments(memberId));
+    }
+
+    /** 학기별 과제 요약 (카드 헤더 — 상태 필터. 과제는 학기별 페이지 조회) */
+    // GET /api/lms/student/assignments/semesters?status=
+    @GetMapping("/semesters")
+    public ResponseEntity<List<LmsStuAssignmentsDto.AssignmentSemesterSummaryResDto>> requestGetAssignmentSemesters(
+            Authentication authentication,
+            @RequestParam(value = "status", required = false) String status) {
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
+        return ResponseEntity.ok(lmsStuAssignmentsService.getAssignmentSemesterSummaries(memberId, status));
+    }
+
+    /** 한 학기(semId)의 과제 1페이지 — 상태 필터, 서버 페이지네이션. page 0-based, size 기본 10 */
+    // GET /api/lms/student/assignments/semesters/{semId}?status=&page=&size=
+    @GetMapping("/semesters/{semId}")
+    public ResponseEntity<PaginateUtilRestApiRes<LmsStuAssignmentsDto.StudentAssignmentResDto>> requestGetSemesterAssignments(
+            Authentication authentication,
+            @PathVariable Long semId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
+        int p = page == null ? 0 : page;
+        int s = size == null ? 10 : size;
+        return ResponseEntity.ok(lmsStuAssignmentsService.getSemesterAssignmentsPaged(memberId, semId, status, p, s));
     }
 
     /** 제출 가능 과제 요약 — 사이드바 배지(전역 미제출 수) + 연도 필터 드롭다운 소스 */
