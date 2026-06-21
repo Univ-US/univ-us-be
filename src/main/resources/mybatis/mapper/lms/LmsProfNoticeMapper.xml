@@ -8,7 +8,7 @@ PLM-007 교수 공지사항 관리 SQL
         유효 첨부 = ATT_VAL_STATUS='ACT', 제거 = 'DEL' 소프트 무효화
 · PK는 IDENTITY 아닌 시퀀스 채번 → SEQ_LECTURE_ANNOUNCEMENT / SEQ_LECTURE_ANNOUNCEMENT_ATTACHMENT .NEXTVAL
 · 소유권: LECTURE.LMS_PRF_ID = 교수 LMS_PRF_ID. 작성자=강의 담당교수(LMS_PROFILE→MEMBER.MEMBER_NAME)
-· 페이지네이션 없음 — 선택 강의(lecId)의 공지 전체를 최신순 반환(FE가 Notice[] 소비)
+· 목록 = 선택 강의(lecId)의 공지를 최신순 서버 페이지네이션(count + OFFSET/FETCH, FE가 PageResponse 소비)
 -->
 <mapper namespace="com.univus.app.lms.mapper.LmsProfNoticeMapper">
 
@@ -72,12 +72,22 @@ PLM-007 교수 공지사항 관리 SQL
         JOIN MEMBER mb       ON mb.MEMBER_ID   = pr.MEMBER_ID
     </sql>
 
-    <!-- 선택 강의의 공지 목록 (최신순) — 본인 강의로 스코프 -->
-    <select id="selectNoticesByLecture" resultType="com.univus.app.lms.dto.LmsProfNoticeDto$NoticeRow">
+    <!-- 선택 강의의 공지 개수 (소유권 스코프 — 타 교수 강의면 0) -->
+    <select id="countNotices" resultType="long">
+        SELECT COUNT(*)
+        FROM LECTURE_ANNOUNCEMENT a
+        JOIN LECTURE l ON l.LEC_ID = a.LEC_ID
+        WHERE a.LEC_ID = #{lecId}
+          AND l.LMS_PRF_ID = #{professorLmsPrfId}
+    </select>
+
+    <!-- 선택 강의의 공지 1페이지 (최신순 + OFFSET/FETCH, Oracle 12c+) — 본인 강의로 스코프 -->
+    <select id="selectNoticesByLecturePaged" resultType="com.univus.app.lms.dto.LmsProfNoticeDto$NoticeRow">
         <include refid="selectNoticeColumns"/>
         WHERE a.LEC_ID = #{lecId}
           AND l.LMS_PRF_ID = #{professorLmsPrfId}
         ORDER BY a.LEC_ANN_REG_DATE DESC, a.LEC_ANN_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
 
     <!-- 공지 단건 (작성/수정 응답용) — 소유권은 서비스에서 선검증 -->

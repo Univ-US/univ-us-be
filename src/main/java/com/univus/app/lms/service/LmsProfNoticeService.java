@@ -1,5 +1,6 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsProfNoticeDto;
 import org.springframework.http.ResponseEntity;
 
@@ -11,8 +12,8 @@ public interface LmsProfNoticeService {
     /** 공지 작성 대상 = 담당 강의 드롭다운 */
     List<LmsProfNoticeDto.LectureResDto> getLectures(Long memberId);
 
-    /** 선택 강의(lecId)의 공지 목록 (최신순) */
-    List<LmsProfNoticeDto.NoticeResDto> getNotices(Long memberId, Long lecId);
+    /** 선택 강의(lecId)의 공지 1페이지 (최신순, 서버 페이지네이션) */
+    PaginateUtilRestApiRes<LmsProfNoticeDto.NoticeResDto> getNotices(Long memberId, Long lecId, int page, int size);
 
     /** 공지 작성 (multipart) → 생성 공지 반환 */
     LmsProfNoticeDto.NoticeResDto createNotice(Long memberId, LmsProfNoticeDto.CreateReqDto request);
