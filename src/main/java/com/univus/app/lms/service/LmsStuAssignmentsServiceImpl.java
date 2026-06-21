@@ -340,6 +340,7 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                         .courseName(row.getCourseName())
                         .professor(row.getProfessor())
                         .professorLmsPrfId(row.getProfessorLmsPrfId())
+                        .professorImageUrl(row.getProfessorImageUrl())
                         .lines(buildGuideLines(row.getLecAsnContent()))
                         .build())
                 .build();

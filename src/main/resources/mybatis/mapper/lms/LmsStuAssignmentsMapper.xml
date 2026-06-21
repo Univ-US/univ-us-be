@@ -179,6 +179,9 @@
                lc.LEC_COD_NAME AS courseName,
                pm.MEMBER_NAME AS professor,
                l.LMS_PRF_ID AS professorLmsPrfId,
+               (SELECT lpi.LMS_PRF_IMG_ORG_URL FROM LMS_PROFILE_IMAGE lpi
+                  WHERE lpi.LMS_PRF_ID = l.LMS_PRF_ID AND lpi.LMS_PRF_IMG_VAL_STATUS = 1
+                  ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC FETCH FIRST 1 ROWS ONLY) AS professorImageUrl,
                a.LEC_ASN_TITLE AS lecAsnTitle,
                DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS lecAsnContent,
                TO_CHAR(a.LEC_ASN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAsnRegDate,

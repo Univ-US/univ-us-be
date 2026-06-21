@@ -59,6 +59,7 @@ public final class LmsStuAssignmentsDto {
         private Integer lecSection;       // LECTURE.LEC_SECTION (분반)
         private String professor;         // MEMBER_NAME (조인)
         private Long professorLmsPrfId;   // LECTURE.LMS_PRF_ID (아바타 색 시드 — 같은 교수=같은 색)
+        private String professorImageUrl; // 교수 프로필 이미지 URL (LMS_PROFILE_IMAGE 최신 ACT, 없으면 null)
         private String lecAsnTitle;       // LECTURE_ASSIGNMENT.LEC_ASN_TITLE
         private String lecAsnContent;     // LECTURE_ASSIGNMENT.LEC_ASN_CONTENT
         private String lecAsnRegDate;     // LEC_ASN_REG_DATE TO_CHAR (작성자 행 등록일시)
@@ -237,6 +238,7 @@ public final class LmsStuAssignmentsDto {
         private String courseName;
         private String professor;
         private Long professorLmsPrfId;   // 아바타 색 시드(lmsAvatar — 같은 교수=같은 색)
+        private String professorImageUrl; // 교수 프로필 이미지 URL (없으면 null → 이니셜 폴백)
         private List<String> lines;
     }
 

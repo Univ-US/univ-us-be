@@ -33,6 +33,7 @@ public final class LmsProfChatDto {
         private Long professorLmsPrfId;  // LECTURE.LMS_PRF_ID (담당 교수 → 의미별칭)
         private String studentName;      // 학생 MEMBER_NAME (조인)
         private String studentNo;        // 학생 MEMBER.LOGIN_ID=학번 (조인 → 의미별칭)
+        private String studentImageUrl;  // 학생 프로필 이미지 URL (LMS_PROFILE_IMAGE 최신 ACT, 없으면 null)
         private String courseName;       // LECTURE_CODE.LEC_COD_NAME (조인)
         private Integer lecSection;      // LECTURE.LEC_SECTION
         private String lastMessage;      // 최근 메시지 미리보기 (서브쿼리 파생 → 의미명)
