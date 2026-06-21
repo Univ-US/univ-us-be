@@ -70,6 +70,7 @@ public class SpringSecurityConfig {
 							"/api/auth/logout",
 							"/api/auth/admin/login",
 							"/api/auth/user/login",
+							"/api/auth/recovery/**",
             	        "/oauth2/**",
             	        "/ws-univus/**",
 
