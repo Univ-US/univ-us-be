@@ -100,6 +100,14 @@ public class LmsStuChatServiceImpl implements LmsStuChatService {
         return count == null ? 0 : count;
     }
 
+    @Override
+    @Transactional
+    public void deleteChatRoom(Long memberId, Long roomId) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        requireStudentRoom(roomId, lmsPrfId);
+        lmsStuChatMapper.softDeleteRoom(roomId);
+    }
+
     private LmsStuChatDto.ChatRoomResDto requireStudentRoom(Long roomId, Long lmsPrfId) {
         if (roomId == null) {
             throw new IllegalArgumentException("채팅방 ID가 필요합니다.");

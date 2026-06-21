@@ -18,4 +18,6 @@ public interface LmsProfChatService {
             LmsProfChatDto.SendMessageReqDto request);
 
     int getUnreadCount(Long memberId);
+
+    void deleteChatRoom(Long memberId, Long roomId);
 }
