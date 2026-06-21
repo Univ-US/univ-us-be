@@ -42,6 +42,9 @@
         l.LMS_PRF_ID AS professorLmsPrfId,
         sm.MEMBER_NAME AS studentName,
         sm.LOGIN_ID AS studentNo,
+        (SELECT lpi.LMS_PRF_IMG_ORG_URL FROM LMS_PROFILE_IMAGE lpi
+            WHERE lpi.LMS_PRF_ID = cr.LMS_PRF_ID AND lpi.LMS_PRF_IMG_VAL_STATUS = 1
+            ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC FETCH FIRST 1 ROW ONLY) AS studentImageUrl,
         lc.LEC_COD_NAME AS courseName,
         l.LEC_SECTION AS lecSection,
         COALESCE(
