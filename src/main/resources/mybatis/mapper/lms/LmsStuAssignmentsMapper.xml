@@ -71,21 +71,8 @@
                  a.LEC_ASN_ID DESC
     </select>
 
-    <select id="selectSubmittableRows" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmittableRow">
-        SELECT s.SEM_YEAR AS semYear,
-               s.SEM_TERM AS semTerm,
-               l.LEC_ID AS lecId,
-               l.LEC_SECTION AS lecSection,
-               a.LEC_ASN_ID AS assignmentId,
-               lc.LEC_COD_NAME AS courseName,
-               pm.MEMBER_NAME AS professor,
-               l.LMS_PRF_ID AS professorLmsPrfId,
-               a.LEC_ASN_TITLE AS lecAsnTitle,
-               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS lecAsnContent,
-               TO_CHAR(a.LEC_ASN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAsnRegDate,
-               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY.MM.DD HH24:MI') AS dueLabel,
-               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS dueIso,
-               a.LEC_ASN_VAL_STATUS AS lecAsnValStatus
+    <!-- 제출 가능 과제 공용 FROM/WHERE — 소유권(본인 수강·DRP 제외·미시작 학기 제외) + 제출 가능 조건(AVL/MOD/LAT·마감 전 or LAT·미제출) -->
+    <sql id="submittableFrom">
         FROM LECTURE_STUDENT_ENROLLMENT e
         JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
@@ -102,8 +89,61 @@
           AND a.LEC_ASN_VAL_STATUS IN ('AVL', 'MOD', 'LAT')
           AND (a.LEC_ASN_DUE_DATE &gt;= SYSTIMESTAMP OR a.LEC_ASN_VAL_STATUS = 'LAT')
           AND (sb.LEC_ASN_SBM_ID IS NULL OR sb.LEC_ASN_SBM_STATUS = 'NSB')
+    </sql>
+
+    <!-- 연도/학기 선택 필터 (null이면 미적용 = 전체) -->
+    <sql id="submittableYearTermFilter">
+        <if test="year != null">AND s.SEM_YEAR = #{year}</if>
+        <if test="term != null and term != ''">AND s.SEM_TERM = #{term}</if>
+    </sql>
+
+    <!-- 제출 가능 과제 개수 (year/term null이면 전역) -->
+    <select id="countSubmittable" resultType="long">
+        SELECT COUNT(*)
+        <include refid="submittableFrom"/>
+        <include refid="submittableYearTermFilter"/>
+    </select>
+
+    <!-- 제출 가능 과제 1페이지 (마감 임박순 + OFFSET/FETCH, Oracle 12c+) -->
+    <select id="selectSubmittablePaged" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmittableRow">
+        SELECT s.SEM_YEAR AS semYear,
+               s.SEM_TERM AS semTerm,
+               l.LEC_ID AS lecId,
+               l.LEC_SECTION AS lecSection,
+               a.LEC_ASN_ID AS assignmentId,
+               lc.LEC_COD_NAME AS courseName,
+               pm.MEMBER_NAME AS professor,
+               l.LMS_PRF_ID AS professorLmsPrfId,
+               a.LEC_ASN_TITLE AS lecAsnTitle,
+               DBMS_LOB.SUBSTR(a.LEC_ASN_CONTENT, 4000, 1) AS lecAsnContent,
+               TO_CHAR(a.LEC_ASN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAsnRegDate,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY.MM.DD HH24:MI') AS dueLabel,
+               TO_CHAR(a.LEC_ASN_DUE_DATE, 'YYYY-MM-DD"T"HH24:MI:SS') AS dueIso,
+               a.LEC_ASN_VAL_STATUS AS lecAsnValStatus
+        <include refid="submittableFrom"/>
+        <include refid="submittableYearTermFilter"/>
         ORDER BY a.LEC_ASN_DUE_DATE,
                  a.LEC_ASN_ID
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <!-- 제출 가능 과제가 존재하는 연도 목록 (필터 무관, 내림차순) -->
+    <select id="selectSubmittableYears" resultType="java.lang.Integer">
+        SELECT DISTINCT s.SEM_YEAR AS semYear
+        <include refid="submittableFrom"/>
+        ORDER BY semYear DESC
+    </select>
+
+    <!-- 딥링크 대상 과제의 1-based 순번 (selectSubmittablePaged ORDER BY와 동일) -->
+    <select id="selectSubmittableRank" resultType="java.lang.Integer">
+        SELECT rn
+        FROM (
+            SELECT a.LEC_ASN_ID AS assignmentId,
+                   ROW_NUMBER() OVER (ORDER BY a.LEC_ASN_DUE_DATE, a.LEC_ASN_ID) AS rn
+            <include refid="submittableFrom"/>
+            <include refid="submittableYearTermFilter"/>
+        )
+        WHERE assignmentId = #{focusAssignmentId}
     </select>
 
     <select id="selectSubmitAccess" resultType="com.univus.app.lms.dto.LmsStuAssignmentsDto$SubmitAccessRow">

@@ -1,5 +1,7 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.common.StorageService;
 import com.univus.app.lms.code.LecAsnSbmStatusCode;
 import com.univus.app.lms.dto.LmsStuAssignmentsDto;
@@ -91,11 +93,40 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<LmsStuAssignmentsDto.SubmittableAssignmentResDto> getSubmittableAssignments(Long memberId) {
+    public LmsStuAssignmentsDto.SubmittableSummaryResDto getSubmittableSummary(Long memberId) {
         Long lmsPrfId = requireStudentLmsPrfId(memberId);
-        return lmsStuAssignmentsMapper.selectSubmittableRows(lmsPrfId).stream()
-                .map(this::toSubmittableResponse)
-                .toList();
+        long total = lmsStuAssignmentsMapper.countSubmittable(lmsPrfId, null, null);
+        List<Integer> years = lmsStuAssignmentsMapper.selectSubmittableYears(lmsPrfId);
+        return LmsStuAssignmentsDto.SubmittableSummaryResDto.builder()
+                .totalCount(total)
+                .years(years)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginateUtilRestApiRes<LmsStuAssignmentsDto.SubmittableAssignmentResDto> getSubmittable(
+            Long memberId, Integer year, String term, int page, int size, Long focusAssignmentId) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        // 딥링크: 대상 과제의 순번(rank)으로 그 과제가 속한 페이지를 계산해 그 페이지를 반환
+        int targetPage = page;
+        if (focusAssignmentId != null) {
+            Integer rank = lmsStuAssignmentsMapper.selectSubmittableRank(lmsPrfId, year, term, focusAssignmentId);
+            if (rank != null) {
+                targetPage = (rank - 1) / safeSize;
+            }
+        }
+        int safePage = PaginateUtilRestApi.normalizePage(targetPage);
+        long total = lmsStuAssignmentsMapper.countSubmittable(lmsPrfId, year, term);
+        List<LmsStuAssignmentsDto.SubmittableAssignmentResDto> content =
+                lmsStuAssignmentsMapper.selectSubmittablePaged(
+                                lmsPrfId, year, term, PaginateUtilRestApi.offset(safePage, safeSize), safeSize).stream()
+                        .map(this::toSubmittableResponse)
+                        .toList();
+        log.info("학생 제출 가능 과제 조회 lmsPrfId={} year={} term={} page={} size={} total={}",
+                lmsPrfId, year, term, safePage, safeSize, total);
+        return PaginateUtilRestApi.of(content, total, safePage, safeSize);
     }
 
     @Override
@@ -110,8 +141,15 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
         validateSubmittable(access);
 
         MultipartFile file = request == null ? null : request.getFile();
-        validateFile(file);
         String memo = normalizeMemo(request == null ? null : request.getMemo());
+        // 제출 파일은 선택 — 단, 파일·메모 둘 다 비면 빈 제출이라 거부(파일 또는 메모 중 하나 필요)
+        boolean hasFile = file != null && !file.isEmpty();
+        if (!hasFile && memo == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "제출 파일 또는 메모를 입력해 주세요.");
+        }
+        if (hasFile) {
+            validateFile(file);
+        }
 
         Long submissionId = access.getSubmissionId();
         if (submissionId == null) {
@@ -129,7 +167,9 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
             }
         }
 
-        saveAttachment(submissionId, file);
+        if (hasFile) {
+            saveAttachment(submissionId, file);
+        }
         log.info("학생 과제 제출 memberId={} lmsPrfId={} assignmentId={} submissionId={}",
                 memberId, lmsPrfId, assignmentId, submissionId);
     }

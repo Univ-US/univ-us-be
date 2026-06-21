@@ -211,6 +211,17 @@ public final class LmsStuAssignmentsDto {
         private List<String> lines;
     }
 
+    /** 제출 가능 과제 요약 — 사이드바 배지(전역 미제출 수) + 연도 필터 드롭다운 소스 */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SubmittableSummaryResDto {
+        private long totalCount;        // 전역(필터 무관) 제출 가능 과제 수
+        private List<Integer> years;    // 제출 가능 과제가 존재하는 연도(내림차순)
+    }
+
     @Getter
     @Setter
     @NoArgsConstructor
