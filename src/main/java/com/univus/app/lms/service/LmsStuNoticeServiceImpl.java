@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 /**
  * SLM-009 학생 공지사항 열람 ServiceImpl.
- * 화면 = 수강 과목 1개 선택 → 그 과목 공지를 서버 페이지네이션(클라 slice 없음, 교수 PLM-005 미러).
+ * 화면 = 수강 과목 1개 선택 → 그 과목 공지를 서버 페이지네이션(클라 slice 없음).
  * 소유권: 본인 수강(DRP 제외) 강의의 공지만 — 매퍼 ENROLLMENT INNER JOIN으로 IDOR 차단.
  */
 @Slf4j

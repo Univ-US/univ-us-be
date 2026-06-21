@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * - 첨부 다중: 작성=여러 파일 / 수정=기존 유지 + 추가(files) + 개별 제거(removeAttachmentIds, ATT_VAL_STATUS='DEL' 소프트 무효화).
  * - 매퍼는 매핑 row 반환 → service가 ResDto 변환(첨부 조립). 검증 실패 = ResponseStatusException(400/403).
  * - 파일 저장 = StorageService(로컬 디스크) 재사용. 공지 첨부는 합계 100MB 제한.
- * - 목록 = 선택 강의 공지를 최신순 서버 페이지네이션(PLM-005 미러). 제목 200자, 작성자=담당교수.
+ * - 목록 = 선택 강의 공지를 최신순 서버 페이지네이션. 제목 200자, 작성자=담당교수.
  */
 @Slf4j
 @Service

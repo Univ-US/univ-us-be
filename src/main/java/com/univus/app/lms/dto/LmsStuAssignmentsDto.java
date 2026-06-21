@@ -225,7 +225,6 @@ public final class LmsStuAssignmentsDto {
         private String dDay;              // 파생
         private String note;              // 파생
         private String badge;             // 파생
-        private String dotColor;          // 파생
         private SubmitGuideResDto guide;
     }
 

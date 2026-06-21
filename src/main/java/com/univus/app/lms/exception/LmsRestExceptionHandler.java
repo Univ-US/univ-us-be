@@ -20,21 +20,15 @@ import java.util.Map;
 /**
  * LMS 전용 예외 핸들러.
  *
- * <p>{@code @RestControllerAdvice(basePackages = "com.univus.app.lms")} 로 <b>LMS 컨트롤러에만</b> 적용된다.
- * <ul>
- *   <li>스코프 격리: 팀원 도메인(member/community/subscription 등)에는 영향 없음(공유 exception 패키지 무수정).</li>
- *   <li>우선순위: 여러 {@code @ControllerAdvice} 간 해석은 "예외 구체성"이 아니라 "advice 순서"로 정해진다.
- *       전역 catch-all({@code Exception.class}, 500)보다 확실히 먼저 잡으려면 {@code @Order(HIGHEST_PRECEDENCE)}가 필요
- *       (없으면 비결정적 — 전역이 먼저 순회되면 SQL 등 미처리 예외의 raw 메시지가 그대로 노출됨).
- *       단 {@code basePackages}로 LMS 컨트롤러에만 applicable하므로, 이 순서 지정은 팀원 도메인엔 영향 없음(건너뜀).</li>
- * </ul>
- * 이로써 @Valid 실패·깨진 JSON·이미지 검증·파일 부재가 500이 아니라 400/404/415로 응답된다.
- * (정상 흐름의 {@code ResponseStatusException} 403/404/400 등은 스프링이 그대로 처리하므로 여기서 다루지 않음.)
+ * <p>{@code @RestControllerAdvice(basePackages = "com.univus.app.lms")} 로 LMS 컨트롤러에만 적용된다.
+ * @Valid 실패·깨진 JSON·이미지 검증·파일 부재를 400/404/415로, DB 접근 오류를 일반 메시지 500으로 응답한다.
+ * (정상 흐름의 {@code ResponseStatusException} 403/404/400 등은 스프링이 그대로 처리.)
  *
- * <p>응답 형식은 {@code {success:false, message:...}} 스키마를 따른다.
+ * <p>{@code @Order(HIGHEST_PRECEDENCE)} = 전역 catch-all({@code Exception.class})보다 먼저 적용.
+ * 응답 형식은 {@code {success:false, message:...}} 스키마.
  */
 @Slf4j
-@Order(Ordered.HIGHEST_PRECEDENCE) // 전역 advice보다 먼저 순회 → LMS 예외는 우리 핸들러가 우선(전역 catch-all raw 누수 차단). LMS 스코프라 팀원 도메인 무영향.
+@Order(Ordered.HIGHEST_PRECEDENCE) // 전역 catch-all보다 먼저 적용(LMS 스코프 한정)
 @RestControllerAdvice(basePackages = "com.univus.app.lms")
 public class LmsRestExceptionHandler {
 
@@ -77,9 +71,7 @@ public class LmsRestExceptionHandler {
     }
 
     /* DB 접근 오류(MyBatis ORA/SQL 문법오류 등) → 500 일반 메시지.
-       원문(ex.getMessage()의 ORA 코드·SQL 단편)은 서버 로그에만 남기고 응답엔 싣지 않아,
-       전역 catch-all이 "...: " + ex.getMessage()로 raw를 노출하던 경로를 LMS 한정으로 차단한다.
-       (DataAccessException은 ResponseStatusException의 상위가 아니므로 정상 403/404 흐름엔 무간섭) */
+       원문(ORA 코드·SQL 단편)은 서버 로그에만 남기고 응답엔 일반 메시지만 싣는다. */
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<Map<String, Object>> handleDataAccess(DataAccessException ex) {
         log.error("LMS DB 처리 오류", ex);
