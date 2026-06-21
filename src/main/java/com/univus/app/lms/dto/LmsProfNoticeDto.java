@@ -17,7 +17,7 @@ import java.util.List;
  * <p>매핑 row(LectureRow/NoticeRow/AttachmentRow/AttachmentDiskRow/InsertParam)
  * + 응답(LectureResDto/NoticeResDto/AttachmentResDto) + 요청(CreateReqDto/UpdateReqDto).
  * 본체=LECTURE_ANNOUNCEMENT, 첨부=LECTURE_ANNOUNCEMENT_ATTACHMENT.
- * (단 목록 페이지네이션·메타 없음 — 선택 강의의 공지 전체를 최신순으로 반환). MyBatis resultType = {@code ...LmsProfNoticeDto$Inner}.
+ * (목록 = 선택 강의의 공지를 최신순 서버 페이지네이션). MyBatis resultType = {@code ...LmsProfNoticeDto$Inner}.
  * <p>※ 명명 규칙: DTO 변수명 = DB 컬럼명 카멜(자기/앵커 LECTURE_ANNOUNCEMENT 테이블), 조인/파생 컬럼은 의미 별칭 — 커뮤니티 PostDto 컨벤션.
  *    응답 JSON·요청 form key = 컬럼 카멜(lecAnnTitle·lecAnnContent·lecAnnRegDate·semYear·semTerm).
  *    PK/ID(noticeId·attachmentId)·조인 의미명(courseName·author)·파일 메타(fileName·fileSize)·목록 축약 listDate는 의미명 유지,
@@ -44,7 +44,7 @@ public final class LmsProfNoticeDto {
         private String semTerm;     // SEMESTERS.SEM_TERM
     }
 
-    /** 공지 본체 1건 매핑 (selectNoticesByLecture / selectNoticeById) — 첨부는 service가 별도 조립 */
+    /** 공지 본체 1건 매핑 (selectNoticesByLecturePaged / selectNoticeById) — 첨부는 service가 별도 조립 */
     @Getter
     @Setter
     @NoArgsConstructor

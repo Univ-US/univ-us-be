@@ -1,5 +1,7 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsStuCoursesDto;
 import com.univus.app.lms.mapper.LmsStuCoursesMapper;
 import lombok.RequiredArgsConstructor;
@@ -38,8 +40,36 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
     @Transactional(readOnly = true)
     public List<LmsStuCoursesDto.SemesterCoursesResDto> getCourses(Long memberId) {
         Long lmsPrfId = requireStudentLmsPrfId(memberId);
-        List<LmsStuCoursesDto.CourseFlatRow> rows = lmsStuCoursesMapper.selectStudentCourseRows(lmsPrfId);
+        return assembleSemesters(lmsStuCoursesMapper.selectStudentCourseRows(lmsPrfId));
+    }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<LmsStuCoursesDto.SemesterSummaryResDto> getSemesterSummaries(Long memberId) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        return lmsStuCoursesMapper.selectStudentSemesterSummaries(lmsPrfId).stream()
+                .map(this::toSummaryResDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginateUtilRestApiRes<LmsStuCoursesDto.CourseRow> getSemesterCoursesPaged(
+            Long memberId, Long semId, int page, int size) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        long total = lmsStuCoursesMapper.countSemesterCourses(lmsPrfId, semId);
+        List<Long> lecIds = lmsStuCoursesMapper.selectSemesterCourseLecIdsPaged(
+                lmsPrfId, semId, PaginateUtilRestApi.offset(safePage, safeSize), safeSize);
+        List<LmsStuCoursesDto.CourseRow> content = lecIds.isEmpty()
+                ? List.of()
+                : assembleCourseRows(lmsStuCoursesMapper.selectStudentCourseRowsByLecIds(lmsPrfId, lecIds));
+        return PaginateUtilRestApi.of(content, total, safePage, safeSize);
+    }
+
+    /* flat 행 → 학기 그룹 재조립 (대시보드 전체 응답용. 학기 LinkedHashMap 보존 순서 = 쿼리 정렬 순서) */
+    private List<LmsStuCoursesDto.SemesterCoursesResDto> assembleSemesters(List<LmsStuCoursesDto.CourseFlatRow> rows) {
         Map<String, SemesterAccumulator> semesters = new LinkedHashMap<>();
         for (LmsStuCoursesDto.CourseFlatRow row : rows) {
             String semesterKey = row.getSemYear() + ":" + row.getSemTerm();
@@ -48,10 +78,32 @@ public class LmsStuCoursesServiceImpl implements LmsStuCoursesService {
                     key -> new SemesterAccumulator(row.getSemYear(), row.getSemTerm(), isInProgress(row)));
             semester.add(row);
         }
-
         return semesters.values().stream()
                 .map(SemesterAccumulator::toResponse)
                 .toList();
+    }
+
+    /* flat 행 → 과목 그룹 재조립 (학기별 과목 페이지용. 시간표 합침, lecId 보존 순서 = 쿼리 정렬 순서) */
+    private List<LmsStuCoursesDto.CourseRow> assembleCourseRows(List<LmsStuCoursesDto.CourseFlatRow> rows) {
+        Map<Long, CourseAccumulator> courses = new LinkedHashMap<>();
+        for (LmsStuCoursesDto.CourseFlatRow row : rows) {
+            courses.computeIfAbsent(row.getLecId(), key -> new CourseAccumulator(row)).addSchedule(row);
+        }
+        return courses.values().stream()
+                .map(CourseAccumulator::toResponse)
+                .toList();
+    }
+
+    private LmsStuCoursesDto.SemesterSummaryResDto toSummaryResDto(LmsStuCoursesDto.SemesterSummaryRow row) {
+        return LmsStuCoursesDto.SemesterSummaryResDto.builder()
+                .semId(row.getSemId())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .semesterLabel(semesterLabel(row.getSemYear(), row.getSemTerm()))
+                .inProgress(row.getInProgressFlag() != null && row.getInProgressFlag() == 1)
+                .courseCount(row.getCourseCount())
+                .totalCredits(row.getTotalCredits())
+                .build();
     }
 
     private Long requireStudentLmsPrfId(Long memberId) {

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- SLM-009 학생 공지 SQL (수강 강의 LECTURE_STUDENT_ENROLLMENT 기준, 과목 선택 → 서버 페이지네이션) -->
 <mapper namespace="com.univus.app.lms.mapper.LmsStuNoticeMapper">
 
     <select id="findLmsPrfIdByMemberId" resultType="long">
@@ -9,17 +10,56 @@
         WHERE MEMBER_ID = #{memberId}
     </select>
 
-    <select id="selectStudentNotices" resultType="com.univus.app.lms.dto.LmsStuNoticeDto$NoticeRow">
-        SELECT a.LEC_ANN_ID AS noticeId,
-               s.SEM_YEAR AS semYear,
-               s.SEM_TERM AS semTerm,
-               l.LEC_ID AS lecId,
-               l.LEC_SECTION AS lecSection,
-               lc.LEC_COD_NAME AS courseName,
-               lc.LEC_COD_NAME AS courseFullName,
-               a.LEC_ANN_TITLE AS lecAnnTitle,
+    <!-- 수강 과목(강의) 드롭다운 — 본인 수강(DRP 제외), 미시작 학기 제외 -->
+    <select id="selectEnrolledLectures" resultType="com.univus.app.lms.dto.LmsStuNoticeDto$LectureRow">
+        SELECT l.LEC_ID         AS lecId,
+               lc.LEC_COD_NAME  AS courseName,
+               l.LEC_SECTION    AS lecSection,
+               s.SEM_YEAR       AS semYear,
+               s.SEM_TERM       AS semTerm
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l       ON l.LEC_ID       = e.LEC_ID
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
+        ORDER BY s.SEM_YEAR DESC,
+                 CASE s.SEM_TERM
+                     WHEN 'WNT' THEN 4
+                     WHEN 'SM2' THEN 3
+                     WHEN 'SMR' THEN 2
+                     WHEN 'SM1' THEN 1
+                     ELSE 0
+                 END DESC,
+                 lc.LEC_COD_NAME,
+                 l.LEC_SECTION,
+                 l.LEC_ID
+    </select>
+
+    <!-- 선택 과목(lecId) 공지 + 소유권(본인 수강 강의만 — INNER JOIN ENROLLMENT로 IDOR 차단) 공용 FROM -->
+    <sql id="noticeOwnership">
+        FROM LECTURE_ANNOUNCEMENT a
+        JOIN LECTURE l ON l.LEC_ID = a.LEC_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = l.LEC_ID
+            AND e.LMS_PRF_ID = #{lmsPrfId}
+            AND e.LEC_STD_ENR_STATUS != 'DRP'
+        WHERE a.LEC_ID = #{lecId}
+    </sql>
+
+    <!-- 선택 과목 공지 개수 -->
+    <select id="countNotices" resultType="int">
+        SELECT COUNT(*)
+        <include refid="noticeOwnership"/>
+    </select>
+
+    <!-- 선택 과목 공지 1페이지 (최신순 + OFFSET/FETCH, Oracle 12c+). 작성자 = LECTURE.LMS_PRF_ID → MEMBER -->
+    <select id="selectNoticesPaged" resultType="com.univus.app.lms.dto.LmsStuNoticeDto$NoticeRow">
+        SELECT a.LEC_ANN_ID     AS noticeId,
+               a.LEC_ANN_TITLE  AS lecAnnTitle,
                a.LEC_ANN_CONTENT AS lecAnnContent,
-               mb.MEMBER_NAME AS author,
+               mb.MEMBER_NAME   AS author,
                (
                    SELECT lpi.LMS_PRF_IMG_ORG_URL
                    FROM LMS_PROFILE_IMAGE lpi
@@ -28,29 +68,27 @@
                    ORDER BY lpi.LMS_PRF_IMG_REG_DATE DESC
                    FETCH FIRST 1 ROWS ONLY
                ) AS authorImageUrl,
-               l.LMS_PRF_ID AS professorLmsPrfId,
+               l.LMS_PRF_ID     AS professorLmsPrfId,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'YYYY-MM-DD HH24:MI') AS lecAnnRegDate,
                TO_CHAR(a.LEC_ANN_REG_DATE, 'MM.DD') AS listDate
-        FROM LECTURE_STUDENT_ENROLLMENT e
-        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
-        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
-        JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID
-        JOIN LECTURE_ANNOUNCEMENT a ON a.LEC_ID = l.LEC_ID
+        FROM LECTURE_ANNOUNCEMENT a
+        JOIN LECTURE l ON l.LEC_ID = a.LEC_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = l.LEC_ID
+            AND e.LMS_PRF_ID = #{lmsPrfId}
+            AND e.LEC_STD_ENR_STATUS != 'DRP'
         JOIN LMS_PROFILE pr ON pr.LMS_PRF_ID = l.LMS_PRF_ID
         JOIN MEMBER mb ON mb.MEMBER_ID = pr.MEMBER_ID
-        WHERE e.LMS_PRF_ID = #{lmsPrfId}
-          AND e.LEC_STD_ENR_STATUS != 'DRP'
-          AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
-        ORDER BY s.SEM_YEAR DESC,
-                 s.SEM_ID DESC,
-                 a.LEC_ANN_REG_DATE DESC,
-                 a.LEC_ANN_ID DESC
+        WHERE a.LEC_ID = #{lecId}
+        ORDER BY a.LEC_ANN_REG_DATE DESC, a.LEC_ANN_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
     </select>
 
+    <!-- 현재 페이지 공지들의 유효(ACT) 첨부 (서비스에서 noticeId로 그룹핑) -->
     <select id="selectActiveAttachmentsByNoticeIds"
             resultType="com.univus.app.lms.dto.LmsStuNoticeDto$AttachmentRow">
-        SELECT att.LEC_ANN_ID AS noticeId,
-               att.LEC_ANN_ATT_ID AS attachmentId,
+        SELECT att.LEC_ANN_ID          AS noticeId,
+               att.LEC_ANN_ATT_ID      AS attachmentId,
                att.LEC_ANN_ATT_ORG_FIL_NAME AS fileName,
                att.LEC_ANN_ATT_FIL_SIZE AS fileSize
         FROM LECTURE_ANNOUNCEMENT_ATTACHMENT att
@@ -62,6 +100,7 @@
                  att.LEC_ANN_ATT_ID
     </select>
 
+    <!-- 첨부 다운로드 — 소유권: 본인 수강 강의(DRP 제외)의 ACT 첨부만 -->
     <select id="selectOwnedActiveAttachment"
             resultType="com.univus.app.lms.dto.LmsStuNoticeDto$AttachmentDownloadRow">
         SELECT att.LEC_ANN_ATT_TRN_FIL_NAME AS trnFileName,

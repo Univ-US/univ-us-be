@@ -22,6 +22,7 @@ public final class LmsStuAssignmentsDto {
     @AllArgsConstructor
     @Builder
     public static class AssignmentFlatRow {
+        private Long semId;               // SEMESTERS.SEM_ID (학기별 페이지 조회 키)
         private Integer semYear;          // SEMESTERS.SEM_YEAR
         private String semTerm;           // SEMESTERS.SEM_TERM
         private Long assignmentId;        // LECTURE_ASSIGNMENT.LEC_ASN_ID (PK)
@@ -112,6 +113,35 @@ public final class LmsStuAssignmentsDto {
     @Builder
     public static class AssignmentsResultResDto {
         private List<SemesterAssignmentsResDto> semesters;
+    }
+
+    /* ===== 학기별 과제 페이지네이션 (카드 헤더는 요약, 과제는 학기별 페이지 조회) ===== */
+
+    /** 학기별 과제 요약 매핑 row (상태 필터 적용 GROUP BY) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AssignmentSemesterSummaryRow {
+        private Long semId;
+        private Integer semYear;
+        private String semTerm;
+        private int assignmentCount;
+    }
+
+    /** 학기별 과제 요약 응답 (카드 헤더 — 과제는 GET /assignments/semesters/{semId} 페이지 조회) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AssignmentSemesterSummaryResDto {
+        private Long semId;
+        private Integer semYear;
+        private String semTerm;
+        private String semesterLabel;
+        private int assignmentCount;
     }
 
     @Getter
@@ -209,6 +239,17 @@ public final class LmsStuAssignmentsDto {
         private String professor;
         private Long professorLmsPrfId;   // 아바타 색 시드(lmsAvatar — 같은 교수=같은 색)
         private List<String> lines;
+    }
+
+    /** 제출 가능 과제 요약 — 사이드바 배지(전역 미제출 수) + 연도 필터 드롭다운 소스 */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SubmittableSummaryResDto {
+        private long totalCount;        // 전역(필터 무관) 제출 가능 과제 수
+        private List<Integer> years;    // 제출 가능 과제가 존재하는 연도(내림차순)
     }
 
     @Getter

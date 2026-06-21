@@ -24,9 +24,15 @@ public interface LmsProfNoticeMapper {
     int countOwnedNotice(@Param("noticeId") Long noticeId,
                          @Param("professorLmsPrfId") Long professorLmsPrfId);
 
-    /** 선택 강의의 공지 목록 (최신순) — 본인 강의로 스코프(타 교수 강의면 빈 결과). 첨부는 별도 조회 */
-    List<LmsProfNoticeDto.NoticeRow> selectNoticesByLecture(@Param("lecId") Long lecId,
-                                                            @Param("professorLmsPrfId") Long professorLmsPrfId);
+    /** 선택 강의의 공지 개수 (소유권 스코프 — 타 교수 강의면 0) */
+    long countNotices(@Param("lecId") Long lecId,
+                      @Param("professorLmsPrfId") Long professorLmsPrfId);
+
+    /** 선택 강의의 공지 1페이지 (최신순 + OFFSET/FETCH) — 본인 강의로 스코프. 첨부는 별도 조회 */
+    List<LmsProfNoticeDto.NoticeRow> selectNoticesByLecturePaged(@Param("lecId") Long lecId,
+                                                                 @Param("professorLmsPrfId") Long professorLmsPrfId,
+                                                                 @Param("offset") int offset,
+                                                                 @Param("size") int size);
 
     /** 공지 단건 (작성/수정 응답용 — 본체만) */
     LmsProfNoticeDto.NoticeRow selectNoticeById(@Param("noticeId") Long noticeId);

@@ -1,5 +1,6 @@
 package com.univus.app.lms.controller;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsProfNoticeDto;
 import com.univus.app.lms.service.LmsProfNoticeService;
 import jakarta.validation.Valid;
@@ -36,14 +37,18 @@ public class LmsProfNoticeController {
         return ResponseEntity.ok(lmsProfNoticeService.getLectures(memberId));
     }
 
-    /** 선택 강의의 공지 목록 (최신순) */
-    // GET /api/lms/professor/notices?lecId=
+    /** 선택 강의의 공지 1페이지 (최신순, 서버 페이지네이션). page 0-based, size 기본 10 */
+    // GET /api/lms/professor/notices?lecId=&page=&size=
     @GetMapping
-    public ResponseEntity<List<LmsProfNoticeDto.NoticeResDto>> requestGetNotices(
+    public ResponseEntity<PaginateUtilRestApiRes<LmsProfNoticeDto.NoticeResDto>> requestGetNotices(
             Authentication authentication,
-            @RequestParam("lecId") Long lecId) {
+            @RequestParam("lecId") Long lecId,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size) {
         Long memberId = Long.valueOf(authentication.getPrincipal().toString());
-        return ResponseEntity.ok(lmsProfNoticeService.getNotices(memberId, lecId));
+        int p = page == null ? 0 : page;
+        int s = size == null ? 10 : size;
+        return ResponseEntity.ok(lmsProfNoticeService.getNotices(memberId, lecId, p, s));
     }
 
     /** 공지 작성 (multipart: lecId·title 필수, content[에디터 HTML]·files 선택) → 생성 공지 반환 */

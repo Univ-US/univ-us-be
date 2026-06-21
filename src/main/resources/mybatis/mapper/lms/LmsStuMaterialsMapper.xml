@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<!-- SLM-006 학생 강의 자료 SQL (수강 강의 LECTURE_STUDENT_ENROLLMENT 기준) -->
+<!-- SLM-006 학생 강의 자료 SQL (수강 강의 LECTURE_STUDENT_ENROLLMENT 기준, 과목 선택 → 서버 페이지네이션) -->
 <mapper namespace="com.univus.app.lms.mapper.LmsStuMaterialsMapper">
 
     <select id="findLmsPrfIdByMemberId" resultType="long">
@@ -9,21 +9,17 @@
         WHERE MEMBER_ID = #{memberId}
     </select>
 
-    <select id="selectMaterialRows" resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$MaterialFlatRow">
-        SELECT s.SEM_YEAR AS semYear,
-               s.SEM_TERM AS semTerm,
-               l.LEC_ID AS lecId,
-               lc.LEC_COD_NAME AS courseName,
-               l.LEC_SECTION AS lecSection,
-               u.LEC_UPL_ID AS uploadId,
-               u.LEC_UPL_TITLE AS lecUplTitle,
-               u.LEC_UPL_CONTENT AS lecUplContent,
-               TO_CHAR(u.LEC_UPL_REG_DATE, 'YYYY-MM-DD') AS lecUplRegDate
+    <!-- 수강 과목(강의) 드롭다운 — 본인 수강(DRP 제외), 미시작 학기 제외 -->
+    <select id="selectEnrolledLectures" resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$LectureRow">
+        SELECT l.LEC_ID         AS lecId,
+               lc.LEC_COD_NAME  AS courseName,
+               l.LEC_SECTION    AS lecSection,
+               s.SEM_YEAR       AS semYear,
+               s.SEM_TERM       AS semTerm
         FROM LECTURE_STUDENT_ENROLLMENT e
-        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        JOIN LECTURE l       ON l.LEC_ID       = e.LEC_ID
         JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
-        JOIN SEMESTERS s ON s.SEM_ID = l.SEM_ID
-        LEFT JOIN LECTURE_UPLOADING u ON u.LEC_ID = l.LEC_ID
+        JOIN SEMESTERS s     ON s.SEM_ID       = l.SEM_ID
         WHERE e.LMS_PRF_ID = #{lmsPrfId}
           AND e.LEC_STD_ENR_STATUS != 'DRP'
           AND TRUNC(SYSDATE) &gt;= TRUNC(s.SEM_STR_DATE)
@@ -37,18 +33,45 @@
                  END DESC,
                  lc.LEC_COD_NAME,
                  l.LEC_SECTION,
-                 l.LEC_ID,
-                 u.LEC_UPL_REG_DATE DESC NULLS LAST,
-                 u.LEC_UPL_ID DESC NULLS LAST
+                 l.LEC_ID
     </select>
 
+    <!-- 선택 과목(lecId) 자료 + 소유권(본인 수강 강의만 — INNER JOIN ENROLLMENT로 IDOR 차단) 공용 FROM -->
+    <sql id="materialOwnership">
+        FROM LECTURE_UPLOADING u
+        JOIN LECTURE l ON l.LEC_ID = u.LEC_ID
+        JOIN LECTURE_STUDENT_ENROLLMENT e
+             ON e.LEC_ID = l.LEC_ID
+            AND e.LMS_PRF_ID = #{lmsPrfId}
+            AND e.LEC_STD_ENR_STATUS != 'DRP'
+        WHERE u.LEC_ID = #{lecId}
+    </sql>
+
+    <!-- 선택 과목 자료 개수 (필터 = 동일 WHERE) -->
+    <select id="countMaterials" resultType="int">
+        SELECT COUNT(*)
+        <include refid="materialOwnership"/>
+    </select>
+
+    <!-- 선택 과목 자료 1페이지 (최신순 + OFFSET/FETCH, Oracle 12c+) -->
+    <select id="selectMaterialsPaged" resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$MaterialRow">
+        SELECT u.LEC_UPL_ID      AS uploadId,
+               u.LEC_UPL_TITLE   AS lecUplTitle,
+               u.LEC_UPL_CONTENT AS lecUplContent,
+               TO_CHAR(u.LEC_UPL_REG_DATE, 'YYYY-MM-DD') AS lecUplRegDate
+        <include refid="materialOwnership"/>
+        ORDER BY u.LEC_UPL_REG_DATE DESC, u.LEC_UPL_ID DESC
+        OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+    </select>
+
+    <!-- 현재 페이지 자료들의 유효(ACT) 첨부 (서비스에서 uploadId로 그룹핑) -->
     <select id="selectActiveAttachmentsByUploadIds"
             resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$AttachmentRow">
-        SELECT a.LEC_UPL_ID AS uploadId,
-               a.LEC_UPL_ATT_ID AS attachmentId,
+        SELECT a.LEC_UPL_ID              AS uploadId,
+               a.LEC_UPL_ATT_ID          AS attachmentId,
                a.LEC_UPL_ATT_ORG_FIL_NAME AS fileName,
-               a.LEC_UPL_ATT_EXT_TYPE AS fileExt,
-               a.LEC_UPL_ATT_FIL_SIZE AS fileSize
+               a.LEC_UPL_ATT_EXT_TYPE    AS fileExt,
+               a.LEC_UPL_ATT_FIL_SIZE    AS fileSize
         FROM LECTURE_UPLOADING_ATTACHMENT a
         WHERE a.LEC_UPL_ID IN
         <foreach item="id" collection="uploadIds" open="(" separator="," close=")">#{id}</foreach>
@@ -56,9 +79,10 @@
         ORDER BY a.LEC_UPL_ID, a.LEC_UPL_ATT_REG_DATE, a.LEC_UPL_ATT_ID
     </select>
 
+    <!-- 첨부 다운로드 — 소유권: 본인 수강 강의(DRP 제외)의 ACT 첨부만 -->
     <select id="selectDownloadAttachment"
             resultType="com.univus.app.lms.dto.LmsStuMaterialsDto$AttachmentDownloadRow">
-        SELECT a.LEC_UPL_ATT_ID AS attachmentId,
+        SELECT a.LEC_UPL_ATT_ID          AS attachmentId,
                a.LEC_UPL_ATT_ORG_FIL_NAME AS fileName,
                a.LEC_UPL_ATT_TRN_FIL_NAME AS trnFileName
         FROM LECTURE_UPLOADING_ATTACHMENT a

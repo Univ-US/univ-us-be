@@ -21,6 +21,7 @@ public final class LmsStuAttendanceDto {
     @AllArgsConstructor
     @Builder
     public static class CourseRow {
+        private Long semId;               // SEMESTERS.SEM_ID (학기별 페이지 조회 키)
         private Integer semYear;          // SEMESTERS.SEM_YEAR
         private String semTerm;           // SEMESTERS.SEM_TERM
         private Integer inProgressFlag;   // 파생(SYSDATE ∈ 학기범위)
@@ -86,5 +87,36 @@ public final class LmsStuAttendanceDto {
         private Boolean inProgress;
         private Integer courseCount;
         private List<AttendanceCourseResDto> courses;
+    }
+
+    /* ===== 학기별 출결 페이지네이션 (카드 헤더는 요약, 과목은 학기별 페이지 조회) ===== */
+
+    /** 학기 요약 매핑 row (GROUP BY 집계) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SemesterSummaryRow {
+        private Long semId;
+        private Integer semYear;
+        private String semTerm;
+        private Integer inProgressFlag;
+        private int courseCount;
+    }
+
+    /** 학기 요약 응답 (카드 헤더 — 과목은 GET /attendance/semesters/{semId} 페이지 조회) */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class SemesterSummaryResDto {
+        private Long semId;
+        private Integer semYear;
+        private String semTerm;
+        private String semesterLabel;
+        private boolean inProgress;
+        private int courseCount;
     }
 }

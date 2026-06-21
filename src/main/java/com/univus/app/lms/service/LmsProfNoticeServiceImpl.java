@@ -1,5 +1,7 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.common.StorageService;
 import com.univus.app.lms.dto.LmsProfNoticeDto;
 import com.univus.app.lms.mapper.LmsProfNoticeMapper;
@@ -26,7 +28,7 @@ import java.util.stream.Collectors;
  * - 첨부 다중: 작성=여러 파일 / 수정=기존 유지 + 추가(files) + 개별 제거(removeAttachmentIds, ATT_VAL_STATUS='DEL' 소프트 무효화).
  * - 매퍼는 매핑 row 반환 → service가 ResDto 변환(첨부 조립). 검증 실패 = ResponseStatusException(400/403).
  * - 파일 저장 = StorageService(로컬 디스크) 재사용. 공지 첨부는 합계 100MB 제한.
- * - PLM-005와 차이: 목록 페이지네이션·메타 없음(선택 강의 공지 전체 최신순), 제목 200자, 작성자=담당교수.
+ * - 목록 = 선택 강의 공지를 최신순 서버 페이지네이션(PLM-005 미러). 제목 200자, 작성자=담당교수.
  */
 @Slf4j
 @Service
@@ -64,14 +66,19 @@ public class LmsProfNoticeServiceImpl implements LmsProfNoticeService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<LmsProfNoticeDto.NoticeResDto> getNotices(Long memberId, Long lecId) {
+    public PaginateUtilRestApiRes<LmsProfNoticeDto.NoticeResDto> getNotices(Long memberId, Long lecId, int page, int size) {
         Long lmsPrfId = requireProfessorLmsPrfId(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        long total = lmsProfNoticeMapper.countNotices(lecId, lmsPrfId);
         List<LmsProfNoticeDto.NoticeResDto> notices =
-                lmsProfNoticeMapper.selectNoticesByLecture(lecId, lmsPrfId).stream()
+                lmsProfNoticeMapper.selectNoticesByLecturePaged(
+                                lecId, lmsPrfId, PaginateUtilRestApi.offset(safePage, safeSize), safeSize).stream()
                         .map(this::toNoticeResDto)
                         .collect(Collectors.toList());
         attachNoticeAttachments(notices);
-        return notices;
+        log.info("공지 목록 조회 lmsPrfId={} lecId={} page={} size={} total={}", lmsPrfId, lecId, safePage, safeSize, total);
+        return PaginateUtilRestApi.of(notices, total, safePage, safeSize);
     }
 
     /* 공지 목록 첨부를 한 번에 조회해 그룹핑 (빈 목록이면 IN() 방지 위해 생략) */

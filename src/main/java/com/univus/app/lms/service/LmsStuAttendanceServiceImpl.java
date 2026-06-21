@@ -1,5 +1,7 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApi;
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsStuAttendanceDto;
 import com.univus.app.lms.mapper.LmsStuAttendanceMapper;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +57,54 @@ public class LmsStuAttendanceServiceImpl implements LmsStuAttendanceService {
         }
         log.info("학생 출석 내역 조회 lmsPrfId={} semesters={} courses={}", lmsPrfId, response.size(), courseRows.size());
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LmsStuAttendanceDto.SemesterSummaryResDto> getAttendanceSemesterSummaries(Long memberId) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        return lmsStuAttendanceMapper.selectAttendanceSemesterSummaries(lmsPrfId).stream()
+                .map(this::toSummaryResDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginateUtilRestApiRes<LmsStuAttendanceDto.AttendanceCourseResDto> getSemesterAttendancePaged(
+            Long memberId, Long semId, int page, int size) {
+        Long lmsPrfId = requireStudentLmsPrfId(memberId);
+        int safePage = PaginateUtilRestApi.normalizePage(page);
+        int safeSize = PaginateUtilRestApi.normalizeSize(size);
+        long total = lmsStuAttendanceMapper.countSemesterCourses(lmsPrfId, semId);
+        List<LmsStuAttendanceDto.CourseRow> courseRows =
+                lmsStuAttendanceMapper.selectSemesterCourseRowsPaged(
+                        lmsPrfId, semId, PaginateUtilRestApi.offset(safePage, safeSize), safeSize);
+        List<LmsStuAttendanceDto.AttendanceCourseResDto> content;
+        if (courseRows.isEmpty()) {
+            content = List.of();
+        } else {
+            List<Long> enrollmentIds = courseRows.stream()
+                    .map(LmsStuAttendanceDto.CourseRow::getEnrollmentId)
+                    .toList();
+            Map<Long, List<LmsStuAttendanceDto.RecordRow>> recordsByEnrollment =
+                    lmsStuAttendanceMapper.selectDetailRecordsByEnrollments(enrollmentIds).stream()
+                            .collect(Collectors.groupingBy(LmsStuAttendanceDto.RecordRow::getEnrollmentId));
+            content = courseRows.stream()
+                    .map(row -> toCourse(row, recordsByEnrollment.getOrDefault(row.getEnrollmentId(), List.of())))
+                    .toList();
+        }
+        return PaginateUtilRestApi.of(content, total, safePage, safeSize);
+    }
+
+    private LmsStuAttendanceDto.SemesterSummaryResDto toSummaryResDto(LmsStuAttendanceDto.SemesterSummaryRow row) {
+        return LmsStuAttendanceDto.SemesterSummaryResDto.builder()
+                .semId(row.getSemId())
+                .semYear(row.getSemYear())
+                .semTerm(row.getSemTerm())
+                .semesterLabel(semesterLabel(row.getSemYear(), row.getSemTerm()))
+                .inProgress(row.getInProgressFlag() != null && row.getInProgressFlag() == 1)
+                .courseCount(row.getCourseCount())
+                .build();
     }
 
     private LmsStuAttendanceDto.AttendanceCourseResDto toCourse(

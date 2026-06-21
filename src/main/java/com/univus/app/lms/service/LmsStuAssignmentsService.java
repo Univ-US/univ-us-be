@@ -1,5 +1,6 @@
 package com.univus.app.lms.service;
 
+import com.univus.app.common.PaginateUtilRestApiRes;
 import com.univus.app.lms.dto.LmsStuAssignmentsDto;
 import org.springframework.http.ResponseEntity;
 
@@ -9,7 +10,19 @@ public interface LmsStuAssignmentsService {
 
     LmsStuAssignmentsDto.AssignmentsResultResDto getAssignments(Long memberId);
 
-    List<LmsStuAssignmentsDto.SubmittableAssignmentResDto> getSubmittableAssignments(Long memberId);
+    /** 학기별 과제 요약 (카드 헤더 — 상태 필터. 과제는 학기별 페이지 조회) */
+    List<LmsStuAssignmentsDto.AssignmentSemesterSummaryResDto> getAssignmentSemesterSummaries(Long memberId, String status);
+
+    /** 한 학기(semId)의 과제 1페이지 (상태 필터, 서버 페이지네이션) */
+    PaginateUtilRestApiRes<LmsStuAssignmentsDto.StudentAssignmentResDto> getSemesterAssignmentsPaged(
+            Long memberId, Long semId, String status, int page, int size);
+
+    /** 제출 가능 과제 요약 — 전역 미제출 수(배지) + 연도 드롭다운 소스 */
+    LmsStuAssignmentsDto.SubmittableSummaryResDto getSubmittableSummary(Long memberId);
+
+    /** 제출 가능 과제 1페이지 (서버 페이지네이션). focusAssignmentId 있으면 그 과제가 속한 페이지 반환 */
+    PaginateUtilRestApiRes<LmsStuAssignmentsDto.SubmittableAssignmentResDto> getSubmittable(
+            Long memberId, Integer year, String term, int page, int size, Long focusAssignmentId);
 
     void submitAssignment(Long memberId, Long assignmentId, LmsStuAssignmentsDto.SubmitReqDto request);
 
