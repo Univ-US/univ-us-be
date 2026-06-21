@@ -6,6 +6,8 @@ import com.univus.app.member.dto.MemberDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 @Mapper
 public interface MemberMapper {
 
@@ -15,6 +17,21 @@ public interface MemberMapper {
   MemberDto findByLoginId(@Param("loginId") String loginId);
 
   MemberDto findByMemberId(@Param("memberId") Long memberId);
+
+  List<MemberDto> findByRecoveryIdentity(
+          @Param("memberName") String memberName,
+          @Param("phoneNumber") Long phoneNumber,
+          @Param("birth") String birth
+  );
+
+  MemberDto findByLoginIdAndRecoveryIdentity(
+          @Param("loginId") String loginId,
+          @Param("memberName") String memberName,
+          @Param("phoneNumber") Long phoneNumber,
+          @Param("birth") String birth
+  );
+
+  int updatePassword(@Param("memberId") Long memberId, @Param("password") String password);
 
   // 아이디 중복 검사
   int existsByLoginId(@Param("loginId") String loginId);

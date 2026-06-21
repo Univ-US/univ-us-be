@@ -80,6 +80,55 @@
         WHERE M.MEMBER_ID = #{memberId}
     </select>
 
+    <select id="findByRecoveryIdentity" resultType="com.univus.app.member.dto.MemberDto">
+        SELECT
+            M.MEMBER_ID,
+            M.LOGIN_ID,
+            M.UNIV_ID,
+            M.PASSWORD,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.PHONE_NUMBER,
+            M.STATUS,
+            M.BIRTH,
+            U.UNIV_NAME
+        FROM MEMBER M
+                 LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID
+        WHERE M.MEMBER_NAME = #{memberName}
+          AND M.PHONE_NUMBER = #{phoneNumber}
+          AND M.BIRTH = #{birth}
+          AND M.STATUS &lt;&gt; 'WITHDRAWN'
+        ORDER BY U.UNIV_NAME NULLS LAST, M.LOGIN_ID
+    </select>
+
+    <select id="findByLoginIdAndRecoveryIdentity" resultType="com.univus.app.member.dto.MemberDto">
+        SELECT
+            M.MEMBER_ID,
+            M.LOGIN_ID,
+            M.UNIV_ID,
+            M.PASSWORD,
+            M.MEMBER_NAME,
+            M.ROLE,
+            M.PHONE_NUMBER,
+            M.STATUS,
+            M.BIRTH,
+            U.UNIV_NAME
+        FROM MEMBER M
+                 LEFT JOIN UNIVERSITY U ON M.UNIV_ID = U.UNIV_ID
+        WHERE M.LOGIN_ID = #{loginId}
+          AND M.MEMBER_NAME = #{memberName}
+          AND M.PHONE_NUMBER = #{phoneNumber}
+          AND M.BIRTH = #{birth}
+          AND M.STATUS &lt;&gt; 'WITHDRAWN'
+    </select>
+
+    <update id="updatePassword">
+        UPDATE MEMBER
+        SET PASSWORD = #{password}
+        WHERE MEMBER_ID = #{memberId}
+          AND STATUS &lt;&gt; 'WITHDRAWN'
+    </update>
+
     <select id="existsByMemberId" resultType="int">
         SELECT COUNT(*)
         FROM MEMBER

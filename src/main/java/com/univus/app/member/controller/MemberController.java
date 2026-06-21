@@ -1,6 +1,7 @@
 package com.univus.app.member.controller;
 
 import com.univus.app.member.dto.AuthSessionResponseDto;
+import com.univus.app.member.dto.AccountRecoveryDto;
 import com.univus.app.member.dto.AdminSessionConflictResponseDto;
 import com.univus.app.member.dto.LoginRequestDto;
 import com.univus.app.member.dto.LoginResponseDto;
@@ -8,6 +9,7 @@ import com.univus.app.member.dto.RefreshTokenResponseDto;
 import com.univus.app.member.dto.SignupRequestDto;
 import com.univus.app.member.exception.AdminSessionConflictException;
 import com.univus.app.member.service.MemberService;
+import com.univus.app.member.service.AccountRecoveryService;
 import com.univus.app.security.AuthCookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -32,6 +34,7 @@ import java.util.Map;
 public class MemberController {
 
   private final MemberService memberService;
+  private final AccountRecoveryService accountRecoveryService;
   private final AuthCookieUtil authCookieUtil;
 
   @PostMapping("/signup")
@@ -88,6 +91,42 @@ public class MemberController {
   @GetMapping("/check-login-id")
   public Map<String, Boolean> checkLoginId(@RequestParam String loginId) {
     return Map.of("available", memberService.isLoginIdAvailable(loginId));
+  }
+
+  @PostMapping("/recovery/id/send-code")
+  public AccountRecoveryDto.VerificationChallengeResponse sendIdRecoveryCode(
+          @RequestBody @jakarta.validation.Valid AccountRecoveryDto.IdentityRequest request
+  ) {
+    return accountRecoveryService.sendIdRecoveryCode(request);
+  }
+
+  @PostMapping("/recovery/id/verify")
+  public AccountRecoveryDto.IdVerifyResponse verifyIdRecoveryCode(
+          @RequestBody @jakarta.validation.Valid AccountRecoveryDto.IdVerifyRequest request
+  ) {
+    return accountRecoveryService.verifyIdRecoveryCode(request);
+  }
+
+  @PostMapping("/recovery/password/send-code")
+  public AccountRecoveryDto.VerificationChallengeResponse sendPasswordRecoveryCode(
+          @RequestBody @jakarta.validation.Valid AccountRecoveryDto.PasswordIdentityRequest request
+  ) {
+    return accountRecoveryService.sendPasswordRecoveryCode(request);
+  }
+
+  @PostMapping("/recovery/password/verify")
+  public AccountRecoveryDto.PasswordVerifyResponse verifyPasswordRecoveryCode(
+          @RequestBody @jakarta.validation.Valid AccountRecoveryDto.PasswordVerifyRequest request
+  ) {
+    return accountRecoveryService.verifyPasswordRecoveryCode(request);
+  }
+
+  @PostMapping("/recovery/password/reset")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void resetPassword(
+          @RequestBody @jakarta.validation.Valid AccountRecoveryDto.ResetPasswordRequest request
+  ) {
+    accountRecoveryService.resetPassword(request);
   }
 
   @PostMapping("/refresh")
