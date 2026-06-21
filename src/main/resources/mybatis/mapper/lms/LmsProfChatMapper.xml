@@ -261,4 +261,11 @@
           AND NVL(rr.ROM_MSG_RED_YN, 0) = 0
     </select>
 
+    <update id="softDeleteRoom">
+        UPDATE CHAT_ROOM
+        SET CHT_ROM_VAL_STATUS = 'DEL'
+        WHERE CHT_ROM_ID = #{roomId}
+          AND CHT_ROM_VAL_STATUS = 'ACT'
+    </update>
+
 </mapper>

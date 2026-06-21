@@ -38,4 +38,6 @@ public interface LmsStuChatMapper {
             @Param("lmsPrfId") Long lmsPrfId);
 
     Integer selectUnreadCount(@Param("lmsPrfId") Long lmsPrfId);
+
+    int softDeleteRoom(@Param("roomId") Long roomId);
 }

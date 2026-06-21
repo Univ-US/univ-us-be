@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -74,6 +75,19 @@ public class LmsStuChatController {
             Long memberId = Long.valueOf(authentication.getPrincipal().toString());
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(lmsStuChatService.sendMessage(memberId, roomId, request));
+        } catch (IllegalArgumentException ex) {
+            return badRequest(ex);
+        }
+    }
+
+    @DeleteMapping("/{roomId}")
+    public ResponseEntity<?> requestDeleteRoom(
+            Authentication authentication,
+            @PathVariable Long roomId) {
+        try {
+            Long memberId = Long.valueOf(authentication.getPrincipal().toString());
+            lmsStuChatService.deleteChatRoom(memberId, roomId);
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException ex) {
             return badRequest(ex);
         }
