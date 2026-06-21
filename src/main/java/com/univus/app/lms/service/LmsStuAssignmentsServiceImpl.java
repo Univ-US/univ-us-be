@@ -336,7 +336,6 @@ public class LmsStuAssignmentsServiceImpl implements LmsStuAssignmentsService {
                 .dDay(toDDay(row.getDueIso()))
                 .note(late ? "지각 제출 허용" : null)
                 .badge(null)
-                .dotColor(late ? "bg-orange-500" : "bg-emerald-500")
                 .guide(LmsStuAssignmentsDto.SubmitGuideResDto.builder()
                         .courseName(row.getCourseName())
                         .professor(row.getProfessor())

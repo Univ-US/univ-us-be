@@ -32,7 +32,7 @@ public class LmsProfGradingServiceImpl implements LmsProfGradingService {
     @Value("${file.upload-root:${user.home}/univus/uploads}")
     private String uploadRoot;
 
-    // TODO maxScore: LECTURE_ASSIGNMENT에 만점 컬럼이 없어 100 고정. 추후 재검토(컬럼 추가 vs 고정).
+    // 만점 = 100 고정(LECTURE_ASSIGNMENT에 만점 컬럼 없음)
     private static final int DEFAULT_MAX_SCORE = 100;
 
     private static final String UPLOAD_WEB_PREFIX = "/uploads"; // ORG_URL 웹 접두어

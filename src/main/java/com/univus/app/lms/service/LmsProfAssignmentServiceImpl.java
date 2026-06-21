@@ -25,9 +25,8 @@ import java.util.stream.Collectors;
 
 /**
  * PLM-006 교수 과제 관리 ServiceImpl.
- * - 구조는 PLM-005(강의 자료 업로드)와 동형: 첨부 다중(등록=files / 수정=files 추가 + removeAttachmentIds 제거),
- *   소유권 검증, StorageService(로컬 디스크) 재사용. 차이 = 마감일(dueDate) + 제출/채점/수강생 집계.
- * - 검증 실패는 ResponseStatusException(400/403)으로 던짐(전역 핸들러가 상태코드 그대로 JSON 매핑 — 500 회피).
+ * - 첨부 다중(등록=files / 수정=files 추가 + removeAttachmentIds 제거), 소유권 검증, StorageService(로컬 디스크).
+ * - 검증 실패는 ResponseStatusException(400/403)으로 던짐(전역 핸들러가 상태코드 그대로 JSON 매핑).
  * - 집계: 매퍼가 submitted/graded/total을 채우고, ungraded = max(0, submitted - graded)를 여기서 계산.
  */
 @Slf4j
