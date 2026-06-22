@@ -110,3 +110,7 @@ jwt:
   secret: ${JWT_SECRET:dev-only-change-me-min-32-bytes-0000000000}
   access-token-validity-ms: 3600000
   refresh-token-validity-ms: 604800000
+
+# 옥토모 인증 (아이디/비밀번호 찾기 SMS 인증 API). 값은 K8s Secret 주입.
+octomo:
+  api-key: ${OCTOMO_API_KEY:}
