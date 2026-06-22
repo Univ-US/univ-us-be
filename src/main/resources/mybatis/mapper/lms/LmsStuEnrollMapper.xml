@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+  SLM-004 학생 "수강신청".
+  · 신청 대상 학기  : LECTURE.LEC_VAL_STATUS = 'OPEN'인 강좌가 속한 학기 중 가장 빠른 학기 (관리자가 신청 기간에만 OPEN으로 둠)
+  · 정원/신청인원   : LEC_CAPACITY 컬럼(직접 추가 필요) / LECTURE_STUDENT_ENROLLMENT COUNT(DRP 제외)
+  · 이미신청 여부   : 같은 학생(LMS_PRF_ID) 기존 행 존재(DRP 제외) 여부
+  · 신청 취소       : 물리 삭제 대신 상태 DRP 처리 (PLM/SLM 전반의 "DRP 제외 집계" 관례와 일관)
+-->
+<mapper namespace="com.univus.app.lms.mapper.LmsStuEnrollMapper">
+
+    <select id="findLmsPrfIdByMemberId" resultType="long">
+        SELECT LMS_PRF_ID
+        FROM LMS_PROFILE
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <select id="findUnivIdByMemberId" resultType="long">
+        SELECT UNIV_ID
+        FROM MEMBER
+        WHERE MEMBER_ID = #{memberId}
+    </select>
+
+    <!-- 같은 대학 소속 개설(OPEN) 강좌가 속한 학기 중 가장 빠른 학기 1건. 없으면 결과 없음(null) -->
+    <select id="selectTargetSemester" resultType="com.univus.app.lms.dto.LmsStuEnrollDto$TargetSemesterRow">
+        SELECT s.SEM_ID AS semId,
+               s.SEM_YEAR AS semYear,
+               s.SEM_TERM AS semTerm
+        FROM SEMESTERS s
+        WHERE EXISTS (
+            SELECT 1 FROM LECTURE l
+            JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+            JOIN DEPARTMENT d ON d.DEPT_ID = lc.DEPT_ID
+            WHERE l.SEM_ID = s.SEM_ID AND l.LEC_VAL_STATUS = 'OPEN' AND d.UNIV_ID = #{univId}
+        )
+        ORDER BY s.SEM_STR_DATE ASC
+        FETCH FIRST 1 ROW ONLY
+    </select>
+
+    <!-- 대상 학기의 개설 강좌 flat 행 (강좌 1건 x 시간표 슬롯, 같은 대학 강좌만) -->
+    <select id="selectOpenLecturesFlat" resultType="com.univus.app.lms.dto.LmsStuEnrollDto$LectureFlatRow">
+        SELECT l.LEC_ID AS lecId,
+               lc.LEC_CODE AS courseCode,
+               lc.LEC_COD_NAME AS courseName,
+               pm.MEMBER_NAME AS professor,
+               d.DEPT_NAME AS department,
+               NVL(l.LEC_CREDIT, 0) AS lecCredit,
+               l.LEC_SECTION AS lecSection,
+               l.LEC_CAPACITY AS capacity,
+               (SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e
+                 WHERE e.LEC_ID = l.LEC_ID AND e.LEC_STD_ENR_STATUS != 'DRP') AS enrolledCount,
+               (SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END FROM LECTURE_STUDENT_ENROLLMENT e2
+                 WHERE e2.LEC_ID = l.LEC_ID AND e2.LMS_PRF_ID = #{lmsPrfId}
+                   AND e2.LEC_STD_ENR_STATUS != 'DRP') AS alreadyEnrolledFlag,
+               t.LEC_TIM_DAY_CODE AS lecTimDayCode,
+               TO_CHAR(t.LEC_TIM_STR_TIME, 'HH24:MI') AS lecTimStrTime,
+               TO_CHAR(t.LEC_TIM_END_TIME, 'HH24:MI') AS lecTimEndTime
+        FROM LECTURE l
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN DEPARTMENT d ON d.DEPT_ID = lc.DEPT_ID
+        JOIN LMS_PROFILE pp ON pp.LMS_PRF_ID = l.LMS_PRF_ID
+        JOIN MEMBER pm ON pm.MEMBER_ID = pp.MEMBER_ID
+        LEFT JOIN LECTURE_TIME t ON t.LEC_ID = l.LEC_ID
+        WHERE l.SEM_ID = #{semId}
+          AND l.LEC_VAL_STATUS = 'OPEN'
+          AND d.UNIV_ID = #{univId}
+        ORDER BY l.LEC_ID,
+                 CASE t.LEC_TIM_DAY_CODE
+                     WHEN 'MON' THEN 1 WHEN 'TUE' THEN 2 WHEN 'WED' THEN 3 WHEN 'THU' THEN 4
+                     WHEN 'FRI' THEN 5 WHEN 'SAT' THEN 6 WHEN 'SUN' THEN 7 ELSE 8
+                 END,
+                 t.LEC_TIM_STR_TIME
+    </select>
+
+    <!-- 신청 처리용 강좌 단건 (정원/학점/상태/소속 대학 검증) -->
+    <select id="selectLectureForEnroll" resultType="com.univus.app.lms.dto.LmsStuEnrollDto$LectureForEnrollRow">
+        SELECT l.LEC_ID AS lecId,
+               l.SEM_ID AS semId,
+               d.UNIV_ID AS univId,
+               NVL(l.LEC_CREDIT, 0) AS lecCredit,
+               l.LEC_CAPACITY AS capacity,
+               l.LEC_VAL_STATUS AS lecValStatus,
+               (SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e
+                 WHERE e.LEC_ID = l.LEC_ID AND e.LEC_STD_ENR_STATUS != 'DRP') AS enrolledCount
+        FROM LECTURE l
+        JOIN LECTURE_CODE lc ON lc.LEC_CODE_ID = l.LEC_CODE_ID
+        JOIN DEPARTMENT d ON d.DEPT_ID = lc.DEPT_ID
+        WHERE l.LEC_ID = #{lecId}
+    </select>
+
+    <!-- 정원 동시성 제어 — 강좌 row를 잠궈 같은 강좌에 대한 동시 신청을 직렬화. 락은 호출한 트랜잭션 종료까지 유지 -->
+    <select id="lockLectureForEnroll" resultType="int">
+        SELECT 1 FROM LECTURE WHERE LEC_ID = #{lecId} FOR UPDATE
+    </select>
+
+    <select id="selectLectureTimeSlots" resultType="com.univus.app.lms.dto.LmsStuEnrollDto$TimeSlotRow">
+        SELECT LEC_TIM_DAY_CODE AS dayCode,
+               TO_CHAR(LEC_TIM_STR_TIME, 'HH24:MI') AS startTime,
+               TO_CHAR(LEC_TIM_END_TIME, 'HH24:MI') AS endTime
+        FROM LECTURE_TIME
+        WHERE LEC_ID = #{lecId}
+    </select>
+
+    <!-- 학생의 기존 신청 내역 단건 (가장 최근 행 1건 — 유니크 제약 없어 방어적으로 1건만) -->
+    <select id="findEnrollmentRow" resultType="com.univus.app.lms.dto.LmsStuEnrollDto$EnrollmentRow">
+        SELECT LEC_STD_ENR_ID AS lecStdEnrId,
+               LEC_STD_ENR_STATUS AS status
+        FROM LECTURE_STUDENT_ENROLLMENT
+        WHERE LMS_PRF_ID = #{lmsPrfId} AND LEC_ID = #{lecId}
+        ORDER BY LEC_STD_ENR_ID DESC
+        FETCH FIRST 1 ROW ONLY
+    </select>
+
+    <select id="sumActiveCredits" resultType="int">
+        SELECT NVL(SUM(NVL(l.LEC_CREDIT, 0)), 0)
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND l.SEM_ID = #{semId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+    </select>
+
+    <select id="selectActiveScheduleRows" resultType="com.univus.app.lms.dto.LmsStuEnrollDto$TimeSlotRow">
+        SELECT t.LEC_TIM_DAY_CODE AS dayCode,
+               TO_CHAR(t.LEC_TIM_STR_TIME, 'HH24:MI') AS startTime,
+               TO_CHAR(t.LEC_TIM_END_TIME, 'HH24:MI') AS endTime
+        FROM LECTURE_STUDENT_ENROLLMENT e
+        JOIN LECTURE l ON l.LEC_ID = e.LEC_ID
+        JOIN LECTURE_TIME t ON t.LEC_ID = l.LEC_ID
+        WHERE e.LMS_PRF_ID = #{lmsPrfId}
+          AND l.SEM_ID = #{semId}
+          AND e.LEC_STD_ENR_STATUS != 'DRP'
+    </select>
+
+    <!-- 정원 조건부 INSERT — lockLectureForEnroll로 강좌 row를 잠근 뒤 호출되므로 이 시점의 COUNT는 직렬화되어 안전.
+         조건 미충족 시 0행(미삽입)이라 서비스 레이어가 affected==0으로 "정원 초과"를 판별 -->
+    <insert id="insertEnrollment">
+        INSERT INTO LECTURE_STUDENT_ENROLLMENT (LEC_STD_ENR_ID, LEC_ID, LMS_PRF_ID, LEC_STD_ENR_REG_DATE, LEC_STD_ENR_STATUS)
+        SELECT SEQ_LECTURE_STUDENT_ENROLLMENT.NEXTVAL, #{lecId}, #{lmsPrfId}, SYSTIMESTAMP, 'ENR'
+        FROM DUAL
+        WHERE (
+            SELECT NVL(l.LEC_CAPACITY, 999999) FROM LECTURE l WHERE l.LEC_ID = #{lecId}
+        ) > (
+            SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e
+            WHERE e.LEC_ID = #{lecId} AND e.LEC_STD_ENR_STATUS != 'DRP'
+        )
+    </insert>
+
+    <!-- 정원 조건부 재활성화 — insertEnrollment와 동일한 이유로 같은 정원 조건을 다시 검증 -->
+    <update id="reactivateEnrollment">
+        UPDATE LECTURE_STUDENT_ENROLLMENT e
+        SET e.LEC_STD_ENR_STATUS = 'ENR',
+            e.LEC_STD_ENR_REG_DATE = SYSTIMESTAMP
+        WHERE e.LEC_STD_ENR_ID = #{lecStdEnrId}
+          AND (
+              SELECT NVL(l.LEC_CAPACITY, 999999) FROM LECTURE l WHERE l.LEC_ID = e.LEC_ID
+          ) > (
+              SELECT COUNT(*) FROM LECTURE_STUDENT_ENROLLMENT e2
+              WHERE e2.LEC_ID = e.LEC_ID AND e2.LEC_STD_ENR_STATUS != 'DRP'
+          )
+    </update>
+
+    <update id="cancelEnrollment">
+        UPDATE LECTURE_STUDENT_ENROLLMENT
+        SET LEC_STD_ENR_STATUS = 'DRP'
+        WHERE LMS_PRF_ID = #{lmsPrfId}
+          AND LEC_ID = #{lecId}
+          AND LEC_STD_ENR_STATUS = 'ENR'
+    </update>
+
+</mapper>

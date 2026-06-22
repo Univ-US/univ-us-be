@@ -225,6 +225,7 @@ public class AdminDto {
         private Integer lecSection;  // 내부 자동 채번 값 (같은 학기·강의 MAX+1)
         private Integer lecCredit;
         private Integer lecTotClasses;
+        private Integer lecCapacity;  // 정원 (미입력 시 무제한)
         private List<LectureTimeDto> times;
     }
 
@@ -246,6 +247,7 @@ public class AdminDto {
         private Integer lecSection;
         private Integer lecCredit;
         private Integer lecTotClasses;
+        private Integer lecCapacity; // 정원 (NULL=무제한)
         private String lecValStatus;
         private String dayCodes;  // "TUE,THU" (LECTURE_TIME 요일 합침)
         private String startTime; // "10:30"

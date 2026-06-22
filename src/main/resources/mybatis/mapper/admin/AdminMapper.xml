@@ -310,6 +310,7 @@
                L.LEC_SECTION,
                L.LEC_CREDIT,
                L.LEC_TOT_CLASSES,
+               L.LEC_CAPACITY,
                L.LEC_VAL_STATUS,
                (SELECT LISTAGG(LT.LEC_TIM_DAY_CODE, ',') WITHIN GROUP (ORDER BY LT.LEC_TIM_ID)
                 FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS DAY_CODES,
@@ -353,6 +354,7 @@
                L.LEC_SECTION,
                L.LEC_CREDIT,
                L.LEC_TOT_CLASSES,
+               L.LEC_CAPACITY,
                L.LEC_VAL_STATUS,
                (SELECT LISTAGG(LT.LEC_TIM_DAY_CODE, ',') WITHIN GROUP (ORDER BY LT.LEC_TIM_ID)
                 FROM LECTURE_TIME LT WHERE LT.LEC_ID = L.LEC_ID) AS DAY_CODES,
@@ -370,15 +372,18 @@
         WHERE L.LEC_ID = #{lecId}
     </select>
 
-    <!-- 강의 배정 등록 (PK 선채번 → LECTURE_TIME에서 재사용. 분반·LMS_PRF_ID는 서비스에서 채움) -->
+    <!-- 강의 배정 등록 (PK 선채번 → LECTURE_TIME에서 재사용. 분반·LMS_PRF_ID는 서비스에서 채움)
+         기본 상태는 예정(SCHD) — 해당 학기가 '열기'로 OPEN 전환될 때 같이 OPEN으로 넘어간다.
+         이렇게 해야 미래 학기 강의를 미리 만들어둬도 곧바로 신청 가능 상태가 되지 않는다. -->
     <insert id="insertLectureAssign" parameterType="com.univus.app.admin.dto.AdminDto$LectureAssignCreateDto">
         <selectKey keyProperty="lecId" resultType="long" order="BEFORE">
             SELECT SEQ_LECTURE.NEXTVAL FROM DUAL
         </selectKey>
         INSERT INTO LECTURE (LEC_ID, LMS_PRF_ID, SEM_ID, LEC_CODE_ID, LEC_REG_DATE,
-                             LEC_CREDIT, LEC_TOT_CLASSES, LEC_VAL_STATUS, LEC_SECTION)
+                             LEC_CREDIT, LEC_TOT_CLASSES, LEC_VAL_STATUS, LEC_SECTION, LEC_CAPACITY)
         VALUES (#{lecId}, #{lmsPrfId}, #{semId}, #{lecCodeId}, SYSTIMESTAMP,
-                #{lecCredit, jdbcType=NUMERIC}, #{lecTotClasses, jdbcType=NUMERIC}, 'OPEN', #{lecSection})
+                #{lecCredit, jdbcType=NUMERIC}, #{lecTotClasses, jdbcType=NUMERIC}, 'SCHD', #{lecSection},
+                #{lecCapacity, jdbcType=NUMERIC})
     </insert>
 
     <!-- 강의 시간 등록 (요일별 1행, 같은 시간 적용) -->
@@ -421,7 +426,8 @@
             LEC_CODE_ID = #{lecCodeId},
             LEC_CREDIT = #{lecCredit, jdbcType=NUMERIC},
             LEC_TOT_CLASSES = #{lecTotClasses, jdbcType=NUMERIC},
-            LEC_SECTION = #{lecSection}
+            LEC_SECTION = #{lecSection},
+            LEC_CAPACITY = #{lecCapacity, jdbcType=NUMERIC}
         WHERE LEC_ID = #{lecId}
     </update>
 
@@ -515,6 +521,64 @@
         UPDATE LECTURE_CODE
         SET VAL_STATUS = 'DEL'
         WHERE LEC_CODE_ID = #{lecCodeId}
+    </update>
+
+    <!-- 학기 단위 수강신청 일괄 열기/마감 (같은 대학 강좌만, fromStatus인 강좌만 newStatus로 전환) -->
+    <update id="updateLectureAssignStatusBySemester">
+        UPDATE LECTURE l
+        SET LEC_VAL_STATUS = #{newStatus}
+        WHERE l.SEM_ID = #{semId}
+          AND l.LEC_VAL_STATUS = #{fromStatus}
+          AND EXISTS (
+              SELECT 1 FROM LECTURE_CODE lc
+              JOIN DEPARTMENT d ON d.DEPT_ID = lc.DEPT_ID
+              WHERE lc.LEC_CODE_ID = l.LEC_CODE_ID AND d.UNIV_ID = #{univId}
+          )
+    </update>
+
+    <!-- 대상 학기를 수강신청중(OPEN)으로 — 예정(SCHD)/마감(PROG) 강좌만 전환 (폐강 CNCL은 보존) -->
+    <update id="openLecturesForSemester">
+        UPDATE LECTURE l
+        SET LEC_VAL_STATUS = 'OPEN'
+        WHERE l.SEM_ID = #{semId}
+          AND l.LEC_VAL_STATUS IN ('PROG', 'SCHD')
+          AND EXISTS (
+              SELECT 1 FROM LECTURE_CODE lc
+              JOIN DEPARTMENT d ON d.DEPT_ID = lc.DEPT_ID
+              WHERE lc.LEC_CODE_ID = l.LEC_CODE_ID AND d.UNIV_ID = #{univId}
+          )
+    </update>
+
+    <!-- 대상 학기보다 시작일이 이른 학기의 강좌 전체 종료(CLSD) — 폐강(CNCL)은 보존 -->
+    <update id="closeLecturesBeforeSemester">
+        UPDATE LECTURE l
+        SET LEC_VAL_STATUS = 'CLSD'
+        WHERE l.LEC_VAL_STATUS IN ('OPEN', 'PROG', 'SCHD')
+          AND l.SEM_ID IN (
+              SELECT s.SEM_ID FROM SEMESTERS s
+              WHERE s.SEM_STR_DATE &lt; (SELECT SEM_STR_DATE FROM SEMESTERS WHERE SEM_ID = #{semId})
+          )
+          AND EXISTS (
+              SELECT 1 FROM LECTURE_CODE lc
+              JOIN DEPARTMENT d ON d.DEPT_ID = lc.DEPT_ID
+              WHERE lc.LEC_CODE_ID = l.LEC_CODE_ID AND d.UNIV_ID = #{univId}
+          )
+    </update>
+
+    <!-- 대상 학기보다 시작일이 늦은 학기의 강좌 전체 예정(SCHD)으로 — 폐강(CNCL)은 보존 -->
+    <update id="scheduleLecturesAfterSemester">
+        UPDATE LECTURE l
+        SET LEC_VAL_STATUS = 'SCHD'
+        WHERE l.LEC_VAL_STATUS IN ('OPEN', 'PROG')
+          AND l.SEM_ID IN (
+              SELECT s.SEM_ID FROM SEMESTERS s
+              WHERE s.SEM_STR_DATE &gt; (SELECT SEM_STR_DATE FROM SEMESTERS WHERE SEM_ID = #{semId})
+          )
+          AND EXISTS (
+              SELECT 1 FROM LECTURE_CODE lc
+              JOIN DEPARTMENT d ON d.DEPT_ID = lc.DEPT_ID
+              WHERE lc.LEC_CODE_ID = l.LEC_CODE_ID AND d.UNIV_ID = #{univId}
+          )
     </update>
 
 </mapper>
