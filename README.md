@@ -12,7 +12,8 @@
 | 영속성 | MyBatis 4.0.1 (XML Mapper) · Oracle (ojdbc11) |
 | 캐시 / 락 / 세션 | Redis (Lettuce) · Redisson 3.27.0 — 분산 락 · refresh 토큰 저장 |
 | 실시간 | WebSocket (STOMP + SockJS) |
-| 외부 연동 | WebClient (WebFlux) — Groq LLM · PostgreSQL(pgvector) RAG |
+| 외부 연동 | Groq LLM · PostgreSQL(pgvector) RAG (WebClient/WebFlux) · Octomo(옥토모) SMS 본인인증 — 아이디·비밀번호 찾기 |
+| API 문서 | springdoc-openapi 3.0.3 — Swagger UI (`/swagger-ui.html`, OpenAPI 스펙 `/v3/api-docs`) |
 | 기타 | Bean Validation · Apache POI (xlsx) · Lombok |
 
 ## 로컬 실행
