@@ -273,6 +273,28 @@ public class AdminController {
         return ResponseEntity.ok(adminService.getSemesterList());
     }
 
+    // 학기 수강신청 일괄 열기 (마감(PROG) 강좌를 다시 OPEN으로, 같은 대학 강좌만)
+    @PatchMapping("/lectures/assigns/semesters/{semId}/open")
+    public ResponseEntity<Map<String, Integer>> openSemesterEnrollment(
+            @PathVariable Long semId,
+            @RequestParam(required = false) Long univId,
+            Authentication authentication) {
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
+        int updated = adminService.openSemesterEnrollment(memberId, univId, semId);
+        return ResponseEntity.ok(Map.of("updated", updated));
+    }
+
+    // 학기 수강신청 일괄 마감 (OPEN 강좌를 PROG로, 같은 대학 강좌만)
+    @PatchMapping("/lectures/assigns/semesters/{semId}/close")
+    public ResponseEntity<Map<String, Integer>> closeSemesterEnrollment(
+            @PathVariable Long semId,
+            @RequestParam(required = false) Long univId,
+            Authentication authentication) {
+        Long memberId = Long.valueOf(authentication.getPrincipal().toString());
+        int updated = adminService.closeSemesterEnrollment(memberId, univId, semId);
+        return ResponseEntity.ok(Map.of("updated", updated));
+    }
+
     // 교수 목록 조회 (ADM: 본인 대학, SUA: univId로 필터)
     @GetMapping("/lectures/professors")
     public ResponseEntity<List<AdminDto.ProfessorDto>> getProfessorList(

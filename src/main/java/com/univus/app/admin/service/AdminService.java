@@ -320,9 +320,37 @@ public class AdminService {
     }
 
     public List<AdminDto.LectureAssignListDto> getLectureAssignList(Long requesterId, Long univId, Long semId) {
-        MemberDto requester = memberMapper.findByMemberId(requesterId);
-        Long effectiveUnivId = "SUA".equals(requester.getRole()) ? univId : requester.getUnivId();
+        Long effectiveUnivId = resolveEffectiveUnivId(requesterId, univId);
         return adminMapper.selectLectureAssignList(effectiveUnivId, semId);
+    }
+
+    /**
+     * 학기 수강신청 일괄 열기 — 대상 학기를 OPEN으로 전환하면서 다른 학기들도 한 번에 정리한다.
+     * (FE에서 "이미 다른 학기가 열려있으면 차단"하므로 정상 흐름에선 다른 학기에 OPEN이 남아있지 않지만,
+     *  예정(SCHD) 강의 생성 시점이 제각각이라 이전/이후 학기 상태는 매번 다시 맞춰준다)
+     *  · 대상 학기보다 이른 학기  → 종료(CLSD)
+     *  · 대상 학기보다 늦은 학기 → 예정(SCHD)
+     *  · 대상 학기                  → 수강신청중(OPEN)
+     */
+    @Transactional
+    public int openSemesterEnrollment(Long requesterId, Long univId, Long semId) {
+        Long effectiveUnivId = resolveEffectiveUnivId(requesterId, univId);
+        adminMapper.closeLecturesBeforeSemester(effectiveUnivId, semId);
+        adminMapper.scheduleLecturesAfterSemester(effectiveUnivId, semId);
+        return adminMapper.openLecturesForSemester(effectiveUnivId, semId);
+    }
+
+    /** 학기 수강신청 일괄 마감 (OPEN 강좌를 PROG로) */
+    @Transactional
+    public int closeSemesterEnrollment(Long requesterId, Long univId, Long semId) {
+        Long effectiveUnivId = resolveEffectiveUnivId(requesterId, univId);
+        return adminMapper.updateLectureAssignStatusBySemester(effectiveUnivId, semId, "OPEN", "PROG");
+    }
+
+    /** SUA(서비스 관리자)는 요청 파라미터 univId로 대학 지정, 일반 관리자는 본인 소속 대학으로 고정 */
+    private Long resolveEffectiveUnivId(Long requesterId, Long univId) {
+        MemberDto requester = memberMapper.findByMemberId(requesterId);
+        return "SUA".equals(requester.getRole()) ? univId : requester.getUnivId();
     }
 
     @Transactional
@@ -330,6 +358,7 @@ public class AdminService {
         if (dto.getLecCodeId() == null || dto.getSemId() == null || dto.getProfessorMemberId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "강의·학기·담당 교수는 필수입니다.");
         }
+        validateLectureCapacity(dto.getLecCapacity());
         Long lmsPrfId = adminMapper.selectLmsPrfIdByMemberId(dto.getProfessorMemberId());
         if (lmsPrfId == null) {
             adminMapper.insertLmsProfile(dto.getProfessorMemberId());
@@ -362,6 +391,7 @@ public class AdminService {
         if (!"OPEN".equals(current.getLecValStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "수강신청중 상태의 강의만 수정할 수 있습니다.");
         }
+        validateLectureCapacity(dto.getLecCapacity());
         Long lmsPrfId = adminMapper.selectLmsPrfIdByMemberId(dto.getProfessorMemberId());
         if (lmsPrfId == null) {
             adminMapper.insertLmsProfile(dto.getProfessorMemberId());
@@ -385,6 +415,13 @@ public class AdminService {
         AdminDto.LectureAssignListDto updated = adminMapper.selectLectureAssignById(lecId);
         asyncEmbeddingService.embedLecture(updated);
         return updated;
+    }
+
+    /** 정원 미입력(무제한)은 허용, 입력 시 1 이상만 허용 */
+    private void validateLectureCapacity(Integer lecCapacity) {
+        if (lecCapacity != null && lecCapacity <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "정원은 1 이상이어야 합니다.");
+        }
     }
 
     private void validateProfessorTimeConflicts(AdminDto.LectureAssignCreateDto dto, Long lmsPrfId, Long excludeLecId) {

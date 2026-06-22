@@ -70,3 +70,6 @@ CLAUDE-BE.md
 
 ### Local RAG Infrastructure ###
 docker-compose.rag.yml
+
+### Manual test scripts ###
+concurrency_test.sh

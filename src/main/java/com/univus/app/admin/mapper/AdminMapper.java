@@ -94,4 +94,16 @@ public interface AdminMapper {
                             @Param("excludeLecCodeId") Long excludeLecCodeId);
 
     int softDeleteLecture(@Param("lecCodeId") Long lecCodeId);
+
+    int updateLectureAssignStatusBySemester(@Param("univId") Long univId, @Param("semId") Long semId,
+                                             @Param("fromStatus") String fromStatus, @Param("newStatus") String newStatus);
+
+    /** 대상 학기를 수강신청중(OPEN)으로 — 예정(SCHD)/마감(PROG) 강좌만 전환 */
+    int openLecturesForSemester(@Param("univId") Long univId, @Param("semId") Long semId);
+
+    /** 대상 학기보다 시작일이 이른 학기의 강좌 전체 종료(CLSD) — 폐강(CNCL)은 보존 */
+    int closeLecturesBeforeSemester(@Param("univId") Long univId, @Param("semId") Long semId);
+
+    /** 대상 학기보다 시작일이 늦은 학기의 강좌 전체 예정(SCHD)으로 — 폐강(CNCL)은 보존 */
+    int scheduleLecturesAfterSemester(@Param("univId") Long univId, @Param("semId") Long semId);
 }
