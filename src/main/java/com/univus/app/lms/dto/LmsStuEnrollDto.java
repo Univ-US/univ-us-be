@@ -169,4 +169,27 @@ public final class LmsStuEnrollDto {
         private List<Long> success;
         private List<FailedItem> failed;
     }
+
+    /** POST /enroll 즉시 응답 — 실제 처리 결과는 WebSocket으로 별도 푸시 */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class AcceptedResDto {
+        private String requestId;
+        private String message;
+    }
+
+    /** WebSocket(/user/queue/lms/enroll-result)으로 푸시되는 처리 결과 */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class EnrollResultPushDto {
+        private String requestId;
+        private List<Long> success;
+        private List<FailedItem> failed;
+    }
 }
