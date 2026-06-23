@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +37,11 @@ public class MemberController {
   private final MemberService memberService;
   private final AccountRecoveryService accountRecoveryService;
   private final AuthCookieUtil authCookieUtil;
+
+  @GetMapping("/csrf")
+  public Map<String, String> csrf(CsrfToken csrfToken) {
+    return Map.of("token", csrfToken.getToken());
+  }
 
   @PostMapping("/signup")
   @ResponseStatus(HttpStatus.CREATED)

@@ -10,6 +10,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfException;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
@@ -22,12 +25,20 @@ public class SpringSecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfTokenRepository.setCookieName("UNIVUS-CSRF-TOKEN");
+        csrfTokenRepository.setCookiePath("/api");
+
         http
             .cors(Customizer.withDefaults())
 
-			// REST API 서버이므로 CSRF 토큰 검증을 비활성화한다.
-			// JWT 기반 인증에서는 세션 쿠키를 사용하지 않기 때문에 CSRF 보호 대상이 아니다.
-            .csrf(csrf -> csrf.disable())
+			// 인증 JWT가 HttpOnly 쿠키로 전송되므로 상태 변경 요청은 CSRF 토큰도 검증한다.
+			// PortOne webhook은 브라우저 요청이 아니므로 다음 서명 검증 작업으로 보호한다.
+            .csrf(csrf -> csrf
+                    .csrfTokenRepository(csrfTokenRepository)
+                    .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                    .ignoringRequestMatchers("/api/subscriptions/webhooks/portone")
+            )
 
 			// 폼 로그인 화면과 브라우저 기본 인증을 사용하지 않는다.
 			// 로그인은 /api/auth/login에서 JSON 요청으로 처리한다.
@@ -43,6 +54,16 @@ public class SpringSecurityConfig {
 						response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 						response.setContentType("application/json;charset=UTF-8");
 						response.getWriter().write("{\"success\":false,\"message\":\"인증이 필요합니다.\"}");
+					})
+					.accessDeniedHandler((request, response, accessDeniedException) -> {
+						boolean csrfFailure = accessDeniedException instanceof CsrfException;
+						response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+						response.setContentType("application/json;charset=UTF-8");
+						response.getWriter().write(
+								csrfFailure
+										? "{\"success\":false,\"code\":\"CSRF_INVALID\",\"message\":\"CSRF 토큰이 유효하지 않습니다.\"}"
+										: "{\"success\":false,\"code\":\"FORBIDDEN\",\"message\":\"접근 권한이 없습니다.\"}"
+						);
 					})
 			)
 
@@ -66,6 +87,7 @@ public class SpringSecurityConfig {
 							"/api/auth/signup",
 							"/api/auth/check-member-id",
 							"/api/auth/check-login-id",
+							"/api/auth/csrf",
 							"/api/auth/login",
 							"/api/auth/refresh",
 							"/api/auth/logout",
