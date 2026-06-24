@@ -59,6 +59,12 @@ mybatis:
 file:
   upload-root: ${FILE_UPLOAD_ROOT:/data/uploads}
 
+# 인증 쿠키 속성 — Secure/SameSite (운영 HTTPS 기본값 true/Lax, K8s env 오버라이드 가능).
+auth:
+  cookie:
+    secure: ${AUTH_COOKIE_SECURE:true}
+    same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+
 # 영속 로그 — 콘솔(stdout) 유지 + 롤링 파일을 PVC(/data/logs)에 기록 (prod 프로파일만).
 logging:
   file:
