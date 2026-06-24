@@ -17,6 +17,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 @Configuration
 
 @EnableWebSecurity
@@ -31,6 +32,13 @@ public class SpringSecurityConfig {
 
         http
             .cors(Customizer.withDefaults())
+
+            .headers(headers -> headers
+                    .referrerPolicy(referrerPolicy -> referrerPolicy
+                            .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                    .permissionsPolicyHeader(permissionsPolicy -> permissionsPolicy
+                            .policy("camera=(), microphone=()"))
+            )
 
 			// 인증 JWT가 HttpOnly 쿠키로 전송되므로 상태 변경 요청은 CSRF 토큰도 검증한다.
 			// PortOne webhook은 브라우저 요청이 아니므로 다음 서명 검증 작업으로 보호한다.
