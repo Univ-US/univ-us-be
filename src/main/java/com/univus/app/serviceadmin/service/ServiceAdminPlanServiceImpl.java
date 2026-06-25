@@ -81,7 +81,7 @@ public class ServiceAdminPlanServiceImpl implements ServiceAdminPlanService {
         try {
             if (scheduleChanged) {
                 for (ServiceAdminPlanDto.ReadyPaymentTarget target
-                        : serviceAdminPlanMapper.selectReadyPayments(planId)) {
+                        : serviceAdminPlanMapper.selectReadyPayments(current.getPlanName())) {
                     replacements.add(replaceSchedule(
                             target,
                             request.getPlanName(),

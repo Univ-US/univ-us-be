@@ -32,7 +32,7 @@ public interface ServiceAdminPlanMapper {
     int activatePlan(@Param("planId") Long planId);
 
     List<ServiceAdminPlanDto.ReadyPaymentTarget> selectReadyPayments(
-            @Param("planId") Long planId
+            @Param("planName") String planName
     );
 
     int replaceReadyPaymentSchedule(
