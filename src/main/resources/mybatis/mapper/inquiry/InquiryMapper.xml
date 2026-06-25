@@ -59,7 +59,7 @@
 
     <insert id="insertRoom" parameterType="com.univus.app.inquiry.dto.InquiryDto$Room">
         <selectKey keyProperty="roomId" resultType="long" order="BEFORE">
-            SELECT NVL(MAX(INQUIRY_ROOM_ID), 0) + 1 FROM INQUIRY_ROOMS
+            SELECT SEQ_INQUIRY_ROOMS.NEXTVAL FROM DUAL
         </selectKey>
         INSERT INTO INQUIRY_ROOMS (
             INQUIRY_ROOM_ID,
@@ -166,7 +166,7 @@
 
     <insert id="insertMessage" parameterType="com.univus.app.inquiry.dto.InquiryDto$Message">
         <selectKey keyProperty="messageId" resultType="long" order="BEFORE">
-            SELECT NVL(MAX(INQUIRY_MESSAGE_ID), 0) + 1 FROM INQUIRY_MESSAGES
+            SELECT SEQ_INQUIRY_MESSAGES.NEXTVAL FROM DUAL
         </selectKey>
         INSERT INTO INQUIRY_MESSAGES (
             INQUIRY_MESSAGE_ID,
@@ -187,7 +187,7 @@
 
     <insert id="insertAttachment" parameterType="com.univus.app.inquiry.dto.InquiryDto$Attachment">
         <selectKey keyProperty="attachmentId" resultType="long" order="BEFORE">
-            SELECT NVL(MAX(ATTACHMENT_ID), 0) + 1 FROM INQUIRY_ATTACHMENTS
+            SELECT SEQ_INQUIRY_ATTACHMENTS.NEXTVAL FROM DUAL
         </selectKey>
         INSERT INTO INQUIRY_ATTACHMENTS (
             ATTACHMENT_ID,
