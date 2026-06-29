@@ -91,6 +91,10 @@ public interface MarketMapper {
 
     int updateProductStatus(@Param("productId") Long productId, @Param("productStatus") String productStatus);
 
+    int completeProductIfOnSale(@Param("productId") Long productId);
+
+    int completeProductIfPayable(@Param("productId") Long productId);
+
     MarketDto.TradeChatRoomDto selectTradeChatRoomByBuyer(
             @Param("productId") Long productId,
             @Param("buyerId") Long buyerId);

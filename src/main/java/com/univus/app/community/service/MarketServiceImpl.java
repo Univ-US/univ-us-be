@@ -9,6 +9,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -157,7 +158,7 @@ public class MarketServiceImpl implements MarketService {
             throw conflict("Blind product cannot be completed.");
         }
 
-        marketMapper.updateProductStatus(productId, "DONE");
+        completePayableProductOrThrow(productId);
         List<MarketDto.TradeChatRoomDto> activeRooms =
                 marketMapper.selectActiveTradeChatRoomsByProduct(productId);
         marketMapper.updateActiveTradeChatStatusByProduct(productId, CLOSED_TRADE_CHAT_STATUS);
@@ -513,8 +514,8 @@ public class MarketServiceImpl implements MarketService {
                 .tradeStatus("DONE")
                 .price(0L)
                 .build();
+        completePayableProductOrThrow(product.getProductId());
         marketMapper.insertTrade(tradeDto);
-        marketMapper.updateProductStatus(product.getProductId(), "DONE");
         marketMapper.updateTradeChatStatus(room.getRoomId(), DONE_TRADE_CHAT_STATUS);
         closeOtherActiveTradeChatRoomsByProduct(product.getProductId(), room.getRoomId());
 
@@ -602,6 +603,11 @@ public class MarketServiceImpl implements MarketService {
         communityAccessService.assertAccessible(product.getUnivId(), communityAccessService.getScope(buyerId));
 
         verifyPortOnePayment(completeDto, product);
+        completeSaleProductOrCancelPayment(
+                product.getProductId(),
+                completeDto.getPaymentId(),
+                product.getPrice()
+        );
 
         MarketDto.TradeDto tradeDto = MarketDto.TradeDto.builder()
                 .productId(product.getProductId())
@@ -620,7 +626,6 @@ public class MarketServiceImpl implements MarketService {
                 .status("PAID")
                 .build();
         marketMapper.insertPayment(paymentDto);
-        marketMapper.updateProductStatus(product.getProductId(), "DONE");
 
         return MarketDto.PaymentResultDto.builder()
                 .tradeId(tradeDto.getTradeId())
@@ -660,6 +665,11 @@ public class MarketServiceImpl implements MarketService {
                 ? product.getPrice()
                 : room.getNegotiatedPrice();
         verifyPortOnePaymentAmount(completeDto.getPaymentId(), paymentAmount);
+        completePayableProductOrCancelPayment(
+                product.getProductId(),
+                completeDto.getPaymentId(),
+                paymentAmount
+        );
 
         MarketDto.TradeDto tradeDto = MarketDto.TradeDto.builder()
                 .productId(product.getProductId())
@@ -678,7 +688,6 @@ public class MarketServiceImpl implements MarketService {
                 .status("PAID")
                 .build();
         marketMapper.insertPayment(paymentDto);
-        marketMapper.updateProductStatus(product.getProductId(), "DONE");
         marketMapper.updateTradeChatStatus(room.getRoomId(), DONE_TRADE_CHAT_STATUS);
         closeOtherActiveTradeChatRoomsByProduct(product.getProductId(), room.getRoomId());
 
@@ -698,6 +707,61 @@ public class MarketServiceImpl implements MarketService {
 
     private void verifyPortOnePayment(MarketDto.PaymentCompleteDto completeDto, MarketDto.ProductDto product) {
         verifyPortOnePaymentAmount(completeDto.getPaymentId(), product.getPrice());
+    }
+
+    private void completePayableProductOrThrow(Long productId) {
+        int updatedCount = marketMapper.completeProductIfPayable(productId);
+        if (updatedCount != 1) {
+            throw conflict("이미 결제가 완료된 상품입니다.");
+        }
+    }
+
+    private void completeSaleProductOrCancelPayment(Long productId, String paymentId, Long amount) {
+        int updatedCount = marketMapper.completeProductIfOnSale(productId);
+        if (updatedCount == 1) {
+            return;
+        }
+        cancelPortOneTradePayment(paymentId, amount, "이미 판매 완료된 중고거래 상품 결제 자동 취소");
+        throw conflict("이미 결제가 완료된 상품입니다. 결제는 자동 취소되었습니다.");
+    }
+
+    private void completePayableProductOrCancelPayment(Long productId, String paymentId, Long amount) {
+        int updatedCount = marketMapper.completeProductIfPayable(productId);
+        if (updatedCount == 1) {
+            return;
+        }
+        cancelPortOneTradePayment(paymentId, amount, "이미 판매 완료된 중고거래 상품 결제 자동 취소");
+        throw conflict("이미 결제가 완료된 상품입니다. 결제는 자동 취소되었습니다.");
+    }
+
+    private void cancelPortOneTradePayment(String paymentId, Long amount, String reason) {
+        if (isBlank(portoneTradeApiSecret)) {
+            throw badGateway("이미 결제가 완료된 상품입니다. 결제 취소 처리에 실패했습니다. 관리자에게 문의해 주세요.");
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "PortOne " + portoneTradeApiSecret);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("amount", amount);
+        body.put("reason", reason);
+
+        try {
+            restTemplate.exchange(
+                    "https://api.portone.io/payments/" + paymentId + "/cancel",
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, headers),
+                    String.class
+            );
+        } catch (RestClientResponseException ex) {
+            throw badGateway(
+                    "이미 결제가 완료된 상품입니다. 결제 취소 처리에 실패했습니다. 관리자에게 문의해 주세요. status="
+                            + ex.getStatusCode().value()
+            );
+        } catch (RestClientException ex) {
+            throw badGateway("이미 결제가 완료된 상품입니다. 결제 취소 처리에 실패했습니다. 관리자에게 문의해 주세요.");
+        }
     }
 
     private void verifyPortOnePaymentAmount(String requestPaymentId, Long expectedAmount) {
