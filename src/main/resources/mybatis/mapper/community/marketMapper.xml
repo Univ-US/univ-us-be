@@ -573,6 +573,24 @@
           AND IS_DELETED = 0
     </update>
 
+    <update id="completeProductIfOnSale">
+        UPDATE PRODUCT
+        SET PRODUCT_STATUS = 'DONE',
+            UPDATED_AT = SYSTIMESTAMP
+        WHERE PRODUCT_ID = #{productId}
+          AND PRODUCT_STATUS = 'SALE'
+          AND IS_DELETED = 0
+    </update>
+
+    <update id="completeProductIfPayable">
+        UPDATE PRODUCT
+        SET PRODUCT_STATUS = 'DONE',
+            UPDATED_AT = SYSTIMESTAMP
+        WHERE PRODUCT_ID = #{productId}
+          AND PRODUCT_STATUS IN ('SALE', 'RESERVE')
+          AND IS_DELETED = 0
+    </update>
+
     <select id="selectTradeChatRoomByBuyer" resultMap="TradeChatRoomResultMap">
         SELECT
             TCR.ROOM_ID,
